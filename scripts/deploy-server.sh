@@ -90,6 +90,7 @@ EOF
 chown root:rakuxq "${SECRET_DIR}/api.env"
 chmod 0640 "${SECRET_DIR}/api.env"
 
+mkdir -p "$(dirname "${NGINX_ROUTES}")"
 if [[ -f "${NGINX_CONF}" ]]; then
   cp -a "${NGINX_CONF}" "${BACKUP_DIR}/xq-rakubank.conf"
 fi
