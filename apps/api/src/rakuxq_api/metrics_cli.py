@@ -29,7 +29,8 @@ def backup(database: Path, output_directory: Path, keep_days: int) -> Path:
     cutoff = now - timedelta(days=keep_days)
     for candidate in output_directory.glob("public-metrics-*.sqlite3"):
         modified_at = datetime.fromtimestamp(candidate.stat().st_mtime, UTC)
-        if candidate != destination and modified_at < cutoff:
+        failed_or_expired = candidate.stat().st_size == 0 or modified_at < cutoff
+        if candidate != destination and failed_or_expired:
             candidate.unlink()
     return destination
 
