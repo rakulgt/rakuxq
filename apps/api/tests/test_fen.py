@@ -1,7 +1,13 @@
 import unittest
 
 from rakuxq_api.domain import Orientation, SideToMove
-from rakuxq_api.fen import FenError, normalize_orientation, to_fen, to_piece_placement
+from rakuxq_api.fen import (
+    FenError,
+    normalize_orientation,
+    to_fen,
+    to_full_fen,
+    to_piece_placement,
+)
 
 START_GRID = [
     list("rnbakabnr"),
@@ -26,6 +32,10 @@ class FenTests(unittest.TestCase):
         )
         self.assertEqual(
             to_fen(placement, SideToMove.RED),
+            placement + " w",
+        )
+        self.assertEqual(
+            to_full_fen(placement, SideToMove.RED),
             placement + " w - - 0 1",
         )
 
@@ -48,4 +58,3 @@ class FenTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

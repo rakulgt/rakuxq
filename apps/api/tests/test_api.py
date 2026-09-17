@@ -92,7 +92,7 @@ def test_shortcuts_endpoint_returns_plain_fen():
     assert response.headers["x-rakuxq-model-version"] == "test"
     assert response.headers["x-rakuxq-request-id"].startswith("rec_")
     assert response.text == (
-        "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1"
+        "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w"
     )
 
 
@@ -107,7 +107,8 @@ def test_json_endpoint_accepts_url_ready_percent_20w_alias():
 
     assert response.status_code == 200
     assert response.json()["side_to_move"] == "red"
-    assert response.json()["fen"].endswith(" w - - 0 1")
+    assert response.json()["fen"].endswith(" w")
+    assert response.json()["full_fen"].endswith(" w - - 0 1")
 
 
 def test_fen_endpoint_accepts_url_ready_percent_20b_alias():
@@ -120,7 +121,7 @@ def test_fen_endpoint_accepts_url_ready_percent_20b_alias():
         )
 
     assert response.status_code == 200
-    assert response.text.endswith(" b - - 0 1")
+    assert response.text.endswith(" b")
 
 
 def test_shortcuts_endpoint_discloses_assumed_empty_cells():

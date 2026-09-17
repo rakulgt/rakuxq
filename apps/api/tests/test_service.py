@@ -165,7 +165,8 @@ class ServiceTests(unittest.TestCase):
             b"image", SideToMove.RED, Orientation.AUTO
         )
         self.assertEqual(result.status, RecognitionStatus.ACCEPTED)
-        self.assertTrue(result.fen.endswith(" w - - 0 1"))
+        self.assertTrue(result.fen.endswith(" w"))
+        self.assertTrue(result.full_fen.endswith(" w - - 0 1"))
 
     def test_unknown_side_requires_review(self):
         result = RecognitionService(FixedProvider()).recognize(

@@ -4,6 +4,19 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.1.2-alpha.3] - 2026-09-17
+
+### 中文
+
+- JSON 的 `fen` 和纯文本 `/v1/fen` 改为严格返回 `piece_placement + 空格 + w/b`。
+- 新增 `full_fen` 保存带 `- - 0 1` 的完整六字段形式，为后续 NNUE 引擎兼容保留。
+
+### English
+
+- Changed JSON `fen` and plain-text `/v1/fen` to return exactly
+  `piece_placement + space + w/b`.
+- Added `full_fen` for the six-field `- - 0 1` form retained for future NNUE compatibility.
+
 ## [0.1.2-alpha.2] - 2026-09-17
 
 ### 中文

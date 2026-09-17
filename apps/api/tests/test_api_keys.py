@@ -132,4 +132,5 @@ def test_valid_api_key_allows_json_recognition(tmp_path):
     assert missing.json()["detail"]["code"] == "API_KEY_REQUIRED"
     assert accepted.status_code == 200
     assert accepted.json()["status"] == "accepted"
-    assert accepted.json()["fen"].endswith(" w - - 0 1")
+    assert accepted.json()["fen"].endswith(" w")
+    assert accepted.json()["full_fen"].endswith(" w - - 0 1")

@@ -124,6 +124,9 @@ curl -X POST https://xq.rakubank.com/v1/recognitions \
 有到期日期的 Key；标准价格为 **39 元人民币/年**，到期后联系微信 **lgtqcn** 续费。
 此费用对应服务器推理、带宽、密钥和运维；MIT 开源源码仍然免费。
 
+`fen` 字段严格返回 `piece_placement + 一个真实空格 + w/b`；需要带 `- - 0 1` 的完整
+六字段形式时读取 `full_fen`。
+
 完整、可审计的 JSON 结果：
 
 ```bash
@@ -271,6 +274,9 @@ Clients consume `fen` only when `status == "accepted"`. Hosted keys are customer
 expire independently. The standard hosted-service price is **CNY 39/year**; contact WeChat
 **lgtqcn** to renew. This fee covers hosted inference, bandwidth, key management, and operations;
 the MIT-licensed source remains free.
+
+The `fen` field is exactly `piece_placement + one literal space + w/b`; clients that need the
+six-field `- - 0 1` form should read `full_fen`.
 
 `side_to_move` accepts `red/black`, `w/b`, and the URL-ready `%20w/%20b` aliases. The latter lets
 Apple Shortcuts reuse one menu value when calling the API and building a xiangqiai.com viewer URL.

@@ -64,5 +64,8 @@ def to_fen(piece_placement: str, side_to_move: SideToMove) -> str:
     if side_to_move == SideToMove.UNKNOWN:
         raise FenError("side to move is required for a complete FEN")
     active = "w" if side_to_move == SideToMove.RED else "b"
-    return f"{piece_placement} {active} - - 0 1"
+    return f"{piece_placement} {active}"
 
+
+def to_full_fen(piece_placement: str, side_to_move: SideToMove) -> str:
+    return f"{to_fen(piece_placement, side_to_move)} - - 0 1"

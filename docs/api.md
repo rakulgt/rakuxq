@@ -40,6 +40,13 @@ X-API-Key: <api-key>
 - `accepted`：置信度和局面校验通过。
 - `review_required`：存在未知格、低置信度或阻断性局面警告。
 
+核心位置字段：
+
+- `piece_placement`：仅包含 10 行棋子布局。
+- `fen`：面向快捷指令与棋谱网站的简化值，严格为
+  `piece_placement + 一个真实空格 + w/b`，例如 `4k4/9/.../5K3 w`。
+- `full_fen`：为后续引擎保留的完整六字段形式，例如 `4k4/9/.../5K3 w - - 0 1`。
+
 调用方应当使用以下等价逻辑：
 
 ```text
@@ -65,7 +72,9 @@ else:
 
 ## `POST /v1/fen` 兼容接口
 
-参数与识别接口相同。仅在结果为 `accepted` 且行棋方已知时返回 `text/plain` FEN；否则返回非 2xx JSON 错误。此端点仅作兼容保留；新客户端应使用 `/v1/recognitions`。
+参数与识别接口相同。仅在结果为 `accepted` 且行棋方已知时返回 `text/plain` 简化 FEN，格式
+严格为 `piece_placement + 空格 + w/b`；否则返回非 2xx JSON 错误。此端点仅作兼容保留；
+新客户端应使用 `/v1/recognitions`。
 
 成功响应同时包含以下可审计响应头：
 

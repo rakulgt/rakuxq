@@ -9,7 +9,7 @@ from .domain import (
     RecognitionStatus,
     SideToMove,
 )
-from .fen import FenError, normalize_orientation, to_fen, to_piece_placement
+from .fen import FenError, normalize_orientation, to_fen, to_full_fen, to_piece_placement
 from .providers.base import RecognitionProvider
 from .validation import validate_position
 
@@ -139,10 +139,12 @@ class RecognitionService:
 
         placement: str | None = None
         fen: str | None = None
+        full_fen: str | None = None
         try:
             placement = to_piece_placement(grid)
             if side_to_move != SideToMove.UNKNOWN:
                 fen = to_fen(placement, side_to_move)
+                full_fen = to_full_fen(placement, side_to_move)
             else:
                 warnings.append("SIDE_TO_MOVE_UNKNOWN")
         except FenError as exc:
@@ -164,6 +166,7 @@ class RecognitionService:
             grid=grid,
             piece_placement=placement,
             fen=fen,
+            full_fen=full_fen,
             side_to_move=side_to_move,
             orientation=effective_orientation,
             confidence=confidence,

@@ -83,6 +83,7 @@ class RecognitionResult:
     grid: list[list[str]]
     piece_placement: str | None
     fen: str | None
+    full_fen: str | None
     side_to_move: SideToMove
     orientation: Orientation
     confidence: float

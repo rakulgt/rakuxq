@@ -204,6 +204,7 @@ class InteractionAuditStore:
                 "request_id": self._nested(parsed_response, "request_id"),
                 "recognition_status": self._nested(parsed_response, "status"),
                 "fen": self._nested(parsed_response, "fen"),
+                "full_fen": self._nested(parsed_response, "full_fen"),
                 "confidence": self._nested(parsed_response, "confidence"),
                 "warnings": self._nested(parsed_response, "warnings"),
             },
