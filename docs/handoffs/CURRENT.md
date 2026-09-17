@@ -44,7 +44,7 @@
 - 新增三例用户人工核验：横置实体棋盘的 `accepted` FEN `CR1akab2/5R3/6n2/p1p1p3p/3r2p2/2P3P2/P7P/2NC5/4A4/2B1KAr2 w - - 0 1` 全部正确；稀疏实体残局的候选 FEN `4k4/4a4/4P4/9/9/9/9/9/9/5K3 w - - 0 1` 全部正确；被弹窗遮挡关键内容的案例正确返回 `review_required`，没有作为可直接消费的 FEN 自动通过。原始用户图片未保存到项目或纳入训练集。
 - `scripts/check-document-governance.ps1`：RakuXQ 无错误；工作区其他遗留项目仍有 10 条既有迁移警告。
 - 生产公网验收：健康检查返回 `status=ok`；无 Key 返回 HTTP `401` / `API_KEY_REQUIRED`；有效 Key + 真实基准图片返回 `accepted` 和正确 FEN `3k5/9/9/9/9/9/3p5/2pANR3/3KNR3/3ACC3 w - - 0 1`。
-- 生产运行状态：提交 `4b7c232df1acfb3d55f6b62e7460e1c8bfdfbb1c`，服务 `active`、`NRestarts=0`，Nginx 配置检查通过；完整记录见 `docs/deployments/20260917-162734-v0.1.1-alpha.1.md`。
+- 生产运行状态：服务器发布标识 `4b7c232df1acfb3d55f6b62e7460e1c8bfdfbb1c`，对应文件树已公开于 GitHub 提交 `6bbe94e4c300eacd0230f95fc8a5de5c1c04d674`；服务 `active`、`NRestarts=0`，Nginx 配置检查通过。完整记录见 `docs/deployments/20260917-162734-v0.1.1-alpha.1.md`。
 
 ## 未完成
 
