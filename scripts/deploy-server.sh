@@ -192,7 +192,6 @@ fi
 systemctl reload nginx
 systemctl restart rakuxq-api.service
 systemctl start rakuxq-audit-retention.service
-systemctl start rakuxq-metrics-backup.service
 
 healthy=0
 for _ in {1..30}; do
@@ -211,6 +210,8 @@ if [[ "${healthy}" -ne 1 ]]; then
   journalctl -u rakuxq-api.service -n 60 --no-pager >&2 || true
   exit 1
 fi
+
+systemctl start rakuxq-metrics-backup.service
 
 rm -f "${ARCHIVE}" "${POSE_UPLOAD}" "${LAYOUT_UPLOAD}" "${KEY_DB_UPLOAD}"
 echo "deployed ${REVISION} to ${DOMAIN} on 127.0.0.1:${PORT}"
