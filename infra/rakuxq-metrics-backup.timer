@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily backup of RakuXQ anonymous public metrics
+
+[Timer]
+OnCalendar=*-*-* 03:17:00 Asia/Shanghai
+Persistent=true
+RandomizedDelaySec=10m
+Unit=rakuxq-metrics-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -4,6 +4,26 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.2.0-alpha.1] - 2026-09-17
+
+### 中文
+
+- 为 `xq.rakubank.com` 增加响应式项目官网、匿名实时交互流、72 小时趋势和历史累计面板。
+- 公共统计与原图审计、API Key 数据库分离；不公开客户、请求、设备或文件标识。
+- 匿名累计统计库增加每日一致性备份和 30 天快照轮换。
+- 增加可配置且不含 Key 的 Apple 快捷指令下载入口。
+- DNS-only 正式入口强制 HTTP 跳转 HTTPS，并增加基础浏览器安全响应头。
+
+### English
+
+- Added a responsive project homepage with an anonymous live stream, a rolling 72-hour trend,
+  and lifetime counters.
+- Separated public metrics from image audits and API-key storage; no customer, request, device,
+  or file identifiers are exposed.
+- Added a daily consistent backup of anonymous lifetime metrics with 30-day snapshot rotation.
+- Added a configurable Apple Shortcut download entry that never embeds an API key.
+- Enforced HTTPS on the DNS-only production endpoint and added baseline browser security headers.
+
 ## [0.1.2-alpha.3] - 2026-09-17
 
 ### 中文

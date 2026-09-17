@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="RakuXQ 将真实世界中的中国象棋图片转换为可计算的 FEN，并走向 NNUE 最佳着法。" />
+    <meta name="theme-color" content="#08111f" />
+    <title>RakuXQ · 让每一个象棋局面进入计算</title>
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="RakuXQ 首页">
+        <span class="brand-mark" aria-hidden="true">将</span>
+        <span><strong>RakuXQ</strong><small>罗酷象棋智能</small></span>
+      </a>
+      <nav aria-label="主要导航">
+        <a href="#live">实时记录</a>
+        <a href="#story">项目来历</a>
+        <a href="#roadmap">长远计划</a>
+        <a class="nav-github" href="https://github.com/rakulgt/rakuxq" rel="noreferrer">GitHub ↗</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <div class="eyebrow"><span class="pulse-dot"></span> LOCAL VISION · OPEN SOURCE · NNUE READY</div>
+          <h1>让现实中的每一个<br /><em>象棋局面</em>进入计算</h1>
+          <p>RakuXQ 把截图、视频画面和真实棋盘照片转换为简洁 FEN。今天解决可靠识别，明天连接 NNUE，给出最佳着法。</p>
+          <div class="hero-actions">
+            <a id="shortcut-button" class="button primary disabled" aria-disabled="true">Apple 快捷指令 · 即将开放</a>
+            <a class="button secondary" href="https://github.com/rakulgt/rakuxq" rel="noreferrer">查看开源代码</a>
+          </div>
+          <p id="shortcut-note" class="shortcut-note">快捷指令不包含 API Key。公开下载链接将在准备完成后上线。</p>
+        </div>
+        <div class="position-card" aria-label="RakuXQ 识别流程示意">
+          <div class="card-top"><span>VISION / POSITION</span><span class="live-pill">LIVE</span></div>
+          <div class="board" aria-hidden="true">
+            <div class="palace palace-top"></div><div class="palace palace-bottom"></div>
+            <span class="piece black general">将</span><span class="piece red soldier">兵</span>
+            <span class="piece red king">帅</span><span class="river">楚河　　汉界</span>
+          </div>
+          <div class="fen-preview"><small>OUTPUT</small><code>4k4/4a4/4P4/9/9/9/9/9/9/5K3 w</code></div>
+        </div>
+      </section>
+
+      <section id="live" class="live-section">
+        <div class="section-heading">
+          <div><span class="kicker">PUBLIC PULSE</span><h2>正在发生的识别</h2></div>
+          <p>匿名展示最近 72 小时的成功识别交互。数据每 15 秒刷新。</p>
+        </div>
+
+        <div class="metrics-grid">
+          <article class="metric"><span>历史累计交互</span><strong id="metric-lifetime">—</strong><small id="metric-since">从现在开始记录</small></article>
+          <article class="metric"><span>最近 72 小时</span><strong id="metric-recent">—</strong><small>滚动窗口内的成功响应</small></article>
+          <article class="metric"><span>自动通过率</span><strong id="metric-rate">—</strong><small>accepted / 成功交互</small></article>
+          <article class="metric"><span>平均推理耗时</span><strong id="metric-latency">—</strong><small>最近 72 小时，服务端模型</small></article>
+        </div>
+
+        <div class="dashboard-grid">
+          <article class="panel chart-panel">
+            <div class="panel-title"><div><span>72H ACTIVITY</span><h3>每小时交互趋势</h3></div><span id="last-updated">等待数据</span></div>
+            <div id="activity-chart" class="activity-chart" aria-label="最近72小时交互柱状图"></div>
+            <div class="chart-axis"><span>72 小时前</span><span>现在</span></div>
+          </article>
+          <article class="panel split-panel">
+            <div class="panel-title"><div><span>QUALITY GATE</span><h3>质量门控</h3></div></div>
+            <div class="donut-wrap">
+              <div id="quality-donut" class="donut"><span id="donut-rate">0%</span></div>
+              <div class="quality-legend">
+                <p><i class="accepted-dot"></i><span>自动通过</span><strong id="accepted-count">0</strong></p>
+                <p><i class="review-dot"></i><span>建议复核</span><strong id="review-count">0</strong></p>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <article class="panel feed-panel">
+          <div class="panel-title"><div><span>ANONYMOUS STREAM</span><h3>最近成功交互</h3></div><p>不公开原图、密钥、IP、文件名或设备信息</p></div>
+          <div class="feed-head"><span>时间</span><span>状态</span><span>简化 FEN</span><span>置信度</span><span>耗时</span></div>
+          <div id="event-feed" class="event-feed"><div class="empty-state">正在连接 RakuXQ 数据流…</div></div>
+        </article>
+      </section>
+
+      <section id="story" class="story-section">
+        <div class="section-heading narrow">
+          <div><span class="kicker">WHY RAKUXQ</span><h2>不是一次短期模型实验</h2></div>
+          <p>它来自一个棋手把兴趣、程序设计与神经网络持续连接近二十年的尝试。</p>
+        </div>
+        <div class="story-grid">
+          <article class="manifesto">
+            <blockquote>“先让机器准确看懂局面，再让它认真思考下一步。”</blockquote>
+            <p>RakuXQ 由李国泰（rakulgt）与罗酷智能发起。项目坚持本地视觉推理、可审计拒识和整盘准确率优先，不依赖图生文大模型猜测棋局。</p>
+          </article>
+          <ol class="timeline">
+            <li><time>1988</time><div><strong>学会中国象棋</strong><span>五岁启蒙，此后长期保持实战兴趣。</span></div></li>
+            <li><time>2008</time><div><strong>lgtXQ 引擎</strong><span>手工线性评估函数与 Alpha-Beta 搜索。</span></div></li>
+            <li><time>2018</time><div><strong>RakuXQ 与 NNUE</strong><span>神经网络评估函数与新一代搜索体系。</span></div></li>
+            <li><time>2023</time><div><strong>视觉识别原型</strong><span>让屏幕与实体棋盘进入计算流程。</span></div></li>
+            <li><time>2026</time><div><strong>开放 HTTP API</strong><span>面向真实图片、Apple 快捷指令与开发者。</span></div></li>
+          </ol>
+        </div>
+      </section>
+
+      <section id="roadmap" class="roadmap-section">
+        <div class="section-heading narrow">
+          <div><span class="kicker">LONG GAME</span><h2>从看懂，到走对</h2></div>
+          <p>公共接口保持稳定，视觉模型和棋力引擎各自演进。</p>
+        </div>
+        <div class="roadmap-grid">
+          <article class="road-card active"><span>01 · NOW</span><h3>局面识别</h3><p>复杂截图、实体棋盘、斜拍、裁剪和遮挡下输出可审计 FEN。</p><b>正在持续优化</b></article>
+          <article class="road-card"><span>02 · NEXT</span><h3>NNUE 最佳着法</h3><p>接入新一代评估与搜索，输出最佳着法、候选变化和评分。</p><b>接口已经预留</b></article>
+          <article class="road-card"><span>03 · FUTURE</span><h3>随身象棋智能</h3><p>快捷指令、终端推送、训练复盘和开放生态连接成完整闭环。</p><b>长期建设</b></article>
+        </div>
+      </section>
+
+      <section class="privacy-strip">
+        <div><span>隐私边界</span><strong>公开统计是匿名的</strong></div>
+        <p>原图仅在官方服务器短期保留最多 12 小时用于质量分析；公开面板只保留匿名指标，单条交互 72 小时后自动消失，累计数字继续保留。</p>
+      </section>
+    </main>
+
+    <footer><div><strong>RakuXQ</strong><span>Built by rakulgt · Raku Intelligence</span></div><div><a href="/docs">API Docs</a><a href="https://github.com/rakulgt/rakuxq">MIT License</a><span>© 2026</span></div></footer>
+  </body>
+</html>

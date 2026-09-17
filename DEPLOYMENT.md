@@ -14,6 +14,7 @@
 - 密钥库：`/opt/raku/secrets/rakuxq/api-keys.sqlite3`
 - 运行日志：journald 单元 `rakuxq-api`
 - Nginx 日志：`/opt/raku/logs/rakuxq/`
+- 匿名统计库：`/opt/raku/logs/rakuxq/public-metrics/public-metrics.sqlite3`
 - 备份：`/opt/raku/backups/rakuxq/`
 
 已鉴权调用的上传原图和完整交互记录短期保存在
@@ -22,6 +23,11 @@
 `rakuxq-audit-retention.timer` 自动删除，磁盘占用达到 2 GiB 时优先删除最旧记录。记录不会进入
 Git、永久样本集或自动训练集。模型只读保存在 `/opt/raku/portable/rakuxq/models/`，来源与校验
 信息见 `models/manifest.json`。
+
+匿名统计库跨版本保留：单条事件在 72 小时后删除，`public_totals` 只保存累计数字。该目录由
+`rakuxq` 专用用户以 `0700` 访问，不得随发布清空。官网根路径和 `/api/public/stats` 无需 API Key，
+但公开响应不得出现客户或请求标识。`rakuxq-metrics-backup.timer` 每天使用 SQLite 在线备份创建
+一致性快照，保存到 `/opt/raku/backups/rakuxq/metrics/` 并自动删除超过 30 天的旧快照。
 
 ## 首次与后续发布
 
@@ -37,6 +43,9 @@ Nginx，原子切换 `current` 并执行回环健康检查。正式密钥库已�
 首次 DNS 接入后执行 Certbot 签发；之后由已有 Certbot 自动续期机制管理。发布脚本检测到
 `/etc/letsencrypt/live/xq.rakubank.com/` 后会自动安装 TLS 版 Nginx 配置，不会在后续发布中
 覆盖或丢失源站 HTTPS。
+
+Apple 快捷指令公开分享地址通过服务器环境变量 `RAKUXQ_SHORTCUT_URL` 设置，只允许
+`https://www.icloud.com/shortcuts/...`；未设置时官网显示“即将开放”。分享的快捷指令不得包含 Key。
 
 `xq.rakubank.com` 当前使用 Cloudflare **仅 DNS（灰云）**，直接解析到已登记源站，以避免中国大陆
 客户端上传图片时绕行境外 Cloudflare 节点。客户端直接使用源站 Let's Encrypt 证书建立 HTTPS；
@@ -68,6 +77,7 @@ python -m rakuxq_api.key_cli --database /opt/raku/secrets/rakuxq/api-keys.sqlite
 - 单 Uvicorn worker，ONNX Runtime 两线程，避免在 4 核 3.6 GiB 主机上与其他产品抢占资源。
 - systemd `MemoryMax=1200M`；Nginx 限制单请求约 13 MiB、每 Key 每分钟 30 次、突发 10 次、并发 2 次。
 - `/healthz` 不要求 API Key；`/v1/recognitions` 和 `/v1/fen` 必须鉴权。
+- `/` 与 `/api/public/stats` 公开访问，只提供官网资源和匿名指标。
 - API Key 和密钥库不得进入 Git、聊天、普通日志或部署记录。
 - 短期审计只保存有效 Key 的调用；匿名、无效、过期或吊销 Key 的请求不保存请求体。
 - `rakuxq-audit-retention.timer` 每分钟清理一次过期审计，并触发项目访问日志的小时级轮转；

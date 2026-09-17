@@ -6,6 +6,8 @@
 Advisories 的私密报告功能联系维护者。RakuXQ 自托管默认只在内存中处理上传图片；部署者仍需
 自行配置 HTTPS、认证、限流、请求大小限制、超时和日志脱敏。官方托管服务仅对已鉴权请求
 保留最长 12 小时的原图和交互审计，用于早期质量分析；明文 API Key 不进入日志。
+官网的公开统计与原图审计分离：单条公开记录只含时间、状态、简化 FEN、置信度和耗时，最长
+72 小时；历史层只保留汇总计数，不公开 Key ID、IP、文件名、请求 ID 或设备信息。
 
 当前 `0.x` 版本为预发布版本，仅对最新发布版本提供安全修复。
 
@@ -20,6 +22,9 @@ uploads in memory by default; deployers remain responsible for HTTPS, authentica
 limits, request-size limits, timeouts, and log redaction. The official hosted service retains
 authenticated originals and interaction audits for no more than 12 hours for early quality
 analysis. Plaintext API keys are never logged.
+Public metrics are separate from image audits. Public event rows contain only time, status,
+simplified FEN, confidence, and latency for up to 72 hours; lifetime storage contains aggregate
+counters only, never key IDs, IPs, filenames, request IDs, or device information.
 
 The `0.x` line is pre-release software. Security fixes are provided for the latest release only.
 

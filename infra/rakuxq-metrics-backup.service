@@ -1,0 +1,17 @@
+[Unit]
+Description=Back up RakuXQ anonymous public metrics
+After=rakuxq-api.service
+
+[Service]
+Type=oneshot
+User=rakuxq
+Group=rakuxq
+UMask=0077
+ExecStart=/opt/raku/portable/rakuxq/current/.venv/bin/python -m rakuxq_api.metrics_cli --database /opt/raku/logs/rakuxq/public-metrics/public-metrics.sqlite3 --output-directory /opt/raku/backups/rakuxq/metrics --keep-days 30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/raku/backups/rakuxq/metrics
+ReadOnlyPaths=/opt/raku/logs/rakuxq/public-metrics
+

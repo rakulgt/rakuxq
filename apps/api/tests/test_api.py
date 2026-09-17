@@ -64,6 +64,17 @@ class PartialProvider(FixedProvider):
 client = TestClient(app)
 
 
+def test_public_homepage_and_empty_metrics_are_available_without_api_key():
+    homepage = client.get("/")
+    metrics = client.get("/api/public/stats")
+
+    assert homepage.status_code == 200
+    assert "让现实中的每一个" in homepage.text
+    assert metrics.status_code == 200
+    assert metrics.json()["recent_window_hours"] == 72
+    assert metrics.json()["shortcut_url"] is None
+
+
 def test_health_reports_not_ready_provider_as_degraded():
     missing_provider = FixedProvider()
     with (

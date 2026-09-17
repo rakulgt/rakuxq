@@ -20,7 +20,7 @@ RakuXQ 是由 **rakulgt / Raku Intelligence（罗酷智能）** 发起的开源�
 真实棋盘照片、斜拍、裁剪、背景噪声和部分遮挡；后续阶段将接入 NNUE 引擎，返回最佳着法、
 候选变化和终端推送结果。
 
-> 当前版本：`v0.1.2-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通，但样本量
+> 当前版本：`v0.2.0-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通，但样本量
 > 尚不足以宣称接近 100% 的通用准确率。RakuXQ 会明确区分自动通过与需要复核的结果。
 
 ### 从 lgtXQ 到 RakuXQ
@@ -55,6 +55,7 @@ RakuXQ 的发起人是 **李国泰（rakulgt，<lgt@rakubank.com>）**。这个�
 - **快捷指令友好**：推荐解析 `POST /v1/recognitions` JSON，仅在 `accepted` 时取得 `fen`。
 - **可运营托管**：官方服务支持每客户独立 API Key、到期、续费和吊销。
 - **为 NNUE 解题预留**：视觉层通过稳定局面契约与未来引擎层解耦。
+- **公开运行面板**：官网匿名展示最近 72 小时交互与历史累计统计，不公开原图或客户标识。
 
 ### 处理流程
 
@@ -163,6 +164,7 @@ cd apps\api
 
 - 自托管默认只在内存中处理图片。官方托管服务为早期质量分析保存已鉴权调用的原图、请求和响应，最长 12 小时后自动删除。
 - 短期审计图片不会自动进入长期样本集或训练集；API Key 明文永不写入审计日志。
+- 官网公开记录只包含时间、状态、简化 FEN、置信度与耗时，72 小时后删除；累计层只保留汇总数字。
 - `.onnx` 权重、上传图片、缓存、日志和真实环境变量均被排除在 Git 之外。
 - 当前基线来自 `yolo12138/Chinese_Chess_Recognition`；来源、版本和 SHA-256 记录于
   [`models/manifest.json`](models/manifest.json)。
@@ -173,6 +175,7 @@ cd apps\api
 - [x] 图片上传、棋盘定位、透视校正与布局识别
 - [x] FEN、合法性检查、置信度门控与 Apple 快捷指令接口
 - [x] 局部棋盘可见性规则和同图视觉原型复核
+- [x] 匿名实时官网、72 小时交互流与历史累计统计
 - [ ] 授权盲测集、公开评测和自有模型训练流程
 - [ ] 独立占位检测器与更多实体棋字体覆盖
 - [ ] NNUE 引擎、最佳着法、候选变化和终端推送
@@ -190,7 +193,7 @@ screenshots, web boards, physical-board photos, perspective distortion, cropping
 noise, and partial occlusion. A later phase will add an NNUE engine for best moves, principal
 variations, and terminal notifications.
 
-> Current release: `v0.1.2-alpha.1`. The vision pipeline works on a growing set of real
+> Current release: `v0.2.0-alpha.1`. The vision pipeline works on a growing set of real
 > screenshots and physical-board photos, but the sample size is not yet sufficient to claim
 > near-perfect general accuracy. RakuXQ explicitly separates auto-accepted results from cases
 > that require review.
@@ -237,6 +240,8 @@ code into the first release. See [`docs/history.md`](docs/history.md) for the fu
 - **Operable hosting**: the hosted service supports per-customer API keys, expiration, renewal,
   and revocation.
 - **NNUE-ready contract**: the future solving engine stays decoupled from the vision provider.
+- **Public operating pulse**: the homepage shows anonymous 72-hour activity and lifetime totals
+  without exposing images or customer identifiers.
 
 ### Quick start
 
@@ -312,12 +317,15 @@ authenticated originals, requests, and responses for at most 12 hours for early 
 Short-lived audits never become a permanent dataset or training data automatically, and plaintext
 API keys are never logged. Third-party model weights are not redistributed. Their provenance,
 versions, and checksums are documented in [`models/manifest.json`](models/manifest.json).
+Public event rows contain only time, status, simplified FEN, confidence, and latency, and disappear
+after 72 hours; only aggregate lifetime counters persist.
 
 ### Roadmap
 
 - [x] Image upload, board localization, perspective rectification, and layout recognition
 - [x] FEN, position validation, confidence gating, and Apple Shortcuts endpoint
 - [x] Partial-board visibility rules and same-image visual prototype refinement
+- [x] Anonymous live homepage, rolling 72-hour activity, and lifetime counters
 - [ ] Consented blind benchmark and first-party training pipeline
 - [ ] Independent occupancy detector and broader physical-piece typography support
 - [ ] NNUE engine, best moves, principal variations, and terminal delivery

@@ -24,6 +24,8 @@ MODELS_DIR="${BASE}/models"
 SECRET_DIR=/opt/raku/secrets/rakuxq
 LOG_DIR=/opt/raku/logs/rakuxq
 AUDIT_DIR=${LOG_DIR}/interactions
+METRICS_DIR=${LOG_DIR}/public-metrics
+METRICS_BACKUP_DIR=/opt/raku/backups/rakuxq/metrics
 BACKUP_DIR="/opt/raku/backups/rakuxq/$(date +%Y%m%d-%H%M%S)-${REVISION}"
 ARCHIVE="/tmp/rakuxq-${REVISION}.tar.gz"
 POSE_UPLOAD=/tmp/rakuxq-pose.onnx
@@ -34,6 +36,8 @@ NGINX_ROUTES=/etc/nginx/snippets/rakuxq-api-routes.conf
 SERVICE_CONF=/etc/systemd/system/rakuxq-api.service
 AUDIT_RETENTION_SERVICE=/etc/systemd/system/rakuxq-audit-retention.service
 AUDIT_RETENTION_TIMER=/etc/systemd/system/rakuxq-audit-retention.timer
+METRICS_BACKUP_SERVICE=/etc/systemd/system/rakuxq-metrics-backup.service
+METRICS_BACKUP_TIMER=/etc/systemd/system/rakuxq-metrics-backup.timer
 LOGROTATE_CONF=/etc/logrotate.d/rakuxq
 PREVIOUS_RELEASE=""
 
@@ -54,6 +58,8 @@ mkdir -p \
   "${SECRET_DIR}" \
   "${LOG_DIR}" \
   "${AUDIT_DIR}" \
+  "${METRICS_DIR}" \
+  "${METRICS_BACKUP_DIR}" \
   "${BACKUP_DIR}"
 if ! getent passwd rakuxq >/dev/null; then
   useradd --system --home-dir /nonexistent --shell /sbin/nologin rakuxq
@@ -63,10 +69,13 @@ if ! command -v setfacl >/dev/null; then
   exit 1
 fi
 setfacl -m u:rakuxq:--x /opt/raku/secrets
-chown rakuxq:rakuxq "${SECRET_DIR}" "${LOG_DIR}" "${AUDIT_DIR}"
+chown rakuxq:rakuxq "${SECRET_DIR}" "${LOG_DIR}" "${AUDIT_DIR}" "${METRICS_DIR}"
+chown rakuxq:rakuxq "${METRICS_BACKUP_DIR}"
 chmod 700 "${SECRET_DIR}"
 chmod 750 "${LOG_DIR}"
 chmod 700 "${AUDIT_DIR}"
+chmod 700 "${METRICS_DIR}"
+chmod 700 "${METRICS_BACKUP_DIR}"
 
 tar -xzf "${ARCHIVE}" -C "${RELEASE_DIR}"
 install -o root -g rakuxq -m 0440 "${POSE_UPLOAD}" "${MODELS_DIR}/pose.onnx"
@@ -87,6 +96,14 @@ if [[ ! -f "${SECRET_DIR}/api-keys.sqlite3" ]]; then
     --database "${SECRET_DIR}/api-keys.sqlite3" list >/dev/null
 fi
 
+SHORTCUT_URL=""
+if [[ -f "${SECRET_DIR}/api.env" ]]; then
+  SHORTCUT_CANDIDATE="$(sed -n 's/^RAKUXQ_SHORTCUT_URL=//p' "${SECRET_DIR}/api.env" | tail -n 1)"
+  if [[ "${SHORTCUT_CANDIDATE}" =~ ^https://www\.icloud\.com/shortcuts/[A-Za-z0-9_-]+$ ]]; then
+    SHORTCUT_URL="${SHORTCUT_CANDIDATE}"
+  fi
+fi
+
 cat >"${SECRET_DIR}/api.env" <<EOF
 RAKUXQ_POSE_MODEL=${MODELS_DIR}/pose.onnx
 RAKUXQ_LAYOUT_MODEL=${MODELS_DIR}/layout.onnx
@@ -100,6 +117,9 @@ RAKUXQ_RENEWAL_PERIOD_DAYS=365
 RAKUXQ_AUDIT_DIR=${AUDIT_DIR}
 RAKUXQ_AUDIT_RETENTION_HOURS=12
 RAKUXQ_AUDIT_MAX_TOTAL_BYTES=2147483648
+RAKUXQ_PUBLIC_METRICS_DB=${METRICS_DIR}/public-metrics.sqlite3
+RAKUXQ_PUBLIC_EVENT_HOURS=72
+RAKUXQ_SHORTCUT_URL=${SHORTCUT_URL}
 EOF
 chown root:rakuxq "${SECRET_DIR}/api.env"
 chmod 0640 "${SECRET_DIR}/api.env"
@@ -114,7 +134,12 @@ fi
 if [[ -f "${SERVICE_CONF}" ]]; then
   cp -a "${SERVICE_CONF}" "${BACKUP_DIR}/rakuxq-api.service"
 fi
-for managed in "${AUDIT_RETENTION_SERVICE}" "${AUDIT_RETENTION_TIMER}" "${LOGROTATE_CONF}"; do
+for managed in \
+  "${AUDIT_RETENTION_SERVICE}" \
+  "${AUDIT_RETENTION_TIMER}" \
+  "${METRICS_BACKUP_SERVICE}" \
+  "${METRICS_BACKUP_TIMER}" \
+  "${LOGROTATE_CONF}"; do
   if [[ -f "${managed}" ]]; then
     cp -a "${managed}" "${BACKUP_DIR}/$(basename "${managed}")"
   fi
@@ -124,6 +149,10 @@ install -o root -g root -m 0644 \
   "${RELEASE_DIR}/infra/rakuxq-audit-retention.service" "${AUDIT_RETENTION_SERVICE}"
 install -o root -g root -m 0644 \
   "${RELEASE_DIR}/infra/rakuxq-audit-retention.timer" "${AUDIT_RETENTION_TIMER}"
+install -o root -g root -m 0644 \
+  "${RELEASE_DIR}/infra/rakuxq-metrics-backup.service" "${METRICS_BACKUP_SERVICE}"
+install -o root -g root -m 0644 \
+  "${RELEASE_DIR}/infra/rakuxq-metrics-backup.timer" "${METRICS_BACKUP_TIMER}"
 install -o root -g root -m 0644 \
   "${RELEASE_DIR}/infra/rakuxq-logrotate.conf" "${LOGROTATE_CONF}"
 install -o root -g root -m 0644 "${RELEASE_DIR}/infra/xq-rakubank-routes.conf" "${NGINX_ROUTES}"
@@ -136,13 +165,16 @@ fi
 systemd-analyze verify \
   "${SERVICE_CONF}" \
   "${AUDIT_RETENTION_SERVICE}" \
-  "${AUDIT_RETENTION_TIMER}"
+  "${AUDIT_RETENTION_TIMER}" \
+  "${METRICS_BACKUP_SERVICE}" \
+  "${METRICS_BACKUP_TIMER}"
 /usr/sbin/logrotate --debug "${LOGROTATE_CONF}" >/dev/null
 
 ln -sfn "${RELEASE_DIR}" "${BASE}/current"
 systemctl daemon-reload
 systemctl enable rakuxq-api.service >/dev/null
 systemctl enable --now rakuxq-audit-retention.timer >/dev/null
+systemctl enable --now rakuxq-metrics-backup.timer >/dev/null
 if ! nginx -t; then
   if [[ -f "${BACKUP_DIR}/xq-rakubank.conf" ]]; then
     cp -a "${BACKUP_DIR}/xq-rakubank.conf" "${NGINX_CONF}"
@@ -160,6 +192,7 @@ fi
 systemctl reload nginx
 systemctl restart rakuxq-api.service
 systemctl start rakuxq-audit-retention.service
+systemctl start rakuxq-metrics-backup.service
 
 healthy=0
 for _ in {1..30}; do

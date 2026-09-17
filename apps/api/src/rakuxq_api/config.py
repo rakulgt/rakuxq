@@ -49,3 +49,6 @@ class Settings:
     audit_max_total_bytes: int = int(
         os.getenv("RAKUXQ_AUDIT_MAX_TOTAL_BYTES", str(2 * 1024 * 1024 * 1024))
     )
+    public_metrics_db: str = os.getenv("RAKUXQ_PUBLIC_METRICS_DB", "")
+    public_event_hours: int = int(os.getenv("RAKUXQ_PUBLIC_EVENT_HOURS", "72"))
+    shortcut_url: str = os.getenv("RAKUXQ_SHORTCUT_URL", "")

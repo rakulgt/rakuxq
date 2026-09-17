@@ -25,6 +25,12 @@ X-API-Key: <api-key>
 
 返回服务与识别 provider 是否就绪。`status=degraded` 表示 HTTP 服务可用但模型不可用。
 
+## `GET /api/public/stats`
+
+无需 API Key。返回历史累计成功交互数、自动通过数、最近 72 小时汇总、小时趋势和匿名事件流。
+事件只包含 `occurred_at`、`status`、`fen`、`confidence`、`duration_ms`；不包含原图、Key/Key ID、
+IP、文件名、请求 ID 或设备信息。单条事件 72 小时后删除，历史累计数字继续保留。
+
 ## `POST /v1/recognitions`
 
 请求为 `multipart/form-data`：

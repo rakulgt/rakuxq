@@ -2,16 +2,20 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from dataclasses import asdict
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
 
 from . import __version__
 from .api_keys import APIKeyStore
 from .audit import InteractionAuditMiddleware, InteractionAuditStore
 from .config import Settings
 from .domain import Orientation, RecognitionStatus, SideToMove, parse_side_to_move
+from .metrics import PublicMetricsStore
 from .providers import OnnxRecognitionProvider, ProviderNotReady
 from .providers.base import RecognitionFailed
 from .service import RecognitionService
@@ -43,6 +47,12 @@ audit_store = (
     if settings.audit_dir
     else None
 )
+public_metrics_store = (
+    PublicMetricsStore(settings.public_metrics_db, settings.public_event_hours)
+    if settings.public_metrics_db
+    else None
+)
+static_root = Path(__file__).with_name("static")
 
 
 def _renewal_detail() -> dict[str, object]:
@@ -109,6 +119,10 @@ async def lifespan(_app: FastAPI):
         provider.warmup()
     if audit_store is not None:
         audit_store.prune()
+    if public_metrics_store is not None:
+        public_metrics_store.initialize()
+        if settings.audit_dir:
+            public_metrics_store.import_audit_directory(settings.audit_dir)
     yield
 
 
@@ -125,6 +139,7 @@ app.add_middleware(
     require_api_key=settings.require_api_key,
     max_request_bytes=settings.max_upload_bytes + 1024 * 1024,
 )
+app.mount("/static", StaticFiles(directory=static_root), name="static")
 
 
 async def _read_image(image: UploadFile) -> bytes:
@@ -141,7 +156,10 @@ async def _read_image(image: UploadFile) -> bytes:
 
 def _run(data: bytes, side_to_move: SideToMove, orientation: Orientation):
     try:
-        return service.recognize(data, side_to_move, orientation)
+        result = service.recognize(data, side_to_move, orientation)
+        if public_metrics_store is not None:
+            public_metrics_store.record(result)
+        return result
     except ProviderNotReady as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except RecognitionFailed as exc:
@@ -169,6 +187,48 @@ def healthz():
         "authentication_required": settings.require_api_key,
         "authentication_ready": authentication_ready,
     }
+
+
+@app.get("/", include_in_schema=False)
+def homepage() -> FileResponse:
+    return FileResponse(static_root / "index.html", media_type="text/html")
+
+
+@app.get("/api/public/stats", include_in_schema=False)
+def public_stats() -> JSONResponse:
+    if public_metrics_store is None:
+        snapshot: dict[str, object] = {
+            "generated_at": datetime.now(UTC).isoformat(timespec="milliseconds").replace(
+                "+00:00", "Z"
+            ),
+            "recent_window_hours": settings.public_event_hours,
+            "lifetime": {
+                "successful": 0,
+                "accepted": 0,
+                "review_required": 0,
+                "acceptance_rate": 0.0,
+                "first_seen_at": None,
+                "last_seen_at": None,
+            },
+            "recent": {
+                "successful": 0,
+                "accepted": 0,
+                "review_required": 0,
+                "acceptance_rate": 0.0,
+                "average_duration_ms": 0,
+            },
+            "hourly": [],
+            "events": [],
+        }
+    else:
+        snapshot = public_metrics_store.snapshot()
+    shortcut_url = settings.shortcut_url.strip()
+    snapshot["shortcut_url"] = (
+        shortcut_url
+        if shortcut_url.startswith("https://www.icloud.com/shortcuts/")
+        else None
+    )
+    return JSONResponse(snapshot, headers={"Cache-Control": "public, max-age=5"})
 
 
 @app.post("/v1/recognitions")
