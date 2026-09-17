@@ -21,6 +21,11 @@ X-API-Key: <api-key>
 `API_KEY_EXPIRED` 以及续费信息：微信 `lgtqcn`，`39 元人民币/年`。明文 Key 只在
 签发时显示一次，服务端只保存 SHA-256 哈希。
 
+官网 [`/developers`](https://xq.rakubank.com/developers) 可匿名申请测试 Key。测试 Key 随机生成、
+明文只显示一次、有效期 6 分钟且不可续期；同一来源在有效期内不能重复领取。领取入口不保存原始
+IP，只保存服务器秘密加盐后的不可逆 HMAC 指纹。使用测试 Key 上传的图片仍遵循下文 12 小时
+短期审计政策。长期或生产调用请使用独立年度 Key。
+
 ## `GET /healthz`
 
 返回服务与识别 provider 是否就绪。`status=degraded` 表示 HTTP 服务可用但模型不可用。
@@ -30,6 +35,12 @@ X-API-Key: <api-key>
 无需 API Key。返回历史累计成功交互数、自动通过数、最近 72 小时汇总、小时趋势和匿名事件流。
 事件只包含 `occurred_at`、`status`、`fen`、`confidence`、`duration_ms`；不包含原图、Key/Key ID、
 IP、文件名、请求 ID 或设备信息。单条事件 72 小时后删除，历史累计数字继续保留。
+
+## `POST /api/public/trial-keys`
+
+无需 API Key，也不需要请求体。成功时返回一次性可见的 `api_key`、`expires_at` 和
+`expires_in_seconds=360`，响应强制 `Cache-Control: no-store`。同一来源已有有效临时 Key 时返回
+`429 TRIAL_KEY_ALREADY_ACTIVE`；服务容量达到保护上限时返回 `503`。
 
 ## `POST /v1/recognitions`
 

@@ -11,6 +11,10 @@ Advisories 的私密报告功能联系维护者。RakuXQ 自托管默认只在�
 
 当前 `0.x` 版本为预发布版本，仅对最新发布版本提供安全修复。
 
+公开临时 Key 有效期固定为 6 分钟，明文只显示一次。同一来源有效期内只能领取一个；服务端以
+秘密加盐 HMAC 保存不可逆来源指纹，不在临时 Key 表中保存原始 IP。临时 Key 调用仍属于有效鉴权
+调用，因此适用 12 小时原图审计政策。
+
 官方托管服务的 API Key 只以 SHA-256 哈希保存。请把明文 Key 当作密码处理，不要提交到
 Git、公开 Issue、聊天记录或客户端日志；泄露后应立即吊销并重新签发。
 
@@ -27,6 +31,11 @@ simplified FEN, confidence, and latency for up to 72 hours; lifetime storage con
 counters only, never key IDs, IPs, filenames, request IDs, or device information.
 
 The `0.x` line is pre-release software. Security fixes are provided for the latest release only.
+
+Public trial keys expire after six minutes and are shown only once. One key may be issued per
+client during that window. The service stores only a secret-keyed HMAC fingerprint for issuance
+control, not the client's raw IP in the trial-key database. Trial-key calls remain authenticated
+calls and therefore follow the 12-hour original-image audit policy.
 
 The hosted service stores only SHA-256 API-key hashes. Treat plaintext keys as passwords: never
 commit them to Git or publish them in issues, chats, or client logs; revoke and rotate leaked keys.

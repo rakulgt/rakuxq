@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="RakuXQ 中国象棋图片转 FEN API 开发者教程与 6 分钟临时测试 Key。" />
+    <meta name="theme-color" content="#08111f" />
+    <title>RakuXQ 开发者文档 · 图片转 FEN API</title>
+    <link rel="icon" href="/static/favicon.svg?v=0.2.0a3" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.2.0a3" />
+    <script src="/static/developers.js?v=0.2.0a3" defer></script>
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="RakuXQ 首页">
+        <span class="brand-mark" aria-hidden="true">将</span>
+        <span><strong>RakuXQ</strong><small>DEVELOPER GUIDE</small></span>
+      </a>
+      <nav aria-label="主要导航"><a href="/">返回首页</a><a href="/docs">OpenAPI</a><a class="nav-github" href="https://github.com/rakulgt/rakuxq" rel="noreferrer">GitHub ↗</a></nav>
+    </header>
+
+    <main class="docs-main">
+      <section class="docs-hero">
+        <span class="kicker">HTTP API · MULTIPART · JSON</span>
+        <h1>用一张图片，<br /><em>得到可计算的 FEN</em></h1>
+        <p>上传 JPEG、PNG 或 WebP 棋盘图片。接口返回结构化 JSON；当 <code>status</code> 为 <code>accepted</code> 时，读取 <code>fen</code> 字段。</p>
+      </section>
+
+      <section class="docs-grid">
+        <article class="panel trial-panel">
+          <div class="panel-title"><div><span>TRY IT NOW</span><h3>领取 6 分钟临时 Key</h3></div><span id="trial-countdown">尚未领取</span></div>
+          <p>同一网络在一个有效期内只能领取一个。Key 明文只显示一次、不可续期，适合调试，不适合生产。</p>
+          <div class="trial-actions">
+            <button id="trial-button" class="button primary" type="button">随机生成临时 Key</button>
+            <button id="copy-key" class="button secondary" type="button" disabled>复制 Key</button>
+          </div>
+          <output id="trial-key" class="trial-key" aria-live="polite">点击上方按钮后在这里显示，仅显示一次。</output>
+          <p id="trial-message" class="docs-note">使用临时 Key 上传的原图同样会在官方服务器保留最多 12 小时，用于早期质量分析。</p>
+        </article>
+
+        <article class="panel endpoint-panel">
+          <span class="kicker">ENDPOINT</span>
+          <h2><span class="method">POST</span> /v1/recognitions</h2>
+          <dl class="parameter-list">
+            <div><dt>Authorization</dt><dd><code>Bearer YOUR_API_KEY</code></dd></div>
+            <div><dt>image</dt><dd>必填，JPEG / PNG / WebP，最大 12 MB</dd></div>
+            <div><dt>side_to_move</dt><dd><code>red</code> / <code>black</code> / <code>unknown</code></dd></div>
+            <div><dt>orientation</dt><dd>通常使用 <code>auto</code></dd></div>
+          </dl>
+        </article>
+      </section>
+
+      <section class="code-section">
+        <div class="section-heading narrow"><div><span class="kicker">QUICK START</span><h2>三种调用方式</h2></div><p>领取临时 Key 后，下列示例会自动替换占位符。</p></div>
+        <article class="code-card"><div><strong>curl</strong><button class="code-copy" data-copy="curl-code">复制</button></div><pre><code id="curl-code">curl -X POST https://xq.rakubank.com/v1/recognitions \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -F "image=@board.jpg" \
+  -F "side_to_move=red" \
+  -F "orientation=auto"</code></pre></article>
+        <article class="code-card"><div><strong>Python</strong><button class="code-copy" data-copy="python-code">复制</button></div><pre><code id="python-code">import requests
+
+response = requests.post(
+    "https://xq.rakubank.com/v1/recognitions",
+    headers={"Authorization": "Bearer YOUR_API_KEY"},
+    files={"image": open("board.jpg", "rb")},
+    data={"side_to_move": "red", "orientation": "auto"},
+    timeout=60,
+)
+result = response.json()
+fen = result["fen"] if result.get("status") == "accepted" else None
+print(fen)</code></pre></article>
+        <article class="code-card"><div><strong>JavaScript</strong><button class="code-copy" data-copy="javascript-code">复制</button></div><pre><code id="javascript-code">const form = new FormData();
+form.append("image", file);
+form.append("side_to_move", "red");
+form.append("orientation", "auto");
+
+const response = await fetch("https://xq.rakubank.com/v1/recognitions", {
+  method: "POST",
+  headers: { Authorization: "Bearer YOUR_API_KEY" },
+  body: form,
+});
+const result = await response.json();
+console.log(result.status === "accepted" ? result.fen : null);</code></pre></article>
+      </section>
+
+      <section class="docs-grid response-section">
+        <article class="panel">
+          <span class="kicker">RESPONSE</span><h2>成功响应</h2>
+          <pre><code>{
+  "request_id": "...",
+  "status": "accepted",
+  "fen": "3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w",
+  "full_fen": "3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w - - 0 1",
+  "confidence": 0.97,
+  "warnings": []
+}</code></pre>
+        </article>
+        <article class="panel">
+          <span class="kicker">RULES</span><h2>接入约定</h2>
+          <ul class="docs-list">
+            <li>只在 <code>status=accepted</code> 时自动使用 <code>fen</code>。</li>
+            <li><code>review_required</code> 表示应让用户检查或重新拍照。</li>
+            <li>未拍到、被手遮挡或无法确认的格点按空位处理，并通过警告字段说明。</li>
+            <li>临时 Key 仅用于测试；长期使用请联系微信 <strong>lgtqcn</strong>，39 元/年。</li>
+          </ul>
+        </article>
+      </section>
+    </main>
+    <footer><div><strong>RakuXQ</strong><span>MIT Open Source</span></div><div><a href="/">首页</a><a href="/docs">OpenAPI</a><a href="https://github.com/rakulgt/rakuxq">GitHub</a></div></footer>
+  </body>
+</html>

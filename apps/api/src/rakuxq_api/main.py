@@ -1,17 +1,19 @@
 from __future__ import annotations
 
+import hashlib
+import hmac
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import __version__
-from .api_keys import APIKeyStore
+from .api_keys import APIKeyStore, TrialKeyCapacity, TrialKeyCooldown
 from .audit import InteractionAuditMiddleware, InteractionAuditStore
 from .config import Settings
 from .domain import Orientation, RecognitionStatus, SideToMove, parse_side_to_move
@@ -61,6 +63,21 @@ def _renewal_detail() -> dict[str, object]:
         "price_cny": settings.renewal_price_cny,
         "period_days": settings.renewal_period_days,
     }
+
+
+def _trial_fingerprint(request: Request) -> str:
+    if not settings.trial_key_pepper_file:
+        raise HTTPException(status_code=503, detail="Temporary keys are unavailable.")
+    try:
+        pepper = Path(settings.trial_key_pepper_file).read_bytes().strip()
+    except OSError as exc:
+        raise HTTPException(status_code=503, detail="Temporary keys are unavailable.") from exc
+    if len(pepper) < 32:
+        raise HTTPException(status_code=503, detail="Temporary keys are unavailable.")
+    client_address = request.headers.get("x-real-ip")
+    if not client_address:
+        client_address = request.client.host if request.client else "unknown"
+    return hmac.new(pepper, client_address.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 def require_api_key(
@@ -194,6 +211,11 @@ def homepage() -> FileResponse:
     return FileResponse(static_root / "index.html", media_type="text/html")
 
 
+@app.get("/developers", include_in_schema=False)
+def developer_guide() -> FileResponse:
+    return FileResponse(static_root / "developers.html", media_type="text/html")
+
+
 @app.get("/api/public/stats", include_in_schema=False)
 def public_stats() -> JSONResponse:
     if public_metrics_store is None:
@@ -229,6 +251,47 @@ def public_stats() -> JSONResponse:
         else None
     )
     return JSONResponse(snapshot, headers={"Cache-Control": "public, max-age=5"})
+
+
+@app.post("/api/public/trial-keys", include_in_schema=False)
+def issue_trial_key(request: Request) -> JSONResponse:
+    if api_key_store is None:
+        raise HTTPException(status_code=503, detail="Temporary keys are unavailable.")
+    try:
+        plaintext, expires_at = api_key_store.issue_trial(
+            _trial_fingerprint(request),
+            minutes=settings.trial_key_minutes,
+            active_limit=settings.trial_key_active_limit,
+        )
+    except TrialKeyCooldown as exc:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "TRIAL_KEY_ALREADY_ACTIVE",
+                "message": "A temporary key was already issued to this client.",
+                "retry_after_seconds": exc.retry_after_seconds,
+            },
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+        ) from exc
+    except TrialKeyCapacity as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "TRIAL_KEY_CAPACITY_REACHED", "message": "Please try again later."},
+        ) from exc
+    return JSONResponse(
+        {
+            "api_key": plaintext,
+            "expires_at": expires_at.isoformat().replace("+00:00", "Z"),
+            "expires_in_seconds": settings.trial_key_minutes * 60,
+            "authorization": f"Bearer {plaintext}",
+            "notice": "Shown once. Test uploads follow the 12-hour quality-audit policy.",
+        },
+        headers={
+            "Cache-Control": "no-store, max-age=0",
+            "Pragma": "no-cache",
+            "Referrer-Policy": "no-referrer",
+        },
+    )
 
 
 @app.post("/v1/recognitions")

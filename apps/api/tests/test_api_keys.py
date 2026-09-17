@@ -5,9 +5,10 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
-from rakuxq_api.api_keys import APIKeyStore
+from rakuxq_api.api_keys import APIKeyStore, TrialKeyCooldown
 from rakuxq_api.config import Settings
 from rakuxq_api.domain import BoardPrediction, CellPrediction, Orientation
 from rakuxq_api.main import app
@@ -64,6 +65,47 @@ def test_api_key_store_create_validate_renew_and_revoke(tmp_path):
     assert renewed_expiry > first_expiry + timedelta(days=364)
     store.revoke(key_id)
     assert store.validate(plaintext).status == "revoked"
+
+
+def test_trial_key_is_active_for_six_minutes_and_one_per_fingerprint(tmp_path):
+    store = APIKeyStore(tmp_path / "keys.sqlite3")
+    plaintext, expires_at = store.issue_trial("anonymous-fingerprint", minutes=6)
+
+    assert plaintext.startswith("rxq_trial_")
+    assert timedelta(minutes=5, seconds=50) < expires_at - datetime.now(UTC)
+    assert store.validate(plaintext).status == "active"
+    with pytest.raises(TrialKeyCooldown) as error:
+        store.issue_trial("anonymous-fingerprint", minutes=6)
+    assert 1 <= error.value.retry_after_seconds <= 360
+
+
+def test_public_trial_key_endpoint_returns_key_once_without_caching(tmp_path):
+    database = tmp_path / "keys.sqlite3"
+    pepper = tmp_path / "trial-key-pepper"
+    pepper.write_text("a" * 64, encoding="ascii")
+    store = APIKeyStore(database)
+    protected_settings = replace(
+        Settings(),
+        require_api_key=True,
+        api_keys_db=str(database),
+        trial_key_pepper_file=str(pepper),
+        trial_key_minutes=6,
+    )
+    client = TestClient(app)
+    with (
+        patch("rakuxq_api.main.settings", protected_settings),
+        patch("rakuxq_api.main.api_key_store", store),
+    ):
+        issued = client.post("/api/public/trial-keys")
+        duplicate = client.post("/api/public/trial-keys")
+
+    assert issued.status_code == 200
+    assert issued.json()["api_key"].startswith("rxq_trial_")
+    assert store.validate(issued.json()["api_key"]).status == "active"
+    assert issued.json()["expires_in_seconds"] == 360
+    assert issued.headers["cache-control"] == "no-store, max-age=0"
+    assert duplicate.status_code == 429
+    assert duplicate.json()["detail"]["code"] == "TRIAL_KEY_ALREADY_ACTIVE"
 
 
 def test_expired_api_key_returns_renewal_json(tmp_path):

@@ -52,3 +52,6 @@ class Settings:
     public_metrics_db: str = os.getenv("RAKUXQ_PUBLIC_METRICS_DB", "")
     public_event_hours: int = int(os.getenv("RAKUXQ_PUBLIC_EVENT_HOURS", "72"))
     shortcut_url: str = os.getenv("RAKUXQ_SHORTCUT_URL", "")
+    trial_key_pepper_file: str = os.getenv("RAKUXQ_TRIAL_KEY_PEPPER_FILE", "")
+    trial_key_minutes: int = int(os.getenv("RAKUXQ_TRIAL_KEY_MINUTES", "6"))
+    trial_key_active_limit: int = int(os.getenv("RAKUXQ_TRIAL_KEY_ACTIVE_LIMIT", "100"))

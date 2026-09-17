@@ -95,6 +95,12 @@ if [[ ! -f "${SECRET_DIR}/api-keys.sqlite3" ]]; then
   runuser -u rakuxq -- "${RELEASE_DIR}/.venv/bin/python" -m rakuxq_api.key_cli \
     --database "${SECRET_DIR}/api-keys.sqlite3" list >/dev/null
 fi
+if [[ ! -s "${SECRET_DIR}/trial-key-pepper" ]]; then
+  umask 077
+  openssl rand -hex 32 >"${SECRET_DIR}/trial-key-pepper"
+fi
+chown root:rakuxq "${SECRET_DIR}/trial-key-pepper"
+chmod 0640 "${SECRET_DIR}/trial-key-pepper"
 
 SHORTCUT_URL=""
 if [[ -f "${SECRET_DIR}/api.env" ]]; then
@@ -120,6 +126,9 @@ RAKUXQ_AUDIT_MAX_TOTAL_BYTES=2147483648
 RAKUXQ_PUBLIC_METRICS_DB=${METRICS_DIR}/public-metrics.sqlite3
 RAKUXQ_PUBLIC_EVENT_HOURS=72
 RAKUXQ_SHORTCUT_URL=${SHORTCUT_URL}
+RAKUXQ_TRIAL_KEY_PEPPER_FILE=${SECRET_DIR}/trial-key-pepper
+RAKUXQ_TRIAL_KEY_MINUTES=6
+RAKUXQ_TRIAL_KEY_ACTIVE_LIMIT=100
 EOF
 chown root:rakuxq "${SECRET_DIR}/api.env"
 chmod 0640 "${SECRET_DIR}/api.env"

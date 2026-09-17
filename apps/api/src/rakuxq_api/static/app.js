@@ -6,6 +6,21 @@ function setText(id, value) {
   if (element) element.textContent = value;
 }
 
+async function copyText(value) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+  const input = document.createElement("textarea");
+  input.value = value;
+  input.style.position = "fixed";
+  input.style.opacity = "0";
+  document.body.append(input);
+  input.select();
+  document.execCommand("copy");
+  input.remove();
+}
+
 function renderChart(hourly) {
   const chart = document.getElementById("activity-chart");
   const counts = new Map(hourly.map((item) => [item.hour, Number(item.interactions)]));
@@ -43,20 +58,37 @@ function renderEvents(events) {
     status.className = `status-badge status-${event.status}`;
     status.textContent = event.status === "accepted" ? "自动通过" : "建议复核";
     const code = document.createElement("code");
-    const link = document.createElement("a");
-    link.href = `https://xiangqiai.com/#/${event.fen.replace(" ", "%20")}`;
-    link.target = "_blank";
-    link.rel = "noreferrer";
-    link.textContent = event.fen;
-    link.title = "在棋谱查看器中打开";
-    code.append(link);
+    code.textContent = event.fen;
+    code.title = event.fen;
     const confidence = document.createElement("span");
     confidence.className = "confidence";
     confidence.textContent = `${Math.round(event.confidence * 100)}%`;
     const duration = document.createElement("span");
     duration.className = "duration";
     duration.textContent = `${number.format(event.duration_ms)} ms`;
-    row.append(time, status, code, confidence, duration);
+    const actions = document.createElement("div");
+    actions.className = "feed-actions";
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "feed-action";
+    copy.textContent = "复制 FEN";
+    copy.addEventListener("click", async () => {
+      try {
+        await copyText(event.fen);
+        copy.textContent = "已复制";
+        window.setTimeout(() => { copy.textContent = "复制 FEN"; }, 1600);
+      } catch {
+        copy.textContent = "复制失败";
+      }
+    });
+    const open = document.createElement("a");
+    open.className = "feed-action";
+    open.href = `https://xiangqiai.com/#/${event.fen.replace(" ", "%20")}`;
+    open.target = "_blank";
+    open.rel = "noreferrer";
+    open.textContent = "打开局面 ↗";
+    actions.append(copy, open);
+    row.append(time, status, code, confidence, duration, actions);
     return row;
   }));
 }

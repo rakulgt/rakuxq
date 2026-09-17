@@ -4,6 +4,20 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.2.0-alpha.3] - 2026-09-17
+
+### 中文
+
+- 匿名交互记录新增独立的“复制 FEN”和“打开局面”按钮，可直接跳转 xiangqiai.com 复现研究。
+- 新增公开开发者教程，提供 curl、Python、JavaScript 示例和响应消费约定。
+- 新增明文只显示一次、6 分钟失效的随机临时 Key，并通过匿名 HMAC 来源指纹、单来源锁、全局容量和 Nginx 限流防滥用。
+
+### English
+
+- Added dedicated “Copy FEN” and “Open position” actions to every anonymous event row.
+- Added a public developer guide with curl, Python, JavaScript, and response-handling examples.
+- Added one-time-display random trial keys that expire after six minutes, protected by anonymous HMAC client fingerprints, per-client locking, a global capacity limit, and Nginx rate limiting.
+
 ## [0.2.0-alpha.2] - 2026-09-17
 
 ### 中文

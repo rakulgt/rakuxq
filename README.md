@@ -20,7 +20,7 @@ RakuXQ 是由 **rakulgt / Raku Intelligence（罗酷智能）** 发起的开源�
 真实棋盘照片、斜拍、裁剪、背景噪声和部分遮挡；后续阶段将接入 NNUE 引擎，返回最佳着法、
 候选变化和终端推送结果。
 
-> 当前版本：`v0.2.0-alpha.2`。视觉链路已经在多组真实截图和实体棋盘照片上跑通，但样本量
+> 当前版本：`v0.2.0-alpha.3`。视觉链路已经在多组真实截图和实体棋盘照片上跑通，但样本量
 > 尚不足以宣称接近 100% 的通用准确率。RakuXQ 会明确区分自动通过与需要复核的结果。
 
 ### 从 lgtXQ 到 RakuXQ
@@ -56,6 +56,7 @@ RakuXQ 的发起人是 **李国泰（rakulgt，<lgt@rakubank.com>）**。这个�
 - **可运营托管**：官方服务支持每客户独立 API Key、到期、续费和吊销。
 - **为 NNUE 解题预留**：视觉层通过稳定局面契约与未来引擎层解耦。
 - **公开运行面板**：官网匿名展示最近 72 小时交互与历史累计统计，不公开原图或客户标识。
+- **即领即试**：公开开发文档可领取明文只显示一次、6 分钟失效的临时测试 Key。
 
 ### 处理流程
 
@@ -113,6 +114,8 @@ $env:RAKUXQ_LAYOUT_MODEL = "..\..\models\layout.onnx"
 ### HTTP API
 
 官方托管 API：
+
+公开开发教程与临时测试 Key：<https://xq.rakubank.com/developers>
 
 ```bash
 curl -X POST https://xq.rakubank.com/v1/recognitions \
@@ -193,7 +196,7 @@ screenshots, web boards, physical-board photos, perspective distortion, cropping
 noise, and partial occlusion. A later phase will add an NNUE engine for best moves, principal
 variations, and terminal notifications.
 
-> Current release: `v0.2.0-alpha.2`. The vision pipeline works on a growing set of real
+> Current release: `v0.2.0-alpha.3`. The vision pipeline works on a growing set of real
 > screenshots and physical-board photos, but the sample size is not yet sufficient to claim
 > near-perfect general accuracy. RakuXQ explicitly separates auto-accepted results from cases
 > that require review.
@@ -242,6 +245,8 @@ code into the first release. See [`docs/history.md`](docs/history.md) for the fu
 - **NNUE-ready contract**: the future solving engine stays decoupled from the vision provider.
 - **Public operating pulse**: the homepage shows anonymous 72-hour activity and lifetime totals
   without exposing images or customer identifiers.
+- **Instant trial access**: the public developer guide can issue a one-time-display test key that
+  expires after six minutes.
 
 ### Quick start
 

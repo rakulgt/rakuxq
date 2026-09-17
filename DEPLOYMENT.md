@@ -12,6 +12,7 @@
 - 公网入口：`https://xq.rakubank.com/v1/recognitions`
 - 健康检查：`https://xq.rakubank.com/healthz`
 - 密钥库：`/opt/raku/secrets/rakuxq/api-keys.sqlite3`
+- 临时 Key 来源指纹秘密：`/opt/raku/secrets/rakuxq/trial-key-pepper`
 - 运行日志：journald 单元 `rakuxq-api`
 - Nginx 日志：`/opt/raku/logs/rakuxq/`
 - 匿名统计库：`/opt/raku/logs/rakuxq/public-metrics/public-metrics.sqlite3`
@@ -47,6 +48,11 @@ Nginx，原子切换 `current` 并执行回环健康检查。正式密钥库已�
 Apple 快捷指令公开分享地址通过服务器环境变量 `RAKUXQ_SHORTCUT_URL` 设置，只允许
 `https://www.icloud.com/shortcuts/...`；未设置时官网显示“即将开放”。分享的快捷指令不得包含 Key。
 
+公开开发文档位于 `/developers`。`POST /api/public/trial-keys` 签发 6 分钟测试 Key；部署脚本首次
+发布时生成独立 pepper 文件，后续发布保留原值且不输出内容。临时签发使用 HMAC 来源指纹、同一
+来源单活、最多 100 个全局活跃 Key 和 Nginx IP 突发限流。该入口不得写入 access log 的请求体或
+返回明文 Key；响应必须禁止缓存。
+
 `xq.rakubank.com` 当前使用 Cloudflare **仅 DNS（灰云）**，直接解析到已登记源站，以避免中国大陆
 客户端上传图片时绕行境外 Cloudflare 节点。客户端直接使用源站 Let's Encrypt 证书建立 HTTPS；
 Cloudflare 的 SSL/TLS 模式在仅 DNS 状态下不参与本域名传输。切回代理模式前必须重新进行上传延迟、
@@ -78,6 +84,7 @@ python -m rakuxq_api.key_cli --database /opt/raku/secrets/rakuxq/api-keys.sqlite
 - systemd `MemoryMax=1200M`；Nginx 限制单请求约 13 MiB、每 Key 每分钟 30 次、突发 10 次、并发 2 次。
 - `/healthz` 不要求 API Key；`/v1/recognitions` 和 `/v1/fen` 必须鉴权。
 - `/` 与 `/api/public/stats` 公开访问，只提供官网资源和匿名指标。
+- `/developers` 与 `/api/public/trial-keys` 公开访问；后者只签发 6 分钟、不可续期的测试 Key。
 - API Key 和密钥库不得进入 Git、聊天、普通日志或部署记录。
 - 短期审计只保存有效 Key 的调用；匿名、无效、过期或吊销 Key 的请求不保存请求体。
 - `rakuxq-audit-retention.timer` 每分钟清理一次过期审计，并触发项目访问日志的小时级轮转；

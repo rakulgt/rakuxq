@@ -17,6 +17,16 @@ class APIKeyValidation:
     expires_at: datetime | None = None
 
 
+class TrialKeyCooldown(RuntimeError):
+    def __init__(self, retry_after_seconds: int):
+        super().__init__("a trial key is already active for this client")
+        self.retry_after_seconds = retry_after_seconds
+
+
+class TrialKeyCapacity(RuntimeError):
+    pass
+
+
 class APIKeyStore:
     def __init__(self, database: str | Path):
         self.database = Path(database)
@@ -37,6 +47,15 @@ class APIKeyStore:
                     created_at TEXT NOT NULL,
                     expires_at TEXT NOT NULL,
                     revoked_at TEXT
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS trial_key_issuances (
+                    client_fingerprint TEXT PRIMARY KEY,
+                    issued_at TEXT NOT NULL,
+                    expires_at TEXT NOT NULL
                 )
                 """
             )
@@ -70,6 +89,73 @@ class APIKeyStore:
                 ),
             )
         return key_id, plaintext, expires_at
+
+    def issue_trial(
+        self,
+        client_fingerprint: str,
+        minutes: int = 6,
+        active_limit: int = 100,
+    ) -> tuple[str, datetime]:
+        if not client_fingerprint:
+            raise ValueError("client fingerprint must not be empty")
+        if minutes < 1 or active_limit < 1:
+            raise ValueError("trial limits must be positive")
+        self.initialize()
+        now = datetime.now(UTC)
+        expires_at = now + timedelta(minutes=minutes)
+        plaintext = f"rxq_trial_{secrets.token_urlsafe(32)}"
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            now_text = self._format(now)
+            connection.execute(
+                "DELETE FROM trial_key_issuances WHERE expires_at <= ?",
+                (now_text,),
+            )
+            connection.execute(
+                "DELETE FROM api_keys WHERE label = 'public-trial' AND expires_at <= ?",
+                (now_text,),
+            )
+            current = connection.execute(
+                "SELECT expires_at FROM trial_key_issuances WHERE client_fingerprint = ?",
+                (client_fingerprint,),
+            ).fetchone()
+            if current is not None:
+                remaining = max(1, int((self._parse(current[0]) - now).total_seconds()))
+                raise TrialKeyCooldown(remaining)
+            active = connection.execute(
+                """
+                SELECT COUNT(*) FROM api_keys
+                WHERE label = 'public-trial'
+                  AND expires_at > ?
+                  AND revoked_at IS NULL
+                """,
+                (now_text,),
+            ).fetchone()[0]
+            if active >= active_limit:
+                raise TrialKeyCapacity("trial key capacity reached")
+            connection.execute(
+                """
+                INSERT INTO api_keys
+                    (id, label, key_hash, key_prefix, created_at, expires_at, revoked_at)
+                VALUES (?, ?, ?, ?, ?, ?, NULL)
+                """,
+                (
+                    f"trial_{secrets.token_hex(8)}",
+                    "public-trial",
+                    self._hash(plaintext),
+                    plaintext[:13],
+                    now_text,
+                    self._format(expires_at),
+                ),
+            )
+            connection.execute(
+                """
+                INSERT INTO trial_key_issuances (client_fingerprint, issued_at, expires_at)
+                VALUES (?, ?, ?)
+                """,
+                (client_fingerprint, now_text, self._format(expires_at)),
+            )
+        return plaintext, expires_at
 
     def validate(self, plaintext: str | None) -> APIKeyValidation:
         if not plaintext:
