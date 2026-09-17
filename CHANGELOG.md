@@ -4,6 +4,24 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.1.1-alpha.1] - 2026-09-17
+
+### 中文
+
+- 增加官方托管 API 的独立客户密钥、到期时间、吊销和续期能力。
+- 密钥仅以 SHA-256 哈希保存；明文只在签发时显示一次。
+- 过期响应返回结构化续费信息：微信 `lgtqcn`，`39 元人民币/年`。
+- 增加 systemd、Nginx、限流、HTTPS 和原子版本目录的生产部署入口。
+- 官方客户端默认消费 `/v1/recognitions` JSON，仅在 `status=accepted` 时读取 `fen`。
+
+### English
+
+- Added per-customer hosted API keys with expiration, revocation, and renewal.
+- Store only SHA-256 key hashes; plaintext is shown once at issuance.
+- Return structured renewal information for expired keys.
+- Added production deployment assets for systemd, Nginx, rate limits, HTTPS, and atomic releases.
+- Made `/v1/recognitions` JSON the recommended client contract; clients consume `fen` only when accepted.
+
 ## [0.1.0-alpha.1] - 2026-09-17
 
 ### 中文

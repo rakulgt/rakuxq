@@ -4,10 +4,11 @@ from contextlib import asynccontextmanager
 from dataclasses import asdict
 from typing import Annotated
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import PlainTextResponse
 
 from . import __version__
+from .api_keys import APIKeyStore
 from .config import Settings
 from .domain import Orientation, RecognitionStatus, SideToMove
 from .providers import OnnxRecognitionProvider, ProviderNotReady
@@ -31,9 +32,69 @@ service = RecognitionService(
     minimum_partial_empty_confidence=settings.minimum_partial_empty_confidence,
     partial_acceptance_confidence=settings.partial_acceptance_confidence,
 )
+api_key_store = APIKeyStore(settings.api_keys_db) if settings.api_keys_db else None
+
+
+def _renewal_detail() -> dict[str, object]:
+    return {
+        "wechat": settings.renewal_wechat,
+        "price_cny": settings.renewal_price_cny,
+        "period_days": settings.renewal_period_days,
+    }
+
+
+def require_api_key(
+    authorization: Annotated[str | None, Header()] = None,
+    x_api_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
+) -> None:
+    if not settings.require_api_key:
+        return
+    if api_key_store is None:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "API_KEY_STORE_UNAVAILABLE", "message": "Authentication unavailable."},
+        )
+    supplied = x_api_key
+    if authorization and authorization.lower().startswith("bearer "):
+        supplied = authorization[7:].strip()
+    validation = api_key_store.validate(supplied)
+    if validation.status == "active":
+        return
+    if validation.status == "expired":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "API_KEY_EXPIRED",
+                "message": (
+                    f"API key expired. Contact WeChat {settings.renewal_wechat} to renew."
+                ),
+                "renewal": _renewal_detail(),
+            },
+        )
+    if validation.status == "revoked":
+        raise HTTPException(
+            status_code=403,
+            detail={"code": "API_KEY_REVOKED", "message": "API key revoked."},
+        )
+    if validation.status == "store_unavailable":
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "API_KEY_STORE_UNAVAILABLE", "message": "Authentication unavailable."},
+        )
+    raise HTTPException(
+        status_code=401,
+        detail={
+            "code": "API_KEY_REQUIRED" if validation.status == "missing" else "API_KEY_INVALID",
+            "message": "Provide a valid API key in Authorization: Bearer or X-API-Key.",
+        },
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    if settings.require_api_key and api_key_store is not None:
+        api_key_store.initialize()
     if provider.ready():
         provider.warmup()
     yield
@@ -71,17 +132,23 @@ def _run(data: bytes, side_to_move: SideToMove, orientation: Orientation):
 @app.get("/healthz")
 def healthz():
     ready = provider.ready()
+    authentication_ready = not settings.require_api_key or (
+        api_key_store is not None and api_key_store.ready()
+    )
     return {
-        "status": "ok" if ready else "degraded",
+        "status": "ok" if ready and authentication_ready else "degraded",
         "version": __version__,
         "provider": provider.name,
         "provider_ready": ready,
+        "authentication_required": settings.require_api_key,
+        "authentication_ready": authentication_ready,
     }
 
 
 @app.post("/v1/recognitions")
 async def recognize(
     image: Annotated[UploadFile, File()],
+    _api_key: Annotated[None, Depends(require_api_key)],
     side_to_move: Annotated[SideToMove, Form()] = SideToMove.UNKNOWN,
     orientation: Annotated[Orientation, Form()] = Orientation.AUTO,
 ):
@@ -92,6 +159,7 @@ async def recognize(
 @app.post("/v1/fen", response_class=PlainTextResponse)
 async def fen(
     image: Annotated[UploadFile, File()],
+    _api_key: Annotated[None, Depends(require_api_key)],
     side_to_move: Annotated[SideToMove, Form()] = SideToMove.UNKNOWN,
     orientation: Annotated[Orientation, Form()] = Orientation.AUTO,
 ):

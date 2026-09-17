@@ -20,7 +20,7 @@ RakuXQ 是由 **rakulgt / Raku Intelligence（罗酷智能）** 发起的开源�
 真实棋盘照片、斜拍、裁剪、背景噪声和部分遮挡；后续阶段将接入 NNUE 引擎，返回最佳着法、
 候选变化和终端推送结果。
 
-> 当前版本：`v0.1.0-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通，但样本量
+> 当前版本：`v0.1.1-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通，但样本量
 > 尚不足以宣称接近 100% 的通用准确率。RakuXQ 会明确区分自动通过与需要复核的结果。
 
 ### 从 lgtXQ 到 RakuXQ
@@ -52,7 +52,8 @@ RakuXQ 的发起人是 **李国泰（rakulgt，<lgt@rakubank.com>）**。这个�
 - **拒绝静默猜测**：返回 `accepted` 或 `review_required`，低可靠结果不会冒充确定答案。
 - **可审计修正**：保留原始类别、置信度、自动纠正方法和规则补空坐标。
 - **支持局部棋盘**：经几何计算确认在画面外的交叉点可按产品规则视为空位并显式警告。
-- **快捷指令友好**：`POST /v1/fen` 直接返回纯文本 FEN，适合 iPhone 快捷指令。
+- **快捷指令友好**：推荐解析 `POST /v1/recognitions` JSON，仅在 `accepted` 时取得 `fen`。
+- **可运营托管**：官方服务支持每客户独立 API Key、到期、续费和吊销。
 - **为 NNUE 解题预留**：视觉层通过稳定局面契约与未来引擎层解耦。
 
 ### 处理流程
@@ -110,6 +111,19 @@ $env:RAKUXQ_LAYOUT_MODEL = "..\..\models\layout.onnx"
 
 ### HTTP API
 
+官方托管 API：
+
+```bash
+curl -X POST https://xq.rakubank.com/v1/recognitions \
+  -H "Authorization: Bearer $RAKUXQ_API_KEY" \
+  -F "image=@board.jpg" \
+  -F "side_to_move=red"
+```
+
+客户端仅在 JSON 中 `status == "accepted"` 时读取 `fen`。官方托管服务为每位客户签发独立、
+有到期日期的 Key；标准价格为 **39 元人民币/年**，到期后联系微信 **lgtqcn** 续费。
+此费用对应服务器推理、带宽、密钥和运维；MIT 开源源码仍然免费。
+
 完整、可审计的 JSON 结果：
 
 ```bash
@@ -118,7 +132,7 @@ curl -X POST http://127.0.0.1:8000/v1/recognitions \
   -F "side_to_move=red"
 ```
 
-只返回 FEN，适合 Apple 快捷指令：
+只返回 FEN 的本地兼容接口：
 
 ```bash
 curl -X POST http://127.0.0.1:8000/v1/fen \
@@ -173,7 +187,7 @@ screenshots, web boards, physical-board photos, perspective distortion, cropping
 noise, and partial occlusion. A later phase will add an NNUE engine for best moves, principal
 variations, and terminal notifications.
 
-> Current release: `v0.1.0-alpha.1`. The vision pipeline works on a growing set of real
+> Current release: `v0.1.1-alpha.1`. The vision pipeline works on a growing set of real
 > screenshots and physical-board photos, but the sample size is not yet sufficient to claim
 > near-perfect general accuracy. RakuXQ explicitly separates auto-accepted results from cases
 > that require review.
@@ -215,7 +229,10 @@ code into the first release. See [`docs/history.md`](docs/history.md) for the fu
   coordinates remain available for inspection.
 - **Partial-board support**: geometrically out-of-frame intersections may be treated as empty
   under an explicit, disclosed product rule.
-- **Apple Shortcuts ready**: `POST /v1/fen` returns plain-text FEN.
+- **Apple Shortcuts ready**: clients parse `POST /v1/recognitions` JSON and consume `fen` only
+  when the status is `accepted`.
+- **Operable hosting**: the hosted service supports per-customer API keys, expiration, renewal,
+  and revocation.
 - **NNUE-ready contract**: the future solving engine stays decoupled from the vision provider.
 
 ### Quick start
@@ -244,12 +261,26 @@ $env:RAKUXQ_LAYOUT_MODEL = "..\..\models\layout.onnx"
 Detailed JSON response:
 
 ```bash
+curl -X POST https://xq.rakubank.com/v1/recognitions \
+  -H "Authorization: Bearer $RAKUXQ_API_KEY" \
+  -F "image=@board.jpg" \
+  -F "side_to_move=red"
+```
+
+Clients consume `fen` only when `status == "accepted"`. Hosted keys are customer-specific and
+expire independently. The standard hosted-service price is **CNY 39/year**; contact WeChat
+**lgtqcn** to renew. This fee covers hosted inference, bandwidth, key management, and operations;
+the MIT-licensed source remains free.
+
+Local detailed JSON response:
+
+```bash
 curl -X POST http://127.0.0.1:8000/v1/recognitions \
   -F "image=@board.jpg" \
   -F "side_to_move=red"
 ```
 
-Plain-text FEN for Apple Shortcuts:
+Plain-text FEN compatibility endpoint:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/v1/fen \

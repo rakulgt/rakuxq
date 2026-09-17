@@ -1,0 +1,29 @@
+[Unit]
+Description=RakuXQ image-to-FEN API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=rakuxq
+Group=rakuxq
+WorkingDirectory=/opt/raku/portable/rakuxq/current/apps/api
+EnvironmentFile=/opt/raku/secrets/rakuxq/api.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/raku/portable/rakuxq/current/.venv/bin/python -m uvicorn rakuxq_api.main:app --host 127.0.0.1 --port 8040 --workers 1 --no-access-log
+Restart=always
+RestartSec=3
+TimeoutStartSec=90
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/raku/secrets/rakuxq
+MemoryMax=1200M
+TasksMax=128
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

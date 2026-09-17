@@ -10,4 +10,4 @@ tmp/
 uploads/
 *.log
 .env
-
+.secrets/

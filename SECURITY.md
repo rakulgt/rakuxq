@@ -8,6 +8,9 @@ Advisories 的私密报告功能联系维护者。RakuXQ 默认只在内存中�
 
 当前 `0.x` 版本为预发布版本，仅对最新发布版本提供安全修复。
 
+官方托管服务的 API Key 只以 SHA-256 哈希保存。请把明文 Key 当作密码处理，不要提交到
+Git、公开 Issue、聊天记录或客户端日志；泄露后应立即吊销并重新签发。
+
 ## English
 
 Do not disclose exploitable vulnerabilities, credentials, or user images in public issues.
@@ -16,3 +19,6 @@ uploads in memory by default; deployers remain responsible for HTTPS, authentica
 limits, request-size limits, timeouts, and log redaction.
 
 The `0.x` line is pre-release software. Security fixes are provided for the latest release only.
+
+The hosted service stores only SHA-256 API-key hashes. Treat plaintext keys as passwords: never
+commit them to Git or publish them in issues, chats, or client logs; revoke and rotate leaked keys.

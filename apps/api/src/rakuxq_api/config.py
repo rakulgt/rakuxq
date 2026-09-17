@@ -4,6 +4,13 @@ import os
 from dataclasses import dataclass
 
 
+def _boolean(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     pose_model: str = os.getenv("RAKUXQ_POSE_MODEL", "../../models/pose.onnx")
@@ -32,3 +39,8 @@ class Settings:
     partial_acceptance_confidence: float = float(
         os.getenv("RAKUXQ_PARTIAL_ACCEPTANCE_CONFIDENCE", "0.35")
     )
+    require_api_key: bool = _boolean("RAKUXQ_REQUIRE_API_KEY")
+    api_keys_db: str = os.getenv("RAKUXQ_API_KEYS_DB", "")
+    renewal_wechat: str = os.getenv("RAKUXQ_RENEWAL_WECHAT", "lgtqcn")
+    renewal_price_cny: int = int(os.getenv("RAKUXQ_RENEWAL_PRICE_CNY", "39"))
+    renewal_period_days: int = int(os.getenv("RAKUXQ_RENEWAL_PERIOD_DAYS", "365"))

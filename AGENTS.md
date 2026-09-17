@@ -25,7 +25,9 @@
 
 ## 生产限制
 
-- 当前未登记正式域名和生产部署目标；除非用户后续明确要求上线，不执行任何生产写入。
+- 正式域名为 `xq.rakubank.com`，生产目标为 `raku-cn-prod-01`，部署根为 `/opt/raku/portable/rakuxq`；必须使用 `DEPLOYMENT.md` 和版本化脚本。
+- `/opt/raku/secrets/rakuxq/` 中的 API Key 哈希库和环境文件不得打印、下载到项目或被新部署覆盖。
+- 常规已验证修改默认完成本地测试、GitHub 同步、生产发布和公网冒烟；更换域名、价格、密钥库或超出 RakuXQ 范围的共享配置仍需明确授权。
 
 ## GitHub 发布授权
 
