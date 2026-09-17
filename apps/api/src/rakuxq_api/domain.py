@@ -2,12 +2,33 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
+from urllib.parse import unquote_plus
 
 
 class SideToMove(StrEnum):
     RED = "red"
     BLACK = "black"
     UNKNOWN = "unknown"
+
+
+def parse_side_to_move(value: str | SideToMove) -> SideToMove:
+    """Normalize API-friendly and URL-ready side-to-move aliases."""
+    if isinstance(value, SideToMove):
+        return value
+    normalized = unquote_plus(value).strip().lower()
+    aliases = {
+        "red": SideToMove.RED,
+        "w": SideToMove.RED,
+        "black": SideToMove.BLACK,
+        "b": SideToMove.BLACK,
+        "unknown": SideToMove.UNKNOWN,
+    }
+    try:
+        return aliases[normalized]
+    except KeyError as exc:
+        raise ValueError(
+            "side_to_move must be red/w/%20w, black/b/%20b, or unknown"
+        ) from exc
 
 
 class Orientation(StrEnum):

@@ -96,6 +96,33 @@ def test_shortcuts_endpoint_returns_plain_fen():
     )
 
 
+def test_json_endpoint_accepts_url_ready_percent_20w_alias():
+    fake_service = RecognitionService(FixedProvider())
+    with patch("rakuxq_api.main.service", fake_service):
+        response = client.post(
+            "/v1/recognitions",
+            files={"image": ("board.png", b"image", "image/png")},
+            data={"side_to_move": "%20w"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["side_to_move"] == "red"
+    assert response.json()["fen"].endswith(" w - - 0 1")
+
+
+def test_fen_endpoint_accepts_url_ready_percent_20b_alias():
+    fake_service = RecognitionService(FixedProvider())
+    with patch("rakuxq_api.main.service", fake_service):
+        response = client.post(
+            "/v1/fen",
+            files={"image": ("board.png", b"image", "image/png")},
+            data={"side_to_move": "%20b"},
+        )
+
+    assert response.status_code == 200
+    assert response.text.endswith(" b - - 0 1")
+
+
 def test_shortcuts_endpoint_discloses_assumed_empty_cells():
     fake_service = RecognitionService(PartialProvider())
     with patch("rakuxq_api.main.service", fake_service):

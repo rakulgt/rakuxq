@@ -4,6 +4,18 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.1.2-alpha.2] - 2026-09-17
+
+### 中文
+
+- `side_to_move` 新增 `w/b`、空格加 `w/b` 与 `%20w/%20b` 输入别名，方便 Apple 快捷指令把
+  同一个菜单值同时用于 API 调用和 xiangqiai.com URL 拼接。
+
+### English
+
+- Added `w/b`, space-prefixed `w/b`, and `%20w/%20b` aliases for `side_to_move`, allowing
+  Apple Shortcuts to reuse one menu value for both API calls and xiangqiai.com URLs.
+
 ## [0.1.2-alpha.1] - 2026-09-17
 
 ### 中文

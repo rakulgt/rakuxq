@@ -30,7 +30,9 @@ X-API-Key: <api-key>
 请求为 `multipart/form-data`：
 
 - `image`：必填，当前支持 JPEG、PNG、WebP；Apple 快捷指令建议先转换为 JPEG。
-- `side_to_move`：`red|black|unknown`，默认 `unknown`。
+- `side_to_move`：接受 `red|w|%20w`、`black|b|%20b` 或 `unknown`，默认
+  `unknown`。`%20w/%20b` 专门兼容需要把同一菜单值直接拼入棋谱 URL 的 Apple 快捷指令；
+  服务端会将其规范化为红方或黑方。
 - `orientation`：`auto|red_bottom|black_bottom`，默认 `auto`。
 
 响应状态：

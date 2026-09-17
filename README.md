@@ -272,6 +272,9 @@ expire independently. The standard hosted-service price is **CNY 39/year**; cont
 **lgtqcn** to renew. This fee covers hosted inference, bandwidth, key management, and operations;
 the MIT-licensed source remains free.
 
+`side_to_move` accepts `red/black`, `w/b`, and the URL-ready `%20w/%20b` aliases. The latter lets
+Apple Shortcuts reuse one menu value when calling the API and building a xiangqiai.com viewer URL.
+
 Local detailed JSON response:
 
 ```bash

@@ -11,7 +11,7 @@ from . import __version__
 from .api_keys import APIKeyStore
 from .audit import InteractionAuditMiddleware, InteractionAuditStore
 from .config import Settings
-from .domain import Orientation, RecognitionStatus, SideToMove
+from .domain import Orientation, RecognitionStatus, SideToMove, parse_side_to_move
 from .providers import OnnxRecognitionProvider, ProviderNotReady
 from .providers.base import RecognitionFailed
 from .service import RecognitionService
@@ -148,6 +148,13 @@ def _run(data: bytes, side_to_move: SideToMove, orientation: Orientation):
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+def _normalize_side_to_move(value: str) -> SideToMove:
+    try:
+        return parse_side_to_move(value)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 @app.get("/healthz")
 def healthz():
     ready = provider.ready()
@@ -168,22 +175,22 @@ def healthz():
 async def recognize(
     image: Annotated[UploadFile, File()],
     _api_key: Annotated[None, Depends(require_api_key)],
-    side_to_move: Annotated[SideToMove, Form()] = SideToMove.UNKNOWN,
+    side_to_move: Annotated[str, Form()] = SideToMove.UNKNOWN.value,
     orientation: Annotated[Orientation, Form()] = Orientation.AUTO,
 ):
     data = await _read_image(image)
-    return asdict(_run(data, side_to_move, orientation))
+    return asdict(_run(data, _normalize_side_to_move(side_to_move), orientation))
 
 
 @app.post("/v1/fen", response_class=PlainTextResponse)
 async def fen(
     image: Annotated[UploadFile, File()],
     _api_key: Annotated[None, Depends(require_api_key)],
-    side_to_move: Annotated[SideToMove, Form()] = SideToMove.UNKNOWN,
+    side_to_move: Annotated[str, Form()] = SideToMove.UNKNOWN.value,
     orientation: Annotated[Orientation, Form()] = Orientation.AUTO,
 ):
     data = await _read_image(image)
-    result = _run(data, side_to_move, orientation)
+    result = _run(data, _normalize_side_to_move(side_to_move), orientation)
     if result.status != RecognitionStatus.ACCEPTED or result.fen is None:
         raise HTTPException(
             status_code=422,
