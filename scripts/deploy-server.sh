@@ -47,6 +47,11 @@ mkdir -p "${RELEASE_DIR}" "${MODELS_DIR}" "${SECRET_DIR}" "${LOG_DIR}" "${BACKUP
 if ! getent passwd rakuxq >/dev/null; then
   useradd --system --home-dir /nonexistent --shell /sbin/nologin rakuxq
 fi
+if ! command -v setfacl >/dev/null; then
+  echo "setfacl is required to grant the service account traverse-only secret access" >&2
+  exit 1
+fi
+setfacl -m u:rakuxq:--x /opt/raku/secrets
 chown rakuxq:rakuxq "${SECRET_DIR}" "${LOG_DIR}"
 chmod 700 "${SECRET_DIR}"
 chmod 750 "${LOG_DIR}"

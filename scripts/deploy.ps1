@@ -25,13 +25,19 @@ try {
     & git archive --format=tar.gz --output=$archive HEAD
     if ($LASTEXITCODE -ne 0) { throw 'Git archive failed.' }
 
-    & scp $archive "${SshAlias}:/tmp/rakuxq-$revision.tar.gz"
-    & scp models/pose.onnx "${SshAlias}:/tmp/rakuxq-pose.onnx"
-    & scp models/layout.onnx "${SshAlias}:/tmp/rakuxq-layout.onnx"
-    & scp scripts/deploy-server.sh "${SshAlias}:/tmp/deploy-rakuxq-server.sh"
+    $poseUpload = Join-Path $stage 'rakuxq-pose.onnx'
+    $layoutUpload = Join-Path $stage 'rakuxq-layout.onnx'
+    $serverScriptUpload = Join-Path $stage 'deploy-rakuxq-server.sh'
+    Copy-Item -LiteralPath models/pose.onnx -Destination $poseUpload -Force
+    Copy-Item -LiteralPath models/layout.onnx -Destination $layoutUpload -Force
+    Copy-Item -LiteralPath scripts/deploy-server.sh -Destination $serverScriptUpload -Force
+    $uploads = @($archive, $poseUpload, $layoutUpload, $serverScriptUpload)
     if (Test-Path -LiteralPath $KeyDatabase) {
-        & scp $KeyDatabase "${SshAlias}:/tmp/rakuxq-api-keys.sqlite3"
+        $keyDatabaseUpload = Join-Path $stage 'rakuxq-api-keys.sqlite3'
+        Copy-Item -LiteralPath $KeyDatabase -Destination $keyDatabaseUpload -Force
+        $uploads += $keyDatabaseUpload
     }
+    & scp @uploads "${SshAlias}:/tmp/"
     if ($LASTEXITCODE -ne 0) { throw 'Uploading deployment inputs failed.' }
 
     & ssh $SshAlias "bash /tmp/deploy-rakuxq-server.sh '$revision' '$Domain' '$Port'"
