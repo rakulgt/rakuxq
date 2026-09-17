@@ -1,11 +1,11 @@
 ---
 document_type: living-project-cognitive-baseline
 project_id: rakuxq
-baseline_revision: "5"
-parent_revision: "4"
+baseline_revision: "6"
+parent_revision: "5"
 change_operation: UPDATE
 status: active
-updated_at: "2026-09-17T14:15:18+08:00"
+updated_at: "2026-09-17T14:30:00+08:00"
 ---
 
 # RakuXQ
@@ -16,6 +16,8 @@ updated_at: "2026-09-17T14:15:18+08:00"
 ## 产品定位
 
 RakuXQ 是面向开发者、自动化用户和中国象棋应用的开源智能基础设施。第一阶段把手机截图、网页棋盘图和真实棋盘照片可靠转换为中国象棋 FEN；第二阶段在此基础上接入 NNUE 引擎，返回最佳着法、候选变化和可推送结果。
+
+项目技术源流始于李国泰长期的象棋实践：2008 年以手工线性评估函数和 Alpha-Beta 搜索开发 lgtXQ，2018 年转向 NNUE 评估与新一代 Alpha-Beta 搜索并使用 RakuXQ 名称，2023 年形成视觉识别原型，2026 年将视觉模块演进为当前开源 HTTP API。当前仓库先公开视觉阶段，历史引擎能力在第二阶段经整理、测试后重新接入。
 
 ## 范围、边界与持久不变量
 
@@ -51,6 +53,7 @@ RakuXQ 是面向开发者、自动化用户和中国象棋应用的开源智能�
 ## 关键决策与被否决路径
 
 - 已确认：总品牌使用 `RakuXQ`，机器 slug 使用 `rakuxq`。
+- 已确认：项目发起人为李国泰（rakulgt，`lgt@rakubank.com`），公开叙事保留从棋手经历、2008 年 lgtXQ、2018 年 RakuXQ 引擎、2023 年视觉原型到 2026 年开源视觉 API 的技术传承。
 - 已确认：源码采用 MIT License，通过公开仓库 `https://github.com/rakulgt/rakuxq` 发布；第三方 ONNX 权重不随源码仓库重新分发。
 - 已确认：第一阶段只解决局面识别，第二阶段解决最佳支招。
 - 已确认：优先复用开源模型和通用推理框架，不从零重复建设基础算子；差异化投入数据、拒识、整盘评测和工程接口。

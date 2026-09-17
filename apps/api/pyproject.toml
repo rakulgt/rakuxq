@@ -7,6 +7,11 @@ name = "rakuxq-api"
 version = "0.1.0a1"
 description = "RakuXQ image-to-FEN HTTP API"
 readme = "README.md"
+authors = [
+  { name = "Li Guotai", email = "lgt@rakubank.com" },
+]
+license = "MIT"
+keywords = ["xiangqi", "computer-vision", "fen", "onnx", "nnue"]
 requires-python = ">=3.11,<3.15"
 dependencies = [
   "fastapi>=0.116,<1",
@@ -17,6 +22,11 @@ dependencies = [
   "python-multipart>=0.0.20,<1",
   "uvicorn[standard]>=0.35,<1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/rakulgt/rakuxq"
+Repository = "https://github.com/rakulgt/rakuxq"
+Issues = "https://github.com/rakulgt/rakuxq/issues"
 
 [project.optional-dependencies]
 dev = [

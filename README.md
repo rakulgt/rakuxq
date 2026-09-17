@@ -23,6 +23,28 @@ RakuXQ 是由 **rakulgt / Raku Intelligence（罗酷智能）** 发起的开源�
 > 当前版本：`v0.1.0-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通，但样本量
 > 尚不足以宣称接近 100% 的通用准确率。RakuXQ 会明确区分自动通过与需要复核的结果。
 
+### 从 lgtXQ 到 RakuXQ
+
+RakuXQ 的发起人是 **李国泰（rakulgt，<lgt@rakubank.com>）**。这个项目并非始于一次
+短期的模型实验，而是来自三十余年的象棋兴趣和近二十年的象棋程序开发积累：
+
+- **1983**：李国泰出生。
+- **1988**：五岁学会中国象棋。
+- **1990**：获得村级象棋比赛冠军。
+- **1996**：获得中学校园象棋比赛冠军。
+- **2001**：进入大学校级象棋比赛前十名。
+- **2006**：开始系统学习 C++，把棋手经验转化为可执行的程序思想。
+- **2008**：编写象棋推理引擎 **lgtXQ**，采用手工线性评估函数和 Alpha-Beta 搜索。
+- **2018**：研发新一代象棋推理引擎 **RakuXQ**，转向 NNUE 神经网络评估函数与新一代
+  Alpha-Beta 搜索体系。
+- **2023**：推出局面视觉识别原型，让实体棋盘和屏幕局面能够进入计算流程。
+- **2026**：将视觉能力演进为当前开源、可审计、可由 Apple 快捷指令调用的图片转 FEN
+  HTTP API，并为重新接入 NNUE 解题引擎建立稳定接口。
+
+当前公开仓库首先发布视觉识别模块；2018 年引擎的技术传承会在后续阶段以可维护、可测试的
+方式重新接入，而不是把历史私有代码未经整理直接混入首版。完整项目历史见
+[`docs/history.md`](docs/history.md)。
+
 ### 为什么是 RakuXQ
 
 - **完全本地推理**：生产识别由 OpenCV、ONNX Runtime 和本地模型完成，不调用图生文大模型。
@@ -155,6 +177,31 @@ variations, and terminal notifications.
 > screenshots and physical-board photos, but the sample size is not yet sufficient to claim
 > near-perfect general accuracy. RakuXQ explicitly separates auto-accepted results from cases
 > that require review.
+
+### From lgtXQ to RakuXQ
+
+RakuXQ was initiated by **Li Guotai (rakulgt, <lgt@rakubank.com>)**. It is not the result of
+a short-lived model experiment; it grows out of more than three decades of Xiangqi practice
+and nearly two decades of chess-engine development:
+
+- **1983** — Li Guotai was born.
+- **1988** — Learned Xiangqi at the age of five.
+- **1990** — Won a village Xiangqi championship.
+- **1996** — Won his middle-school campus Xiangqi championship.
+- **2001** — Placed in the top ten of a university Xiangqi tournament.
+- **2006** — Began systematic C++ study and translating player knowledge into executable ideas.
+- **2008** — Built **lgtXQ**, a Xiangqi engine based on a handcrafted linear evaluation function
+  and Alpha-Beta search.
+- **2018** — Developed the next-generation **RakuXQ** engine around NNUE evaluation and a newer
+  Alpha-Beta search architecture.
+- **2023** — Introduced a visual position-recognition prototype, connecting physical and on-screen
+  boards to the computation pipeline.
+- **2026** — Evolved the vision module into the current open, auditable image-to-FEN HTTP API,
+  callable from Apple Shortcuts and designed for a renewed NNUE solving integration.
+
+The public repository starts with the vision module. The 2018 engine lineage will be integrated
+later through maintainable, tested interfaces instead of dropping uncurated historical private
+code into the first release. See [`docs/history.md`](docs/history.md) for the full story.
 
 ### Why RakuXQ
 
