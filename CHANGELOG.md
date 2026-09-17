@@ -4,6 +4,18 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.2.0-alpha.2] - 2026-09-17
+
+### 中文
+
+- 首页示例改为经典残局 `3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w`。
+- 棋盘改为精确矢量绘制，补齐九宫斜线、楚河汉界及炮位和兵位定位星。
+
+### English
+
+- Replaced the homepage example with the classic position `3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w`.
+- Rebuilt the board as precise vector artwork with palace diagonals, the river, and standard cannon/pawn position marks.
+
 ## [0.2.0-alpha.1] - 2026-09-17
 
 ### 中文

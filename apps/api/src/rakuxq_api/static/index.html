@@ -40,12 +40,43 @@
         </div>
         <div class="position-card" aria-label="RakuXQ 识别流程示意">
           <div class="card-top"><span>VISION / POSITION</span><span class="live-pill">LIVE</span></div>
-          <div class="board" aria-hidden="true">
-            <div class="palace palace-top"></div><div class="palace palace-bottom"></div>
-            <span class="piece black general">将</span><span class="piece red soldier">兵</span>
-            <span class="piece red king">帅</span><span class="river">楚河　　汉界</span>
-          </div>
-          <div class="fen-preview"><small>OUTPUT</small><code>4k4/4a4/4P4/9/9/9/9/9/9/5K3 w</code></div>
+          <svg class="board" viewBox="-55 -55 910 1010" role="img" aria-labelledby="board-title board-description">
+            <title id="board-title">经典中国象棋残局</title>
+            <desc id="board-description">黑方双士、将和马，对红方双炮与帅，红方先走。</desc>
+            <defs>
+              <linearGradient id="board-surface" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#d5a363" />
+                <stop offset="1" stop-color="#aa733d" />
+              </linearGradient>
+              <g id="star-full" class="board-star"><path d="M-27-10H-10V-27M27-10H10V-27M-27 10H-10V27M27 10H10V27" /></g>
+              <g id="star-right" class="board-star"><path d="M27-10H10V-27M27 10H10V27" /></g>
+              <g id="star-left" class="board-star"><path d="M-27-10H-10V-27M-27 10H-10V27" /></g>
+            </defs>
+
+            <rect class="board-surface" x="-45" y="-45" width="890" height="990" rx="8" />
+            <g class="board-lines">
+              <path d="M0 0H800M0 100H800M0 200H800M0 300H800M0 400H800M0 500H800M0 600H800M0 700H800M0 800H800M0 900H800" />
+              <path d="M0 0V900M800 0V900M100 0V400M200 0V400M300 0V400M400 0V400M500 0V400M600 0V400M700 0V400M100 500V900M200 500V900M300 500V900M400 500V900M500 500V900M600 500V900M700 500V900" />
+              <path d="M300 0L500 200M500 0L300 200M300 700L500 900M500 700L300 900" />
+            </g>
+            <g class="board-stars">
+              <use href="#star-full" transform="translate(100 200)" /><use href="#star-full" transform="translate(700 200)" />
+              <use href="#star-right" transform="translate(0 300)" /><use href="#star-full" transform="translate(200 300)" /><use href="#star-full" transform="translate(400 300)" /><use href="#star-full" transform="translate(600 300)" /><use href="#star-left" transform="translate(800 300)" />
+              <use href="#star-right" transform="translate(0 600)" /><use href="#star-full" transform="translate(200 600)" /><use href="#star-full" transform="translate(400 600)" /><use href="#star-full" transform="translate(600 600)" /><use href="#star-left" transform="translate(800 600)" />
+              <use href="#star-full" transform="translate(100 700)" /><use href="#star-full" transform="translate(700 700)" />
+            </g>
+            <g class="river-label" aria-hidden="true"><text x="170" y="466">楚河</text><text x="630" y="466">汉界</text></g>
+            <g class="pieces">
+              <g class="piece black" transform="translate(300 0)"><circle r="40" /><circle r="33" /><text>士</text></g>
+              <g class="piece black" transform="translate(400 0)"><circle r="40" /><circle r="33" /><text>将</text></g>
+              <g class="piece black" transform="translate(500 0)"><circle r="40" /><circle r="33" /><text>士</text></g>
+              <g class="piece red" transform="translate(400 300)"><circle r="40" /><circle r="33" /><text>炮</text></g>
+              <g class="piece black" transform="translate(400 400)"><circle r="40" /><circle r="33" /><text>馬</text></g>
+              <g class="piece red" transform="translate(400 700)"><circle r="40" /><circle r="33" /><text>炮</text></g>
+              <g class="piece red" transform="translate(400 900)"><circle r="40" /><circle r="33" /><text>帅</text></g>
+            </g>
+          </svg>
+          <div class="fen-preview"><small>OUTPUT</small><code>3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w</code></div>
         </div>
       </section>
 
