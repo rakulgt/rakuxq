@@ -29,6 +29,7 @@ POSE_UPLOAD=/tmp/rakuxq-pose.onnx
 LAYOUT_UPLOAD=/tmp/rakuxq-layout.onnx
 KEY_DB_UPLOAD=/tmp/rakuxq-api-keys.sqlite3
 NGINX_CONF=/etc/nginx/conf.d/xq-rakubank.conf
+NGINX_ROUTES=/etc/nginx/snippets/rakuxq-api-routes.conf
 SERVICE_CONF=/etc/systemd/system/rakuxq-api.service
 PREVIOUS_RELEASE=""
 
@@ -92,11 +93,19 @@ chmod 0640 "${SECRET_DIR}/api.env"
 if [[ -f "${NGINX_CONF}" ]]; then
   cp -a "${NGINX_CONF}" "${BACKUP_DIR}/xq-rakubank.conf"
 fi
+if [[ -f "${NGINX_ROUTES}" ]]; then
+  cp -a "${NGINX_ROUTES}" "${BACKUP_DIR}/rakuxq-api-routes.conf"
+fi
 if [[ -f "${SERVICE_CONF}" ]]; then
   cp -a "${SERVICE_CONF}" "${BACKUP_DIR}/rakuxq-api.service"
 fi
 install -o root -g root -m 0644 "${RELEASE_DIR}/infra/rakuxq-api.service" "${SERVICE_CONF}"
-install -o root -g root -m 0644 "${RELEASE_DIR}/infra/xq-rakubank-nginx.conf" "${NGINX_CONF}"
+install -o root -g root -m 0644 "${RELEASE_DIR}/infra/xq-rakubank-routes.conf" "${NGINX_ROUTES}"
+if [[ -f /etc/letsencrypt/live/xq.rakubank.com/fullchain.pem && -f /etc/letsencrypt/live/xq.rakubank.com/privkey.pem ]]; then
+  install -o root -g root -m 0644 "${RELEASE_DIR}/infra/xq-rakubank-nginx-tls.conf" "${NGINX_CONF}"
+else
+  install -o root -g root -m 0644 "${RELEASE_DIR}/infra/xq-rakubank-nginx.conf" "${NGINX_CONF}"
+fi
 
 ln -sfn "${RELEASE_DIR}" "${BASE}/current"
 systemctl daemon-reload
@@ -106,6 +115,11 @@ if ! nginx -t; then
     cp -a "${BACKUP_DIR}/xq-rakubank.conf" "${NGINX_CONF}"
   else
     rm -f "${NGINX_CONF}"
+  fi
+  if [[ -f "${BACKUP_DIR}/rakuxq-api-routes.conf" ]]; then
+    cp -a "${BACKUP_DIR}/rakuxq-api-routes.conf" "${NGINX_ROUTES}"
+  else
+    rm -f "${NGINX_ROUTES}"
   fi
   nginx -t
   exit 1

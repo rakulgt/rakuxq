@@ -30,7 +30,13 @@ pwsh -NoProfile -File scripts/deploy.ps1
 该入口会校验模型，通过 `git archive` 生成可追溯版本，在新版本目录安装 Python venv，校验
 Nginx，原子切换 `current` 并执行回环健康检查。正式密钥库已存在时绝不会被本地副本覆盖。
 
-首次 DNS 接入后执行 Certbot 签发；之后由已有 Certbot 自动续期机制管理。
+首次 DNS 接入后执行 Certbot 签发；之后由已有 Certbot 自动续期机制管理。发布脚本检测到
+`/etc/letsencrypt/live/xq.rakubank.com/` 后会自动安装 TLS 版 Nginx 配置，不会在后续发布中
+覆盖或丢失源站 HTTPS。
+
+Cloudflare 的 SSL/TLS 加密模式应设置为 **Full (strict)**，确保客户端、Cloudflare 与源站之间
+全程加密。TLS 模板暂时保留 80 端口反向代理，以兼容从 Flexible 切换到 Full (strict) 的过渡期；
+完成切换后，应以公网 HTTPS 和源站证书同时验收。
 
 ## API Key 运营
 
