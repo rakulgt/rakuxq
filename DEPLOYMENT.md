@@ -38,9 +38,10 @@ Nginx，原子切换 `current` 并执行回环健康检查。正式密钥库已�
 `/etc/letsencrypt/live/xq.rakubank.com/` 后会自动安装 TLS 版 Nginx 配置，不会在后续发布中
 覆盖或丢失源站 HTTPS。
 
-Cloudflare 的 SSL/TLS 加密模式应设置为 **Full (strict)**，确保客户端、Cloudflare 与源站之间
-全程加密。TLS 模板暂时保留 80 端口反向代理，以兼容从 Flexible 切换到 Full (strict) 的过渡期；
-完成切换后，应以公网 HTTPS 和源站证书同时验收。
+`xq.rakubank.com` 当前使用 Cloudflare **仅 DNS（灰云）**，直接解析到已登记源站，以避免中国大陆
+客户端上传图片时绕行境外 Cloudflare 节点。客户端直接使用源站 Let's Encrypt 证书建立 HTTPS；
+Cloudflare 的 SSL/TLS 模式在仅 DNS 状态下不参与本域名传输。切回代理模式前必须重新进行上传延迟、
+真实客户端 IP、限流和 HTTPS 验收。
 
 ## API Key 运营
 

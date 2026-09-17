@@ -32,6 +32,7 @@
 - 增加每分钟执行的过期清理 timer、2 GiB 容量保护、小时级 Nginx 日志轮转以及交互目录/文件最小权限；自托管默认仍不启用留存。
 - `side_to_move` 兼容 `w/b`、空格前缀及 `%20w/%20b` URL 就绪别名，使 Apple 快捷指令可复用同一个菜单值调用 API 和拼接棋谱 URL。
 - JSON `fen` 和纯文本接口现严格返回 `piece_placement + 真实空格 + w/b`；完整六字段形式保存在 `full_fen`。
+- `xq.rakubank.com` 已切换为 Cloudflare 仅 DNS，直接解析到 `1.117.71.5`，避免手机图片上传绕行境外代理节点；源站 HTTPS、鉴权与 Nginx 限流继续生效。
 
 ## 当前验证
 
@@ -64,7 +65,7 @@
 
 - 上游模型虽声明 MIT，权重及训练数据许可链仍需继续复核；当前公开版本只发布源码和校验清单，不重新分发权重。
 - 上游公开的整盘零错误率约为 83%；首个案例成功不能代表通用准确率，置信度阈值仍需盲测集校准。
-- Cloudflare 公网 HTTPS 已生效，源站证书也已安装；但验收行为表明当前仍以 Flexible 模式回源。需要把 Cloudflare SSL/TLS 模式切换为 `Full (strict)`，才能让 Cloudflare 到源站之间也使用 HTTPS。
+- DNS-only 模式失去 Cloudflare 代理层的源站隐藏、WAF 与抗 DDoS 能力；当前由 API Key、Nginx 上传限制、每 Key 限流、并发限制和源站 TLS 承担基础保护，后续应按实际流量监控风险。
 
 ## 下一步
 
