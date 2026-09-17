@@ -44,3 +44,8 @@ class Settings:
     renewal_wechat: str = os.getenv("RAKUXQ_RENEWAL_WECHAT", "lgtqcn")
     renewal_price_cny: int = int(os.getenv("RAKUXQ_RENEWAL_PRICE_CNY", "39"))
     renewal_period_days: int = int(os.getenv("RAKUXQ_RENEWAL_PERIOD_DAYS", "365"))
+    audit_dir: str = os.getenv("RAKUXQ_AUDIT_DIR", "")
+    audit_retention_hours: int = int(os.getenv("RAKUXQ_AUDIT_RETENTION_HOURS", "12"))
+    audit_max_total_bytes: int = int(
+        os.getenv("RAKUXQ_AUDIT_MAX_TOTAL_BYTES", str(2 * 1024 * 1024 * 1024))
+    )

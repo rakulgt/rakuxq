@@ -20,7 +20,7 @@ RakuXQ 是由 **rakulgt / Raku Intelligence（罗酷智能）** 发起的开源�
 真实棋盘照片、斜拍、裁剪、背景噪声和部分遮挡；后续阶段将接入 NNUE 引擎，返回最佳着法、
 候选变化和终端推送结果。
 
-> 当前版本：`v0.1.1-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通，但样本量
+> 当前版本：`v0.1.2-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通，但样本量
 > 尚不足以宣称接近 100% 的通用准确率。RakuXQ 会明确区分自动通过与需要复核的结果。
 
 ### 从 lgtXQ 到 RakuXQ
@@ -158,8 +158,8 @@ cd apps\api
 
 ### 隐私与模型
 
-- 图片默认只在内存中处理，不持久化，也不写入日志。
-- 用户图片不会自动进入训练集。
+- 自托管默认只在内存中处理图片。官方托管服务为早期质量分析保存已鉴权调用的原图、请求和响应，最长 12 小时后自动删除。
+- 短期审计图片不会自动进入长期样本集或训练集；API Key 明文永不写入审计日志。
 - `.onnx` 权重、上传图片、缓存、日志和真实环境变量均被排除在 Git 之外。
 - 当前基线来自 `yolo12138/Chinese_Chess_Recognition`；来源、版本和 SHA-256 记录于
   [`models/manifest.json`](models/manifest.json)。
@@ -187,7 +187,7 @@ screenshots, web boards, physical-board photos, perspective distortion, cropping
 noise, and partial occlusion. A later phase will add an NNUE engine for best moves, principal
 variations, and terminal notifications.
 
-> Current release: `v0.1.1-alpha.1`. The vision pipeline works on a growing set of real
+> Current release: `v0.1.2-alpha.1`. The vision pipeline works on a growing set of real
 > screenshots and physical-board photos, but the sample size is not yet sufficient to claim
 > near-perfect general accuracy. RakuXQ explicitly separates auto-accepted results from cases
 > that require review.
@@ -298,8 +298,10 @@ RakuXQ optimizes for **exact-board accuracy**, not merely per-cell accuracy. Fut
 benchmarks will report auto-accept coverage, precision of auto-accepted boards, abstention, and
 latency.
 
-Images are processed in memory by default, are not logged, and never become training data
-without explicit consent. Third-party model weights are not redistributed. Their provenance,
+Self-hosted deployments process images in memory by default. The official hosted service keeps
+authenticated originals, requests, and responses for at most 12 hours for early quality analysis.
+Short-lived audits never become a permanent dataset or training data automatically, and plaintext
+API keys are never logged. Third-party model weights are not redistributed. Their provenance,
 versions, and checksums are documented in [`models/manifest.json`](models/manifest.json).
 
 ### Roadmap

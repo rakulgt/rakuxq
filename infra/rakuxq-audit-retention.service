@@ -1,0 +1,16 @@
+[Unit]
+Description=Prune expired RakuXQ interaction audits and rotate access logs
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/find /opt/raku/logs/rakuxq/interactions -depth -mindepth 1 -mmin +720 -delete
+ExecStart=/usr/sbin/logrotate --state /opt/raku/logs/rakuxq/.logrotate.status /etc/logrotate.d/rakuxq
+ExecStart=/usr/bin/find /opt/raku/logs/rakuxq -maxdepth 1 -type f -name access.log-* -mmin +720 -delete
+ExecStart=/usr/bin/find /opt/raku/logs/rakuxq -maxdepth 1 -type f -name error.log-* -mmin +720 -delete
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/raku/logs/rakuxq

@@ -1,0 +1,12 @@
+[Unit]
+Description=Enforce the 12-hour RakuXQ interaction retention window
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+AccuracySec=10s
+Persistent=true
+Unit=rakuxq-audit-retention.service
+
+[Install]
+WantedBy=timers.target

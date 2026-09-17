@@ -16,8 +16,12 @@
 - Nginx 日志：`/opt/raku/logs/rakuxq/`
 - 备份：`/opt/raku/backups/rakuxq/`
 
-上传图片只在请求处理期间使用，不进入项目资产、识别日志或训练数据。模型只读保存在
-`/opt/raku/portable/rakuxq/models/`，来源与校验信息见 `models/manifest.json`。
+已鉴权调用的上传原图和完整交互记录短期保存在
+`/opt/raku/logs/rakuxq/interactions/`，用于早期准确率和稳定性分析。每条记录含原图、请求参数、
+完整响应、状态码、耗时和 Key ID，不含明文 API Key；12 小时后由
+`rakuxq-audit-retention.timer` 自动删除，磁盘占用达到 2 GiB 时优先删除最旧记录。记录不会进入
+Git、永久样本集或自动训练集。模型只读保存在 `/opt/raku/portable/rakuxq/models/`，来源与校验
+信息见 `models/manifest.json`。
 
 ## 首次与后续发布
 
@@ -64,6 +68,9 @@ python -m rakuxq_api.key_cli --database /opt/raku/secrets/rakuxq/api-keys.sqlite
 - systemd `MemoryMax=1200M`；Nginx 限制单请求约 13 MiB、每 Key 每分钟 30 次、突发 10 次、并发 2 次。
 - `/healthz` 不要求 API Key；`/v1/recognitions` 和 `/v1/fen` 必须鉴权。
 - API Key 和密钥库不得进入 Git、聊天、普通日志或部署记录。
+- 短期审计只保存有效 Key 的调用；匿名、无效、过期或吊销 Key 的请求不保存请求体。
+- `rakuxq-audit-retention.timer` 每分钟清理一次过期审计，并触发项目访问日志的小时级轮转；
+  原图和交互目录保留上限为 12 小时。
 
 ## 回滚
 

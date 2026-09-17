@@ -4,6 +4,21 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.1.2-alpha.1] - 2026-09-17
+
+### 中文
+
+- 官方托管服务新增 12 小时短期交互审计，保存有效 Key 调用的原图、参数、完整响应、结果和耗时。
+- 审计记录只保存 Key ID，不保存明文 Key；匿名和无效 Key 请求不保存请求体。
+- 增加每分钟运行的自动清理、小时级访问日志轮转和 2 GiB 容量保护。
+
+### English
+
+- Added a 12-hour hosted interaction audit containing authenticated originals, parameters,
+  complete responses, results, and timing.
+- Store only the key ID in audits; never retain plaintext keys or request bodies from invalid keys.
+- Added minutely expiry enforcement, hourly access-log rotation, and a 2 GiB capacity safeguard.
+
 ## [0.1.1-alpha.1] - 2026-09-17
 
 ### 中文

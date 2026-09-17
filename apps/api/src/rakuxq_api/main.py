@@ -9,6 +9,7 @@ from fastapi.responses import PlainTextResponse
 
 from . import __version__
 from .api_keys import APIKeyStore
+from .audit import InteractionAuditMiddleware, InteractionAuditStore
 from .config import Settings
 from .domain import Orientation, RecognitionStatus, SideToMove
 from .providers import OnnxRecognitionProvider, ProviderNotReady
@@ -33,6 +34,15 @@ service = RecognitionService(
     partial_acceptance_confidence=settings.partial_acceptance_confidence,
 )
 api_key_store = APIKeyStore(settings.api_keys_db) if settings.api_keys_db else None
+audit_store = (
+    InteractionAuditStore(
+        settings.audit_dir,
+        settings.audit_retention_hours,
+        settings.audit_max_total_bytes,
+    )
+    if settings.audit_dir
+    else None
+)
 
 
 def _renewal_detail() -> dict[str, object]:
@@ -97,6 +107,8 @@ async def lifespan(_app: FastAPI):
         api_key_store.initialize()
     if provider.ready():
         provider.warmup()
+    if audit_store is not None:
+        audit_store.prune()
     yield
 
 
@@ -105,6 +117,13 @@ app = FastAPI(
     version=__version__,
     description="Turn Xiangqi board images into reviewable, engine-ready FEN.",
     lifespan=lifespan,
+)
+app.add_middleware(
+    InteractionAuditMiddleware,
+    store_getter=lambda: audit_store,
+    key_store_getter=lambda: api_key_store,
+    require_api_key=settings.require_api_key,
+    max_request_bytes=settings.max_upload_bytes + 1024 * 1024,
 )
 
 
