@@ -23,6 +23,8 @@
 - 确认 MIT License 和公开仓库 `https://github.com/rakulgt/rakuxq`，建立中英双语 README、贡献指南、安全策略、更新日志和 GitHub Actions CI。
 - 首个源码预发布版本定为 `v0.1.0-alpha.1`；第三方 ONNX 权重不随源码重新分发。
 - 将发起人李国泰的象棋与编程经历整理为中英双语项目源流：从 1988 年学棋、2008 年 lgtXQ、2018 年 NNUE 版 RakuXQ、2023 年视觉原型，到 2026 年开源图片转 FEN API；内容进入 README、`docs/history.md`、包作者元数据和首发说明。
+- GitHub 公开仓库 `https://github.com/rakulgt/rakuxq` 已建立并推送 `main`；预发布 `v0.1.0-alpha.1` 已公开，首轮 GitHub Actions Python 3.11–3.14 矩阵全部通过。
+- GitHub Actions 升级到基于 Node.js 24 的 `actions/checkout@v7` 和 `actions/setup-python@v7`，清理首轮 CI 的 Node.js 20 弃用警告。
 
 ## 当前验证
 
