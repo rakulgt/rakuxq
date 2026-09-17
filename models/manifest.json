@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "model_version": "cchess-baseline-2025-03-19",
+  "source_project": "yolo12138/Chinese_Chess_Recognition",
+  "source_commit": "4bcaf91777effa645040ee76d008d45c2ffc03f3",
+  "files": [
+    {
+      "local_name": "pose.onnx",
+      "upstream_name": "onnx/pose/4_v6-0301.onnx",
+      "size": 10704184,
+      "sha256": "fbd895d40ab81b41b8188f881866485678b7871775821aa50cfe74004a1dc796",
+      "download_source": "https://github.com/cheese2020/Chinese-Chess-Recognition"
+    },
+    {
+      "local_name": "layout.onnx",
+      "upstream_name": "onnx/layout_recognition/nano_v3-0319.onnx",
+      "size": 31101356,
+      "sha256": "da66ba9809f15127f8ae729b1755e42ee61c100c4f9979ce0ef13602ac471298",
+      "download_source": "https://hf-mirror.com/spaces/yolo12138/Chinese_Chess_Recognition"
+    }
+  ]
+}
