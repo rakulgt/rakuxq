@@ -12,6 +12,7 @@ RakuXQ 的重要版本变化记录于此。
 - 密钥仅以 SHA-256 哈希保存；明文只在签发时显示一次。
 - 过期响应返回结构化续费信息：微信 `lgtqcn`，`39 元人民币/年`。
 - 增加 systemd、Nginx、限流、HTTPS 和原子版本目录的生产部署入口。
+- 加固源站 TLS 部署：后续发布自动保留 Let's Encrypt 证书配置。
 - 官方客户端默认消费 `/v1/recognitions` JSON，仅在 `status=accepted` 时读取 `fen`。
 
 ### English
@@ -20,6 +21,7 @@ RakuXQ 的重要版本变化记录于此。
 - Store only SHA-256 key hashes; plaintext is shown once at issuance.
 - Return structured renewal information for expired keys.
 - Added production deployment assets for systemd, Nginx, rate limits, HTTPS, and atomic releases.
+- Hardened origin TLS deployment so later releases preserve Let's Encrypt configuration.
 - Made `/v1/recognitions` JSON the recommended client contract; clients consume `fen` only when accepted.
 
 ## [0.1.0-alpha.1] - 2026-09-17

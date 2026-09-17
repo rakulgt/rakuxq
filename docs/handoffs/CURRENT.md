@@ -1,7 +1,7 @@
 # RakuXQ 当前交接状态
 
-基线时间：`2026-09-17T14:30:00+08:00`
-当前稳定版本：`v0.1.0-alpha.1`
+基线时间：`2026-09-17T16:27:34+08:00`
+当前稳定版本：`v0.1.1-alpha.1`
 
 ## 最近完成
 
@@ -25,10 +25,13 @@
 - 将发起人李国泰的象棋与编程经历整理为中英双语项目源流：从 1988 年学棋、2008 年 lgtXQ、2018 年 NNUE 版 RakuXQ、2023 年视觉原型，到 2026 年开源图片转 FEN API；内容进入 README、`docs/history.md`、包作者元数据和首发说明。
 - GitHub 公开仓库 `https://github.com/rakulgt/rakuxq` 已建立并推送 `main`；预发布 `v0.1.0-alpha.1` 已公开，首轮 GitHub Actions Python 3.11–3.14 矩阵全部通过。
 - GitHub Actions 升级到基于 Node.js 24 的 `actions/checkout@v7` 和 `actions/setup-python@v7`，清理首轮 CI 的 Node.js 20 弃用警告。
+- 完成官方托管 API：独立客户 Key、有效期、吊销、续期、哈希存储，以及到期后的结构化续费信息（微信 `lgtqcn`，`39 元人民币/年`）。
+- 正式服务已部署到 `https://xq.rakubank.com`；systemd、Nginx、限流、原子版本目录、备份和回滚入口均已建立。
+- 为源站签发 Let's Encrypt 证书并加固发布脚本：后续发布会自动检测证书并保留 TLS 配置，不再覆盖 Certbot 结果。
 
 ## 当前验证
 
-- `python -m pytest -q`：31 项 FEN、局面校验、服务门控、HTTP 契约、快速路径、部分棋盘和同图原型复核测试通过；另有 2 条来自测试客户端依赖的弃用提示，不影响运行时接口。
+- `python -m pytest -q`：34 项 FEN、局面校验、服务门控、鉴权与 Key 生命周期、HTTP 契约、快速路径、部分棋盘和同图原型复核测试通过；另有 2 条来自测试客户端依赖的弃用提示，不影响运行时接口。
 - `ruff check .`：通过。
 - `mypy src`：10 个源文件通过。
 - 本地 Uvicorn 冒烟：`GET /healthz` 返回 `200 degraded`；缺少权重时 `POST /v1/fen` 返回预期的 `503`。
@@ -40,6 +43,8 @@
 - 实体棋盘加手部遮挡案例重新验证为 `accepted`：同图原型把第 2 行中线的黑象候选纠正为黑车、把第 6 行中线的黑车候选纠正为黑卒；最终 FEN `9/4k1R2/4r4/4r4/4p4/4p4/4p4/4p4/9/4KR1C1 w - - 0 1` 与人工真值完全一致，单次本地程序推理约 `0.80s`。
 - 新增三例用户人工核验：横置实体棋盘的 `accepted` FEN `CR1akab2/5R3/6n2/p1p1p3p/3r2p2/2P3P2/P7P/2NC5/4A4/2B1KAr2 w - - 0 1` 全部正确；稀疏实体残局的候选 FEN `4k4/4a4/4P4/9/9/9/9/9/9/5K3 w - - 0 1` 全部正确；被弹窗遮挡关键内容的案例正确返回 `review_required`，没有作为可直接消费的 FEN 自动通过。原始用户图片未保存到项目或纳入训练集。
 - `scripts/check-document-governance.ps1`：RakuXQ 无错误；工作区其他遗留项目仍有 10 条既有迁移警告。
+- 生产公网验收：健康检查返回 `status=ok`；无 Key 返回 HTTP `401` / `API_KEY_REQUIRED`；有效 Key + 真实基准图片返回 `accepted` 和正确 FEN `3k5/9/9/9/9/9/3p5/2pANR3/3KNR3/3ACC3 w - - 0 1`。
+- 生产运行状态：提交 `4b7c232df1acfb3d55f6b62e7460e1c8bfdfbb1c`，服务 `active`、`NRestarts=0`，Nginx 配置检查通过；完整记录见 `docs/deployments/20260917-162734-v0.1.1-alpha.1.md`。
 
 ## 未完成
 
@@ -52,6 +57,7 @@
 
 - 上游模型虽声明 MIT，权重及训练数据许可链仍需继续复核；当前公开版本只发布源码和校验清单，不重新分发权重。
 - 上游公开的整盘零错误率约为 83%；首个案例成功不能代表通用准确率，置信度阈值仍需盲测集校准。
+- Cloudflare 公网 HTTPS 已生效，源站证书也已安装；但验收行为表明当前仍以 Flexible 模式回源。需要把 Cloudflare SSL/TLS 模式切换为 `Full (strict)`，才能让 Cloudflare 到源站之间也使用 HTTPS。
 
 ## 下一步
 
