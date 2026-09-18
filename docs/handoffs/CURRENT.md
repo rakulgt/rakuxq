@@ -40,7 +40,8 @@
 
 ## 当前验证
 
-- `python -m pytest -q`：45 项 FEN、局面校验、服务门控、鉴权与 Key 生命周期、HTTP 契约、短期审计、匿名统计及备份、URL 行棋方别名、快速路径、部分棋盘和同图原型复核测试通过；另有 2 条来自测试客户端依赖的弃用提示，不影响运行时接口。
+- `python -m pytest -q`：48 项 FEN、局面校验、服务门控、鉴权与 Key 生命周期、HTTP 契约、官网交互入口、短期审计、匿名统计及备份、URL 行棋方别名、快速路径、部分棋盘和同图原型复核测试通过；另有 2 条来自测试客户端依赖的弃用提示，不影响运行时接口。
+- `npm run test:web`：3 项固定残局加载、合法走子、FEN 更新、悔棋和外部链接测试通过；浏览器实测红炮 `e2 → e4` 与撤销流程通过。
 - `ruff check .`：通过。
 - `mypy src`：15 个源文件通过。
 - 本地 Uvicorn 冒烟：`GET /healthz` 返回 `200 degraded`；缺少权重时 `POST /v1/fen` 返回预期的 `503`。
@@ -53,7 +54,7 @@
 - 新增三例用户人工核验：横置实体棋盘的 `accepted` FEN `CR1akab2/5R3/6n2/p1p1p3p/3r2p2/2P3P2/P7P/2NC5/4A4/2B1KAr2 w - - 0 1` 全部正确；稀疏实体残局的候选 FEN `4k4/4a4/4P4/9/9/9/9/9/9/5K3 w - - 0 1` 全部正确；被弹窗遮挡关键内容的案例正确返回 `review_required`，没有作为可直接消费的 FEN 自动通过。这些历史图片未进入项目或训练集；官方托管自 `v0.1.2-alpha.1` 起仅对有效 Key 调用启用 12 小时短期留存。
 - `scripts/check-document-governance.ps1`：RakuXQ 无错误；工作区其他遗留项目仍有 10 条既有迁移警告。
 - 生产公网验收：健康检查返回 `status=ok`；无 Key 返回 HTTP `401` / `API_KEY_REQUIRED`；有效 Key + 真实基准图片返回 `accepted` 和正确 FEN `3k5/9/9/9/9/9/3p5/2pANR3/3KNR3/3ACC3 w - - 0 1`。
-- 生产运行状态：服务器发布标识为 `25b3a819c414d668624a0783b9591e46abae2e31`；服务 `active`、`NRestarts=0`，短期清理与匿名统计备份 timer 均为 `active`，Nginx 配置检查通过。
+- 生产运行状态：服务器发布标识为 `e6deb7c86ff5dc77dc1332742b0418f70bd2cb46`；服务 `active`、`NRestarts=0`，短期清理与匿名统计备份 timer 沿用既有配置，Nginx 配置检查通过。
 - 生产短期审计验收：公网上传后的服务器原图 SHA-256 与本地原图完全一致；有效 Key 的 `422` 参数错误被完整记录，无 Key 请求不留存；13 小时测试记录被清理。完整记录见 `docs/deployments/20260917-180422-v0.1.2-alpha.1.md`。
 - 生产 URL 别名验收：以真实图片和字面值 `%20w` 调用成功完成模型推理，响应规范化为 `side_to_move=red`，FEN 使用 `w`；健康检查报告 `version=0.1.2a2`。完整记录见 `docs/deployments/20260917-181607-v0.1.2-alpha.2.md`。
 - 生产简化 FEN 验收：真实图片响应的 `fen` 只包含布局与 `w`，`full_fen` 保留完整形式；健康检查报告 `version=0.1.2a3`。完整记录见 `docs/deployments/20260917-183215-v0.1.2-alpha.3.md`。
@@ -64,6 +65,7 @@
 - v0.2.0-alpha.3 已发布到正式域名：健康检查为 `0.2.0a3`，服务保持 `active` 且 `NRestarts=0`；临时 Key 已完成真实图片鉴权调用。完整记录见 `docs/deployments/20260917-193624-v0.2.0-alpha.3.md`。
 - v0.2.0-alpha.4 已移除首页示例棋盘卡片的装饰性倾斜，并通过静态资源版本参数清除旧样式缓存；正式服务为 `active`、`NRestarts=0`。完整记录见 `docs/deployments/20260918-133442-v0.2.0-alpha.4.md`。
 - 首页静态棋盘已升级为 FEN 驱动的原生交互局面研究器：支持合法落点、走子、吃子、悔棋、重置、复制当前 FEN 和外部深入研究；规则层固定复用 BSD-2-Clause `xiangqi.js`，不嵌入第三方页面。
+- v0.2.1-alpha.1 已发布到正式域名：健康检查为 `0.2.1a1`，规则引擎与交互脚本均可通过 HTTPS 获取，服务保持 `active` 且 `NRestarts=0`。完整记录见 `docs/deployments/20260918-175521-v0.2.1-alpha.1.md`。
 
 ## 未完成
 
