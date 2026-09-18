@@ -4,6 +4,28 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.3.0-alpha.1] - 2026-09-18
+
+### 中文
+
+- 增加独立、可替换的 UCI 引擎边界和 Pikafish 常驻进程适配器，不与视觉 provider 耦合。
+- 新增 `/v1/analyses`（FEN → 最佳着法）和 `/v1/solve`（图片 → FEN → 最佳着法）。
+- 评分统一为红方固定视角整数；普通评分显示 `+N/-N/0`，杀棋显示 `KO(+N)/KO(-N)`。
+- 返回 ICCS 最佳着法、ponder、PV、深度、节点、耗时、引擎版本和 NNUE 权重 SHA-256。
+- 严格校验 FEN，限制搜索时间，并在超时/崩溃后终止故障进程，避免 Pikafish 严格校验退出影响视觉服务。
+- Pikafish 与官方 NNUE 权重不随 MIT 仓库或生产服务分发；当前仅完成本地非商业技术验证。
+
+### English
+
+- Added a separate, replaceable UCI engine boundary and persistent Pikafish process adapter,
+  decoupled from the vision provider.
+- Added `/v1/analyses` (FEN to best move) and `/v1/solve` (image to FEN to best move).
+- Standardized integer scores on a fixed red perspective, with `+N/-N/0` and `KO(+N)/KO(-N)`.
+- Return ICCS best move, ponder, PV, depth, nodes, elapsed time, engine version, and NNUE SHA-256.
+- Validate FEN strictly, cap search time, and terminate failed processes without taking down vision.
+- Pikafish and official NNUE weights are not distributed or deployed; validation is local and
+  non-commercial at this stage.
+
 ## [0.2.1-alpha.1] - 2026-09-18
 
 ### 中文

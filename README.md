@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/badge/Python-3.11--3.14-3776AB.svg)](https://www.python.org/)
 [![Release](https://img.shields.io/github/v/release/rakulgt/rakuxq?include_prereleases)](https://github.com/rakulgt/rakuxq/releases)
 
-**Robust Xiangqi image recognition today; NNUE-powered move solving tomorrow.**
+**Robust Xiangqi image recognition with a clean path to NNUE-powered move analysis.**
 
 **先把复杂场景中的中国象棋图片可靠转换为 FEN，再连接 NNUE 引擎计算最佳着法。**
 
@@ -17,11 +17,11 @@
 
 RakuXQ 是由 **rakulgt / Raku Intelligence（罗酷智能）** 发起的开源中国象棋视觉与
 解题基础设施。第一阶段提供“棋盘图片 → FEN”的通用 HTTP API，面向手机截图、网页棋盘、
-真实棋盘照片、斜拍、裁剪、背景噪声和部分遮挡；后续阶段将接入 NNUE 引擎，返回最佳着法、
-候选变化和终端推送结果。
+真实棋盘照片、斜拍、裁剪、背景噪声和部分遮挡；`v0.3` 已增加可替换 UCI 引擎边界，开始
+返回最佳着法和候选变化，后续继续完成中文着法与终端推送。
 
-> 当前版本：`v0.2.1-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通，但样本量
-> 尚不足以宣称接近 100% 的通用准确率。RakuXQ 会明确区分自动通过与需要复核的结果。
+> 当前源码版本：`v0.3.0-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
+> Pikafish UCI 适配器进入本地非商业技术验证。官方托管服务暂不部署受限 NNUE 权重。
 
 ### 从 lgtXQ 到 RakuXQ
 
@@ -41,8 +41,8 @@ RakuXQ 的发起人是 **李国泰（rakulgt，<lgt@rakubank.com>）**。这个�
 - **2026**：将视觉能力演进为当前开源、可审计、可由 Apple 快捷指令调用的图片转 FEN
   HTTP API，并为重新接入 NNUE 解题引擎建立稳定接口。
 
-当前公开仓库首先发布视觉识别模块；2018 年引擎的技术传承会在后续阶段以可维护、可测试的
-方式重新接入，而不是把历史私有代码未经整理直接混入首版。完整项目历史见
+当前公开仓库先以视觉识别模块建立可靠输入，`v0.3` 再以可维护、可测试的独立适配层接入
+解题引擎，而不是把历史私有代码未经整理直接混入首版。完整项目历史见
 [`docs/history.md`](docs/history.md)。
 
 ### 为什么是 RakuXQ
@@ -54,7 +54,8 @@ RakuXQ 的发起人是 **李国泰（rakulgt，<lgt@rakubank.com>）**。这个�
 - **支持局部棋盘**：经几何计算确认在画面外的交叉点可按产品规则视为空位并显式警告。
 - **快捷指令友好**：推荐解析 `POST /v1/recognitions` JSON，仅在 `accepted` 时取得 `fen`。
 - **可运营托管**：官方服务支持每客户独立 API Key、到期、续费和吊销。
-- **为 NNUE 解题预留**：视觉层通过稳定局面契约与未来引擎层解耦。
+- **视觉与解题解耦**：引擎只消费稳定 FEN 契约，可替换而不影响识别 provider。
+- **双路径接口**：`/v1/analyses` 分析已有 FEN，`/v1/solve` 仅对自动通过的图片局面给出着法。
 - **公开运行面板**：官网匿名展示最近 72 小时交互与历史累计统计，不公开原图或客户标识。
 - **即领即试**：公开开发文档可领取明文只显示一次、6 分钟失效的临时测试 Key。
 - **交互局面研究器**：首页经典残局支持合法落点、走子、吃子、悔棋、重置、实时 FEN 与外部深入研究。
@@ -152,6 +153,14 @@ curl -X POST http://127.0.0.1:8000/v1/fen \
 [`docs/api.md`](docs/api.md)，Apple 快捷指令配置见
 [`docs/apple-shortcuts.md`](docs/apple-shortcuts.md)。
 
+### 本地引擎分析（实验性）
+
+`v0.3` 可以通过 UCI 控制用户另行安装的 Pikafish，返回 ICCS 最佳着法、PV、搜索信息以及
+固定红方视角的整数评分。普通局面显示 `+186`、`-243` 或 `0`；杀棋显示 `KO(+N)` 或
+`KO(-N)`。Pikafish 程序和官方 NNUE 权重均不随本仓库分发，当前路线仅用于本地非商业
+互操作验证；生产商用前必须取得权重授权。安装、环境变量和调用示例见
+[`docs/engine.md`](docs/engine.md)。
+
 ### 验证
 
 ```powershell
@@ -189,7 +198,9 @@ npm run test:web
 - [x] FEN 驱动的首页交互局面研究器与合法走子规则
 - [ ] 授权盲测集、公开评测和自有模型训练流程
 - [ ] 独立占位检测器与更多实体棋字体覆盖
-- [ ] NNUE 引擎、最佳着法、候选变化和终端推送
+- [x] 可替换 UCI 引擎边界、Pikafish 本地适配、最佳着法与主要变化 API
+- [ ] 获得可用于托管服务的 NNUE 权重授权或训练 RakuXQ 自有权重
+- [ ] 中文着法转换、候选多变化和终端推送
 
 欢迎阅读 [`CONTRIBUTING.md`](CONTRIBUTING.md) 参与贡献。项目采用
 [MIT License](LICENSE)。
@@ -201,13 +212,13 @@ npm run test:web
 RakuXQ is an open-source Xiangqi vision and solving infrastructure project initiated by
 **rakulgt / Raku Intelligence**. Phase one exposes a general image-to-FEN HTTP API for mobile
 screenshots, web boards, physical-board photos, perspective distortion, cropping, background
-noise, and partial occlusion. A later phase will add an NNUE engine for best moves, principal
-variations, and terminal notifications.
+noise, and partial occlusion. Version `0.3` adds a replaceable UCI engine boundary for best moves
+and principal variations; Chinese notation and terminal notifications remain on the roadmap.
 
-> Current release: `v0.2.1-alpha.1`. The vision pipeline works on a growing set of real
-> screenshots and physical-board photos, but the sample size is not yet sufficient to claim
-> near-perfect general accuracy. RakuXQ explicitly separates auto-accepted results from cases
-> that require review.
+> Current source release: `v0.3.0-alpha.1`. The vision pipeline works on a growing set of real
+> screenshots and physical-board photos. The Pikafish UCI adapter is undergoing local,
+> non-commercial interoperability validation; restricted NNUE weights are not deployed by the
+> official hosted service.
 
 ### From lgtXQ to RakuXQ
 
@@ -250,7 +261,10 @@ code into the first release. See [`docs/history.md`](docs/history.md) for the fu
   when the status is `accepted`.
 - **Operable hosting**: the hosted service supports per-customer API keys, expiration, renewal,
   and revocation.
-- **NNUE-ready contract**: the future solving engine stays decoupled from the vision provider.
+- **Decoupled solving**: engines consume a stable FEN contract and remain replaceable without
+  changing the vision provider.
+- **Two analysis paths**: `/v1/analyses` consumes confirmed FEN, while `/v1/solve` analyzes only
+  auto-accepted image recognition results.
 - **Public operating pulse**: the homepage shows anonymous 72-hour activity and lifetime totals
   without exposing images or customer identifiers.
 - **Instant trial access**: the public developer guide can issue a one-time-display test key that
@@ -321,6 +335,16 @@ A static physical-board image usually cannot reveal whose turn it is, so clients
 `red` or `black`. See [`docs/api.md`](docs/api.md) for the contract and
 [`docs/apple-shortcuts.md`](docs/apple-shortcuts.md) for the iPhone workflow.
 
+### Local engine analysis (experimental)
+
+RakuXQ `v0.3` can control a separately installed Pikafish process through UCI and return an ICCS
+best move, PV, search metadata, and an integer score with a fixed red perspective. Ordinary scores
+are displayed as `+186`, `-243`, or `0`; forced mates use `KO(+N)` or `KO(-N)`. Neither Pikafish nor
+its official NNUE weights are distributed by this repository. The current path is limited to local,
+non-commercial interoperability validation until hosted-use authorization is obtained. See
+[`docs/engine.md`](docs/engine.md) for setup, environment variables, licensing boundaries, and API
+examples.
+
 ### Quality, privacy, and model provenance
 
 RakuXQ optimizes for **exact-board accuracy**, not merely per-cell accuracy. Future public
@@ -343,7 +367,9 @@ after 72 hours; only aggregate lifetime counters persist.
 - [x] Anonymous live homepage, rolling 72-hour activity, and lifetime counters
 - [ ] Consented blind benchmark and first-party training pipeline
 - [ ] Independent occupancy detector and broader physical-piece typography support
-- [ ] NNUE engine, best moves, principal variations, and terminal delivery
+- [x] Replaceable UCI boundary, local Pikafish adapter, best-move and principal-variation APIs
+- [ ] Obtain hosted-use NNUE authorization or train a first-party RakuXQ network
+- [ ] Chinese move notation, multiple candidate lines, and terminal delivery
 
 Contributions are welcome; see [`CONTRIBUTING.md`](CONTRIBUTING.md). RakuXQ is released under
 the [MIT License](LICENSE).

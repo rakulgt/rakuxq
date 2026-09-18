@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "2026-09-18T20:10:00+08:00",
+  "redistributed_by_rakuxq": false,
+  "technical_baselines": [
+    {
+      "provider": "pikafish-uci",
+      "upstream_repository": "https://github.com/official-pikafish/Pikafish",
+      "release": "Pikafish-2026-09-06",
+      "release_commit": "4c17cee",
+      "release_url": "https://github.com/official-pikafish/Pikafish/releases/tag/Pikafish-2026-09-06",
+      "archive": {
+        "name": "Pikafish.2026-09-06.7z",
+        "size_bytes": 53603424,
+        "sha256": "41952bbfe2520faceb5902c69e6ab4845cc999841d2b49a95cc1be7867a25e5b"
+      },
+      "engine": {
+        "name": "Pikafish-Windows-x86-64-universal.exe",
+        "size_bytes": 6944256,
+        "sha256": "0d57d64c212e78f96cba9e5e4f140d8872f8faa42ea631a27ab6c5db08509da3",
+        "license": "GPL-3.0",
+        "license_url": "https://github.com/official-pikafish/Pikafish/blob/master/Copying.txt"
+      },
+      "network": {
+        "name": "pikafish.nnue",
+        "size_bytes": 50706378,
+        "sha256": "7d13d73569a9b571ba0eb20cf1596247bc2a42738967e61afef6482b231e900e",
+        "license_summary": "No commercial use without permission",
+        "license_url": "https://github.com/official-pikafish/Networks/blob/master/README.md"
+      },
+      "rakuxq_scope": "local non-commercial interoperability validation",
+      "production_deployed": false,
+      "verified_on": {
+        "os": "Windows",
+        "threads": 1,
+        "hash_mb": 64,
+        "api_version": "0.3.0a1"
+      }
+    }
+  ]
+}

@@ -5,6 +5,9 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 *.onnx
+*.nnue
+*.7z
+*.exe
 artifacts/
 tmp/
 uploads/

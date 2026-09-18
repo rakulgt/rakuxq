@@ -55,3 +55,17 @@ class Settings:
     trial_key_pepper_file: str = os.getenv("RAKUXQ_TRIAL_KEY_PEPPER_FILE", "")
     trial_key_minutes: int = int(os.getenv("RAKUXQ_TRIAL_KEY_MINUTES", "6"))
     trial_key_active_limit: int = int(os.getenv("RAKUXQ_TRIAL_KEY_ACTIVE_LIMIT", "100"))
+    engine_path: str = os.getenv("RAKUXQ_ENGINE_PATH", "")
+    engine_network: str = os.getenv("RAKUXQ_ENGINE_NETWORK", "")
+    engine_version: str = os.getenv("RAKUXQ_ENGINE_VERSION", "unknown")
+    engine_threads: int = int(os.getenv("RAKUXQ_ENGINE_THREADS", "1"))
+    engine_hash_mb: int = int(os.getenv("RAKUXQ_ENGINE_HASH_MB", "64"))
+    engine_default_movetime_ms: int = int(
+        os.getenv("RAKUXQ_ENGINE_DEFAULT_MOVETIME_MS", "500")
+    )
+    engine_max_movetime_ms: int = int(
+        os.getenv("RAKUXQ_ENGINE_MAX_MOVETIME_MS", "3000")
+    )
+    engine_command_timeout_ms: int = int(
+        os.getenv("RAKUXQ_ENGINE_COMMAND_TIMEOUT_MS", "5000")
+    )

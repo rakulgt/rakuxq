@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
 from rakuxq_api.api_keys import APIKeyStore
-from rakuxq_api.audit import InteractionAuditMiddleware, InteractionAuditStore
+from rakuxq_api.audit import AUDITED_PATHS, InteractionAuditMiddleware, InteractionAuditStore
 from rakuxq_api.domain import BoardPrediction, CellPrediction, Orientation
 from rakuxq_api.main import app
 from rakuxq_api.providers.base import RecognitionProvider
@@ -109,6 +109,13 @@ def test_audit_prunes_expired_records(tmp_path):
     assert removed == 1
     assert not expired.exists()
     assert current.exists()
+
+
+def test_solve_uploads_are_audited_and_nested_recognition_fields_are_visible():
+    assert "/v1/solve" in AUDITED_PATHS
+    payload = {"recognition": {"request_id": "rec_nested", "full_fen": "4k4/9 w"}}
+    assert InteractionAuditStore._nested(payload, "request_id") == "rec_nested"
+    assert InteractionAuditStore._nested(payload, "full_fen") == "4k4/9 w"
 
 
 def test_secured_audit_keeps_only_active_key_requests(tmp_path):

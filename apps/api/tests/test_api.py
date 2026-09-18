@@ -3,6 +3,12 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from rakuxq_api.domain import BoardPrediction, CellPrediction, Orientation
+from rakuxq_api.engines.base import (
+    AnalysisResult,
+    EngineIdentity,
+    EngineMove,
+    EngineScore,
+)
 from rakuxq_api.main import app
 from rakuxq_api.providers.base import RecognitionProvider
 from rakuxq_api.service import RecognitionService
@@ -59,6 +65,28 @@ class PartialProvider(FixedProvider):
         )
         prediction.board_confidence = 0.4
         return prediction
+
+
+class FixedAnalysisEngine:
+    configured = True
+    ready = True
+    identity = EngineIdentity("Pikafish test", "test", "test", "abc123")
+
+    def analyze(self, fen, movetime_ms):
+        return AnalysisResult(
+            status="completed",
+            fen=fen,
+            best_move=EngineMove("h2e2", "h2", "e2"),
+            ponder="h9g7",
+            score=EngineScore("cp", 186, "red", "+186"),
+            depth=18,
+            seldepth=27,
+            nodes=123456,
+            time_ms=movetime_ms,
+            nps=987654,
+            pv=["h2e2", "h9g7"],
+            engine=self.identity,
+        )
 
 
 client = TestClient(app)
@@ -189,3 +217,47 @@ def test_upload_rejects_non_image_content_type():
     )
 
     assert response.status_code == 415
+
+
+def test_analysis_endpoint_returns_red_perspective_integer_score():
+    fake_engine = FixedAnalysisEngine()
+    with patch("rakuxq_api.main.analysis_engine", fake_engine):
+        response = client.post(
+            "/v1/analyses",
+            json={
+                "fen": (
+                    "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/"
+                    "P1P1P1P1P/1C5C1/9/RNBAKABNR w"
+                ),
+                "movetime_ms": 250,
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["best_move"] == {"iccs": "h2e2", "from": "h2", "to": "e2"}
+    assert payload["score"]["value"] == 186
+    assert payload["score"]["display"] == "+186"
+    assert payload["time_ms"] == 250
+
+
+def test_solve_endpoint_combines_recognition_and_engine_analysis():
+    fake_service = RecognitionService(FixedProvider())
+    fake_engine = FixedAnalysisEngine()
+    with (
+        patch("rakuxq_api.main.service", fake_service),
+        patch("rakuxq_api.main.analysis_engine", fake_engine),
+    ):
+        response = client.post(
+            "/v1/solve",
+            files={"image": ("board.png", b"image", "image/png")},
+            data={"side_to_move": "red", "movetime_ms": "300"},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "accepted"
+    assert payload["fen"].endswith(" w")
+    assert payload["recognition"]["status"] == "accepted"
+    assert payload["analysis"]["best_move"]["iccs"] == "h2e2"
+    assert payload["analysis"]["score"]["display"] == "+186"

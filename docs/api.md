@@ -1,7 +1,8 @@
-# RakuXQ Vision API v1
+# RakuXQ API v1
 
-官方托管地址：`https://xq.rakubank.com`。客户端默认调用完整 JSON 接口
-`POST /v1/recognitions`，仅在 `status` 为 `accepted` 时消费 `fen`字段。
+官方托管地址：`https://xq.rakubank.com`。视觉客户端默认调用完整 JSON 接口
+`POST /v1/recognitions`，仅在 `status` 为 `accepted` 时消费 `fen` 字段。实验性引擎接口
+可在配置了本地引擎的自托管环境使用；官方托管服务尚未部署受限 NNUE 权重。
 
 ## 鉴权与有效期
 
@@ -103,6 +104,37 @@ else:
 - `X-RakuXQ-Assumed-Empty-Details`：用 `rank,file:reason` 区分 `out_of_frame` 与 `visually_uncertain`。
 
 服务没有人工或大模型兜底路径。模型未就绪时必须返回 `503`，不能根据文件名、历史答案或手工输入返回 FEN。
+
+## `POST /v1/analyses`
+
+将已经确认的中国象棋 FEN 提交给可配置的本地引擎。请求体为 JSON：
+
+```json
+{
+  "fen": "3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w",
+  "movetime_ms": 500
+}
+```
+
+`fen` 可以使用 RakuXQ 两字段简化形式或六字段形式；服务端发送给引擎前统一转换为六字段。
+`movetime_ms` 默认 500，当前允许 50–3000 毫秒。接口返回 ICCS 最佳着法、ponder、主要变化、
+深度、节点、耗时和引擎/权重身份。
+
+评分始终以红方为固定视角，与当前行棋方无关：正整数表示红优，负整数表示黑优，`0` 表示近似
+均衡。`score.display` 直接使用 `+186`、`-243`、`0`；强制杀棋使用 `KO(+N)` 表示红方绝杀，
+`KO(-N)` 表示黑方绝杀。`value` 始终保留带正负号语义的整数，便于程序比较。
+
+## `POST /v1/solve`
+
+参数是在 `/v1/recognitions` 基础上增加 `movetime_ms`。服务先执行真实视觉识别；只有结果为
+`accepted` 且行棋方已知时，才把 `full_fen` 送入引擎。响应同时包含：
+
+- `fen`：快捷指令已经使用的简化 FEN；
+- `recognition`：完整、可审计的原识别结果；
+- `analysis`：最佳着法、红方视角整数评分、PV 和可复现引擎信息。
+
+识别需要复核或被拒绝时，`analysis` 为 `null`，不得静默对不可靠局面给出着法。未配置引擎返回
+`503 ENGINE_NOT_CONFIGURED`；非法 FEN、分析超时和引擎异常分别返回明确的机器错误码。
 
 ## 官方托管短期审计
 

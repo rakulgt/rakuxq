@@ -21,7 +21,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from .api_keys import APIKeyStore
 
 LOGGER = logging.getLogger("rakuxq.audit")
-AUDITED_PATHS = {"/v1/recognitions", "/v1/fen"}
+AUDITED_PATHS = {"/v1/recognitions", "/v1/fen", "/v1/solve"}
 
 
 @dataclass(slots=True)
@@ -255,6 +255,9 @@ class InteractionAuditStore:
             return None
         if key in response:
             return response[key]
+        recognition = response.get("recognition")
+        if isinstance(recognition, dict) and key in recognition:
+            return recognition[key]
         detail = response.get("detail")
         return detail.get(key) if isinstance(detail, dict) else None
 

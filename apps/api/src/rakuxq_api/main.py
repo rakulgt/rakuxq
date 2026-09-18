@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from datetime import UTC, datetime
@@ -11,18 +12,29 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 
 from . import __version__
 from .api_keys import APIKeyStore, TrialKeyCapacity, TrialKeyCooldown
 from .audit import InteractionAuditMiddleware, InteractionAuditStore
 from .config import Settings
 from .domain import Orientation, RecognitionStatus, SideToMove, parse_side_to_move
+from .engines import (
+    EngineAnalysisError,
+    EngineNotConfigured,
+    EngineTimeout,
+    InvalidEnginePosition,
+    PikafishEngine,
+    analysis_to_dict,
+)
 from .metrics import PublicMetricsStore
 from .providers import OnnxRecognitionProvider, ProviderNotReady
 from .providers.base import RecognitionFailed
 from .service import RecognitionService
 
 settings = Settings()
+logger = logging.getLogger(__name__)
 provider = OnnxRecognitionProvider(
     pose_model=settings.pose_model,
     layout_model=settings.layout_model,
@@ -54,7 +66,20 @@ public_metrics_store = (
     if settings.public_metrics_db
     else None
 )
+analysis_engine = PikafishEngine(
+    settings.engine_path,
+    settings.engine_network,
+    threads=settings.engine_threads,
+    hash_mb=settings.engine_hash_mb,
+    command_timeout_ms=settings.engine_command_timeout_ms,
+    version=settings.engine_version,
+)
 static_root = Path(__file__).with_name("static")
+
+
+class AnalysisRequest(BaseModel):
+    fen: str
+    movetime_ms: int | None = None
 
 
 def _renewal_detail() -> dict[str, object]:
@@ -140,7 +165,15 @@ async def lifespan(_app: FastAPI):
         public_metrics_store.initialize()
         if settings.audit_dir:
             public_metrics_store.import_audit_directory(settings.audit_dir)
-    yield
+    if analysis_engine.configured:
+        try:
+            analysis_engine.start()
+        except EngineAnalysisError:
+            logger.exception("Pikafish engine startup failed; vision endpoints remain available")
+    try:
+        yield
+    finally:
+        analysis_engine.close()
 
 
 app = FastAPI(
@@ -190,6 +223,44 @@ def _normalize_side_to_move(value: str) -> SideToMove:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+def _analysis_time(requested: int | None) -> int:
+    value = settings.engine_default_movetime_ms if requested is None else requested
+    if value < 50 or value > settings.engine_max_movetime_ms:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "movetime_ms must be between 50 and "
+                f"{settings.engine_max_movetime_ms} milliseconds"
+            ),
+        )
+    return value
+
+
+def _run_analysis(fen_value: str, movetime_ms: int | None):
+    try:
+        return analysis_engine.analyze(fen_value, _analysis_time(movetime_ms))
+    except InvalidEnginePosition as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "INVALID_XIANGQI_FEN", "message": str(exc)},
+        ) from exc
+    except EngineNotConfigured as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "ENGINE_NOT_CONFIGURED", "message": str(exc)},
+        ) from exc
+    except EngineTimeout as exc:
+        raise HTTPException(
+            status_code=504,
+            detail={"code": "ENGINE_TIMEOUT", "message": str(exc)},
+        ) from exc
+    except EngineAnalysisError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={"code": "ENGINE_ANALYSIS_FAILED", "message": str(exc)},
+        ) from exc
+
+
 @app.get("/healthz")
 def healthz():
     ready = provider.ready()
@@ -203,6 +274,9 @@ def healthz():
         "provider_ready": ready,
         "authentication_required": settings.require_api_key,
         "authentication_ready": authentication_ready,
+        "engine_configured": analysis_engine.configured,
+        "engine_ready": analysis_engine.ready,
+        "engine": asdict(analysis_engine.identity) if analysis_engine.identity else None,
     }
 
 
@@ -303,6 +377,45 @@ async def recognize(
 ):
     data = await _read_image(image)
     return asdict(_run(data, _normalize_side_to_move(side_to_move), orientation))
+
+
+@app.post("/v1/analyses")
+def analyze_position(
+    payload: AnalysisRequest,
+    _api_key: Annotated[None, Depends(require_api_key)],
+):
+    return analysis_to_dict(_run_analysis(payload.fen, payload.movetime_ms))
+
+
+@app.post("/v1/solve")
+async def solve(
+    image: Annotated[UploadFile, File()],
+    _api_key: Annotated[None, Depends(require_api_key)],
+    side_to_move: Annotated[str, Form()] = SideToMove.UNKNOWN.value,
+    orientation: Annotated[Orientation, Form()] = Orientation.AUTO,
+    movetime_ms: Annotated[int | None, Form()] = None,
+):
+    data = await _read_image(image)
+    recognition = _run(data, _normalize_side_to_move(side_to_move), orientation)
+    recognition_payload = asdict(recognition)
+    if recognition.status != RecognitionStatus.ACCEPTED or recognition.full_fen is None:
+        return {
+            "status": recognition.status,
+            "fen": recognition.fen,
+            "recognition": recognition_payload,
+            "analysis": None,
+        }
+    analysis = await run_in_threadpool(
+        _run_analysis,
+        recognition.full_fen,
+        movetime_ms,
+    )
+    return {
+        "status": recognition.status,
+        "fen": recognition.fen,
+        "recognition": recognition_payload,
+        "analysis": analysis_to_dict(analysis),
+    }
 
 
 @app.post("/v1/fen", response_class=PlainTextResponse)
