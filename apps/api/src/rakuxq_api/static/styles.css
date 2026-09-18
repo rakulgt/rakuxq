@@ -67,10 +67,10 @@ h1 em { color: var(--gold); font-style: normal; font-family: "STKaiti", "KaiTi",
 .button.disabled { cursor: default; color: #7f93a8; background: #142235; box-shadow: none; }
 .shortcut-note { font-size: 12px !important; color: #73879d !important; }
 
-.position-card { border: 1px solid var(--line); border-radius: 18px; padding: 18px; background: linear-gradient(145deg, rgba(20,38,60,.92), rgba(7,17,30,.88)); box-shadow: 0 32px 80px rgba(0,0,0,.28); transform: none; }
+.position-card { border: 1px solid var(--line); border-radius: 18px; padding: 18px; background: linear-gradient(145deg, rgba(20,38,60,.92), rgba(7,17,30,.88)); box-shadow: 0 32px 80px rgba(0,0,0,.28); transform: none; user-select: none; }
 .card-top, .panel-title { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 10px; letter-spacing: .16em; }
 .live-pill { color: var(--cyan); border: 1px solid rgba(82,227,194,.25); background: var(--cyan-soft); border-radius: 999px; padding: 4px 9px; }
-.board { display: block; width: min(100%, 380px); margin: 18px auto; filter: drop-shadow(0 18px 28px rgba(0,0,0,.28)); }
+.board { display: block; width: min(100%, 380px); margin: 18px auto 12px; filter: drop-shadow(0 18px 28px rgba(0,0,0,.28)); touch-action: manipulation; }
 .board-surface { fill: url(#board-surface); stroke: rgba(242,187,100,.5); stroke-width: 2; }
 .board-lines, .board-star { fill: none; stroke: rgba(48,29,15,.72); stroke-width: 3; stroke-linecap: square; stroke-linejoin: miter; }
 .board-stars { opacity: .88; }
@@ -80,6 +80,21 @@ h1 em { color: var(--gold); font-style: normal; font-family: "STKaiti", "KaiTi",
 .piece circle:nth-child(2) { fill: none; stroke: currentColor; stroke-width: 2; }
 .piece text { fill: currentColor; font-family: "STKaiti", "KaiTi", serif; font-size: 49px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
 .piece.black { color: #172434; }.piece.red { color: #a92e2b; }
+.board-last-move { fill: rgba(242,187,100,.2); stroke: rgba(242,187,100,.72); stroke-width: 4; }
+.board-selection { fill: rgba(82,227,194,.18); stroke: var(--cyan); stroke-width: 5; }
+.board-target { fill: rgba(11,83,66,.82); stroke: rgba(225,255,246,.95); stroke-width: 3; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+.board-target.capture { fill: none; stroke: var(--cyan); stroke-width: 7; stroke-dasharray: 12 8; }
+.board-hit { fill: transparent; cursor: pointer; outline: none; }
+.board-hit:focus-visible { fill: rgba(82,227,194,.12); stroke: var(--cyan); stroke-width: 4; }
+.board-feedback { min-height: 46px; display: flex; align-items: start; justify-content: space-between; gap: 18px; padding: 0 3px 12px; }
+.board-feedback strong, .board-feedback span { display: block; }
+.board-feedback strong { color: #e3ebf4; font-size: 12px; }
+.board-feedback span { max-width: 220px; color: var(--muted); font-size: 10px; text-align: right; }
+.position-actions { display: grid; grid-template-columns: repeat(4, auto); gap: 7px; margin-bottom: 9px; }
+.position-action { min-height: 35px; display: inline-flex; align-items: center; justify-content: center; padding: 5px 9px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.025); color: #c4d0dd; font: inherit; font-size: 10px; cursor: pointer; }
+.position-action:hover, .position-action:focus-visible { color: var(--cyan); border-color: rgba(82,227,194,.42); outline: none; }
+.position-action.primary { color: #061713; border-color: transparent; background: var(--cyan); font-weight: 700; }
+.position-action:disabled { cursor: default; opacity: .38; }
 .fen-preview { padding: 13px 14px; border-radius: 10px; background: rgba(3,9,17,.65); }
 .fen-preview small { display: block; color: var(--cyan); font-size: 9px; letter-spacing: .18em; }
 .fen-preview code { display: block; margin-top: 5px; color: #d7e1ed; font-size: 11px; word-break: break-all; }
@@ -182,4 +197,5 @@ pre { margin: 0; padding: 20px; overflow: auto; color: #cbd8e6; font-size: 12px;
   .story-grid .manifesto { padding: 24px; }.manifesto blockquote { font-size: 27px; }
   .privacy-strip, footer { flex-direction: column; align-items: flex-start; }.privacy-strip { padding: 22px; }footer { padding: 25px 0; }footer > div { flex-wrap: wrap; }
   .docs-hero { padding-top: 65px; }.trial-actions .button { width: 100%; }
+  .board-feedback { display: block; }.board-feedback span { max-width: none; margin-top: 3px; text-align: left; }.position-actions { grid-template-columns: 1fr 1fr; }.position-action { min-height: 39px; }
 }

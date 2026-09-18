@@ -11,3 +11,4 @@ uploads/
 *.log
 .env
 .secrets/
+node_modules/

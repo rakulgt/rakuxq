@@ -4,6 +4,22 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.2.1-alpha.1] - 2026-09-18
+
+### 中文
+
+- 将首页静态棋盘升级为 RakuXQ 原生交互局面研究器，支持合法落点提示、走子、吃子、悔棋、重置和实时 FEN。
+- 当前局面可以直接复制，或携带 `%20w/%20b` 跳转到 xiangqiai.com 深入研究。
+- 规则层采用固定提交的 BSD-2-Clause `xiangqi.js`，棋盘 UI、移动端交互和视觉仍由 RakuXQ 自己实现；依赖来源和许可已纳入仓库。
+- 增加浏览器规则测试、依赖再生成一致性检查和独立 Web CI。
+
+### English
+
+- Upgraded the static homepage board into a native RakuXQ position playground with legal targets, moves, captures, undo, reset, and live FEN.
+- The current position can be copied or opened on xiangqiai.com with the encoded `%20w/%20b` separator.
+- Pinned the BSD-2-Clause `xiangqi.js` rules layer while keeping rendering, mobile interaction, and visual design native to RakuXQ; provenance and licensing are bundled.
+- Added browser-rule tests, deterministic vendor checks, and a dedicated web CI job.
+
 ## [0.2.0-alpha.4] - 2026-09-18
 
 ### 中文

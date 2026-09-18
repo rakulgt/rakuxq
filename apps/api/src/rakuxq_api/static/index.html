@@ -6,9 +6,11 @@
     <meta name="description" content="RakuXQ 将真实世界中的中国象棋图片转换为可计算的 FEN，并走向 NNUE 最佳着法。" />
     <meta name="theme-color" content="#08111f" />
     <title>RakuXQ · 让每一个象棋局面进入计算</title>
-    <link rel="icon" href="/static/favicon.svg?v=0.2.0a4" type="image/svg+xml" />
-    <link rel="stylesheet" href="/static/styles.css?v=0.2.0a4" />
-    <script src="/static/app.js?v=0.2.0a4" defer></script>
+    <link rel="icon" href="/static/favicon.svg?v=0.2.1a1" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.2.1a1" />
+    <script src="/static/vendor/xiangqi.min.js?v=f9019ac" defer></script>
+    <script src="/static/position-board.js?v=0.2.1a1" defer></script>
+    <script src="/static/app.js?v=0.2.1a1" defer></script>
   </head>
   <body>
     <div class="ambient ambient-one"></div>
@@ -39,11 +41,11 @@
           </div>
           <p id="shortcut-note" class="shortcut-note">快捷指令不包含 API Key。公开下载链接将在准备完成后上线。</p>
         </div>
-        <div class="position-card" aria-label="RakuXQ 识别流程示意">
-          <div class="card-top"><span>VISION / POSITION</span><span class="live-pill">LIVE</span></div>
-          <svg class="board" viewBox="-55 -55 910 1010" role="img" aria-labelledby="board-title board-description">
-            <title id="board-title">经典中国象棋残局</title>
-            <desc id="board-description">黑方双士、将和马，对红方双炮与帅，红方先走。</desc>
+        <div id="position-playground" class="position-card" aria-label="可交互的中国象棋局面研究器">
+          <div class="card-top"><span>FEN / PLAYGROUND</span><span id="board-turn" class="live-pill">红方走</span></div>
+          <svg class="board" viewBox="-55 -55 910 1010" role="group" aria-labelledby="board-title board-description">
+            <title id="board-title">可交互的经典中国象棋残局</title>
+            <desc id="board-description">黑方双士、将和马，对红方双炮与帅，红方先走。点击棋子可以尝试合法着法。</desc>
             <defs>
               <linearGradient id="board-surface" x1="0" y1="0" x2="1" y2="1">
                 <stop offset="0" stop-color="#d5a363" />
@@ -67,17 +69,18 @@
               <use href="#star-full" transform="translate(100 700)" /><use href="#star-full" transform="translate(700 700)" />
             </g>
             <g class="river-label" aria-hidden="true"><text x="170" y="466">楚河</text><text x="630" y="466">汉界</text></g>
-            <g class="pieces">
-              <g class="piece black" transform="translate(300 0)"><circle r="40" /><circle r="33" /><text>士</text></g>
-              <g class="piece black" transform="translate(400 0)"><circle r="40" /><circle r="33" /><text>将</text></g>
-              <g class="piece black" transform="translate(500 0)"><circle r="40" /><circle r="33" /><text>士</text></g>
-              <g class="piece red" transform="translate(400 300)"><circle r="40" /><circle r="33" /><text>炮</text></g>
-              <g class="piece black" transform="translate(400 400)"><circle r="40" /><circle r="33" /><text>馬</text></g>
-              <g class="piece red" transform="translate(400 700)"><circle r="40" /><circle r="33" /><text>炮</text></g>
-              <g class="piece red" transform="translate(400 900)"><circle r="40" /><circle r="33" /><text>帅</text></g>
-            </g>
+            <g id="board-highlights" aria-hidden="true"></g>
+            <g id="interactive-pieces" class="pieces" aria-hidden="true"></g>
+            <g id="board-hitareas"></g>
           </svg>
-          <div class="fen-preview"><small>OUTPUT</small><code>3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w</code></div>
+          <div class="board-feedback"><strong id="board-state">点击红方棋子开始试走</strong><span id="board-message" aria-live="polite">系统只允许符合象棋规则的着法</span></div>
+          <div class="position-actions">
+            <button id="board-undo" class="position-action" type="button" disabled>悔棋</button>
+            <button id="board-reset" class="position-action" type="button">重置</button>
+            <button id="board-copy" class="position-action" type="button">复制 FEN</button>
+            <a id="board-open" class="position-action primary" href="https://xiangqiai.com/#/3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4%20w" target="_blank" rel="noreferrer">深入研究 ↗</a>
+          </div>
+          <div class="fen-preview"><small>CURRENT FEN</small><code id="board-fen">3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w</code></div>
         </div>
       </section>
 

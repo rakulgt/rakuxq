@@ -72,7 +72,13 @@ def test_public_homepage_and_empty_metrics_are_available_without_api_key():
     assert "让现实中的每一个" in homepage.text
     assert "3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w" in homepage.text
     assert homepage.text.count('<use href="#star') == 14
-    assert "/static/styles.css?v=0.2.0a4" in homepage.text
+    assert "/static/styles.css?v=0.2.1a1" in homepage.text
+    assert "/static/vendor/xiangqi.min.js?v=f9019ac" in homepage.text
+    assert 'id="interactive-pieces"' in homepage.text
+    assert 'id="position-playground"' in homepage.text
+    assert 'role="group" aria-labelledby="board-title board-description"' in homepage.text
+    assert 'id="board-undo"' in homepage.text
+    assert 'id="board-open"' in homepage.text
     assert "/developers" in homepage.text
     assert metrics.status_code == 200
     assert metrics.json()["recent_window_hours"] == 72

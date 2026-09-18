@@ -10,6 +10,28 @@ permissions:
   contents: read
 
 jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install pinned browser dependency
+        run: npm ci
+      - name: Verify vendored rules engine
+        run: |
+          npm run vendor:xiangqi
+          git diff --exit-code -- apps/api/src/rakuxq_api/static/vendor
+      - name: Test interactive board rules
+        run: npm run test:web
+      - name: Check browser JavaScript syntax
+        run: |
+          node --check apps/api/src/rakuxq_api/static/app.js
+          node --check apps/api/src/rakuxq_api/static/developers.js
+          node --check apps/api/src/rakuxq_api/static/position-board.js
+
   api:
     runs-on: ubuntu-latest
     strategy:

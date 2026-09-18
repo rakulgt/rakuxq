@@ -20,7 +20,7 @@ RakuXQ 是由 **rakulgt / Raku Intelligence（罗酷智能）** 发起的开源�
 真实棋盘照片、斜拍、裁剪、背景噪声和部分遮挡；后续阶段将接入 NNUE 引擎，返回最佳着法、
 候选变化和终端推送结果。
 
-> 当前版本：`v0.2.0-alpha.4`。视觉链路已经在多组真实截图和实体棋盘照片上跑通，但样本量
+> 当前版本：`v0.2.1-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通，但样本量
 > 尚不足以宣称接近 100% 的通用准确率。RakuXQ 会明确区分自动通过与需要复核的结果。
 
 ### 从 lgtXQ 到 RakuXQ
@@ -57,6 +57,7 @@ RakuXQ 的发起人是 **李国泰（rakulgt，<lgt@rakubank.com>）**。这个�
 - **为 NNUE 解题预留**：视觉层通过稳定局面契约与未来引擎层解耦。
 - **公开运行面板**：官网匿名展示最近 72 小时交互与历史累计统计，不公开原图或客户标识。
 - **即领即试**：公开开发文档可领取明文只显示一次、6 分钟失效的临时测试 Key。
+- **交互局面研究器**：首页经典残局支持合法落点、走子、吃子、悔棋、重置、实时 FEN 与外部深入研究。
 
 ### 处理流程
 
@@ -158,6 +159,10 @@ cd apps\api
 .\.venv\Scripts\python -m pytest -q
 .\.venv\Scripts\ruff check .
 .\.venv\Scripts\mypy src
+cd ..\..
+npm ci
+npm run vendor:xiangqi
+npm run test:web
 ```
 
 项目关注的是**整盘零错误率**，而不只是单格准确率。正式评测将同时报告自动通过覆盖率、
@@ -172,6 +177,8 @@ cd apps\api
 - 当前基线来自 `yolo12138/Chinese_Chess_Recognition`；来源、版本和 SHA-256 记录于
   [`models/manifest.json`](models/manifest.json)。
 - 本仓库发布的是 RakuXQ 源码，不重新分发第三方模型权重。
+- 首页规则层固定使用 BSD-2-Clause `xiangqi.js`；版本、用途和完整许可见
+  [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)。棋盘视觉和交互由 RakuXQ 自己实现。
 
 ### 路线图
 
@@ -179,6 +186,7 @@ cd apps\api
 - [x] FEN、合法性检查、置信度门控与 Apple 快捷指令接口
 - [x] 局部棋盘可见性规则和同图视觉原型复核
 - [x] 匿名实时官网、72 小时交互流与历史累计统计
+- [x] FEN 驱动的首页交互局面研究器与合法走子规则
 - [ ] 授权盲测集、公开评测和自有模型训练流程
 - [ ] 独立占位检测器与更多实体棋字体覆盖
 - [ ] NNUE 引擎、最佳着法、候选变化和终端推送
@@ -196,7 +204,7 @@ screenshots, web boards, physical-board photos, perspective distortion, cropping
 noise, and partial occlusion. A later phase will add an NNUE engine for best moves, principal
 variations, and terminal notifications.
 
-> Current release: `v0.2.0-alpha.4`. The vision pipeline works on a growing set of real
+> Current release: `v0.2.1-alpha.1`. The vision pipeline works on a growing set of real
 > screenshots and physical-board photos, but the sample size is not yet sufficient to claim
 > near-perfect general accuracy. RakuXQ explicitly separates auto-accepted results from cases
 > that require review.
@@ -247,6 +255,8 @@ code into the first release. See [`docs/history.md`](docs/history.md) for the fu
   without exposing images or customer identifiers.
 - **Instant trial access**: the public developer guide can issue a one-time-display test key that
   expires after six minutes.
+- **Interactive position playground**: the homepage puzzle supports legal targets, moves,
+  captures, undo, reset, live FEN, and handoff to an external analysis page.
 
 ### Quick start
 
