@@ -62,6 +62,7 @@
 - 静态资源缓存修正：HTML 已引用带 `v=0.2.0a2` 的 CSS/JS/favicon，老访客刷新即可获得新版棋盘样式。完整记录见 `docs/deployments/20260917-191937-v0.2.0-alpha.2-cache.md`。
 - 官网交互流增加复制 FEN 与 xiangqiai.com 局面跳转；新增 `/developers` 教程和 6 分钟匿名临时 Key 签发入口，明文只显示一次并带多层限流保护。
 - v0.2.0-alpha.3 已发布到正式域名：健康检查为 `0.2.0a3`，服务保持 `active` 且 `NRestarts=0`；临时 Key 已完成真实图片鉴权调用。完整记录见 `docs/deployments/20260917-193624-v0.2.0-alpha.3.md`。
+- v0.2.0-alpha.4 已移除首页示例棋盘卡片的装饰性倾斜，并通过静态资源版本参数清除旧样式缓存；正式服务为 `active`、`NRestarts=0`。完整记录见 `docs/deployments/20260918-133442-v0.2.0-alpha.4.md`。
 
 ## 未完成
 
