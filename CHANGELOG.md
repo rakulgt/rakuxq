@@ -4,6 +4,18 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.2.0-alpha.4] - 2026-09-18
+
+### 中文
+
+- 移除首页示例棋盘卡片的装饰性旋转，使卡片、棋盘和页面网格保持水平端正。
+- 更新静态资源版本参数，避免浏览器继续使用旧版倾斜样式。
+
+### English
+
+- Removed the decorative rotation from the homepage position card so the card and board align cleanly with the page grid.
+- Updated static asset version parameters to prevent browsers from reusing the previous tilted style.
+
 ## [0.2.0-alpha.3] - 2026-09-17
 
 ### 中文
