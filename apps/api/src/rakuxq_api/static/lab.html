@@ -6,11 +6,11 @@
     <meta name="description" content="RakuXQ 棋局实验室：打开 FEN、合法走棋、打谱复盘，并通过可替换 NNUE 引擎获得最佳着法。" />
     <meta name="theme-color" content="#08111f" />
     <title>RakuXQ Lab · 棋局实验室</title>
-    <link rel="icon" href="/static/favicon.svg?v=0.4.0a1" type="image/svg+xml" />
-    <link rel="stylesheet" href="/static/styles.css?v=0.4.0a1" />
-    <link rel="stylesheet" href="/static/lab.css?v=0.4.0a1" />
+    <link rel="icon" href="/static/favicon.svg?v=0.4.1a1" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.4.1a1" />
+    <link rel="stylesheet" href="/static/lab.css?v=0.4.1a1" />
     <script src="/static/vendor/xiangqi.min.js?v=f9019ac" defer></script>
-    <script type="module" src="/static/lab.js?v=0.4.0a1"></script>
+    <script type="module" src="/static/lab.js?v=0.4.1a1"></script>
   </head>
   <body class="lab-body">
     <div class="ambient ambient-one"></div>
@@ -31,13 +31,27 @@
     <main class="lab-main">
       <section class="lab-intro">
         <div>
-          <span class="kicker">RAKUXQ LAB · v0.4 ALPHA</span>
+          <span class="kicker">RAKUXQ LAB · v0.4.1 ALPHA</span>
           <h1>研究一盘棋，<em>看清每一步</em></h1>
         </div>
         <p>输入标准 FEN，或者直接在棋盘上走子。局面、变化分支和分析证据都留在同一个工作面。</p>
       </section>
 
       <div id="lab-alert" class="lab-alert" role="alert" hidden></div>
+
+      <nav class="lab-toolbar" aria-label="棋局工具栏">
+        <button id="lab-new" class="primary" type="button" title="清空当前研究并回到标准开局"><span aria-hidden="true">＋</span> 新局</button>
+        <span class="toolbar-divider" aria-hidden="true"></span>
+        <button id="lab-first" type="button" title="回到本局初始局面"><span aria-hidden="true">|‹</span><span class="toolbar-label">开头</span></button>
+        <button id="lab-undo" type="button" title="上一步" disabled><span aria-hidden="true">‹</span><span class="toolbar-label">上一步</span></button>
+        <button id="lab-redo" type="button" title="下一步" disabled><span aria-hidden="true">›</span><span class="toolbar-label">下一步</span></button>
+        <button id="lab-last" type="button" title="沿当前分支走到末尾"><span aria-hidden="true">›|</span><span class="toolbar-label">末尾</span></button>
+        <span class="toolbar-divider" aria-hidden="true"></span>
+        <button id="lab-flip" type="button" title="交换棋盘视角"><span aria-hidden="true">⇅</span> 翻转</button>
+        <button id="lab-import" type="button" title="导入 FEN、ICCS 或 RakuXQ 棋谱"><span aria-hidden="true">⇥</span> 导入</button>
+        <button id="lab-export" type="button" title="复制、下载或分享当前研究"><span aria-hidden="true">⇧</span> 保存 / 分享</button>
+        <button id="lab-edit" type="button" title="自由摆放棋子并设定行棋方"><span aria-hidden="true">✎</span> 编辑局面</button>
+      </nav>
 
       <section class="lab-workspace" aria-label="RakuXQ 棋局研究工作区">
         <article class="lab-board-panel">
@@ -82,13 +96,26 @@
             <span id="lab-feedback-message" aria-live="polite">所有落点都经过规则引擎验证</span>
           </div>
 
-          <div class="lab-controls" aria-label="棋盘操作">
-            <button id="lab-undo" type="button" disabled>悔棋</button>
-            <button id="lab-redo" type="button" disabled>重做</button>
-            <button id="lab-flip" type="button">翻转棋盘</button>
-            <button id="lab-reset" type="button">重置</button>
-            <button id="lab-import" type="button">导入</button>
-            <button id="lab-export" type="button">导出</button>
+          <div id="position-editor" class="position-editor" hidden>
+            <div class="editor-heading">
+              <div><strong>编辑局面</strong><span>先选棋子，再点击棋盘交叉点</span></div>
+              <label>行棋方
+                <select id="editor-turn"><option value="w">红方</option><option value="b">黑方</option></select>
+              </label>
+            </div>
+            <div class="piece-palette" aria-label="摆子工具">
+              <span>红</span>
+              <button type="button" data-editor-piece="K" title="红帅">帅</button><button type="button" data-editor-piece="A" title="红仕">仕</button><button type="button" data-editor-piece="B" title="红相">相</button><button type="button" data-editor-piece="N" title="红马">马</button><button type="button" data-editor-piece="R" title="红车">车</button><button type="button" data-editor-piece="C" title="红炮">炮</button><button type="button" data-editor-piece="P" title="红兵">兵</button>
+              <span>黑</span>
+              <button type="button" data-editor-piece="k" title="黑将">将</button><button type="button" data-editor-piece="a" title="黑士">士</button><button type="button" data-editor-piece="b" title="黑象">象</button><button type="button" data-editor-piece="n" title="黑马">马</button><button type="button" data-editor-piece="r" title="黑车">车</button><button type="button" data-editor-piece="c" title="黑炮">炮</button><button type="button" data-editor-piece="p" title="黑卒">卒</button>
+              <button type="button" data-editor-piece="" class="eraser" title="移除棋子">橡皮</button>
+            </div>
+            <div class="editor-actions">
+              <button id="editor-clear" type="button">清空棋盘</button>
+              <span id="editor-error" role="alert"></span>
+              <button id="editor-cancel" type="button">取消</button>
+              <button id="editor-apply" class="primary" type="button">从此局面开始</button>
+            </div>
           </div>
 
           <div class="lab-fen-card">
@@ -169,10 +196,23 @@
     <dialog id="import-dialog" class="lab-dialog">
       <form method="dialog">
         <div class="dialog-heading"><div><span>IMPORT</span><h2>导入局面或棋谱</h2></div><button value="cancel" aria-label="关闭">×</button></div>
-        <p>支持两/六字段 FEN、从标准开局开始的 ICCS 着法序列，以及 RakuXQ JSON。</p>
+        <p>支持两/六字段 FEN、从标准开局开始的 ICCS 着法序列，以及 RakuXQ JSON/TXT 文件。</p>
+        <label class="import-file">打开本地棋谱文件<input id="import-file" type="file" accept=".json,.txt,.fen,application/json,text/plain" /></label>
         <textarea id="import-value" rows="10" spellcheck="false" placeholder="粘贴 FEN、e2e4 h9g7… 或 RakuXQ JSON"></textarea>
         <div id="import-error" class="dialog-error" hidden></div>
         <div class="dialog-actions"><button value="cancel">取消</button><button id="import-confirm" value="default" class="primary">导入</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="new-game-dialog" class="lab-dialog new-game-dialog">
+      <form method="dialog">
+        <div class="dialog-heading"><div><span>NEW GAME</span><h2>开始新的研究</h2></div><button value="cancel" aria-label="关闭">×</button></div>
+        <p>新局会结束当前本地研究。需要保留时，请先使用“保存 / 分享”导出。</p>
+        <div class="new-game-grid">
+          <button type="button" data-new-fen="start"><strong>标准开局</strong><span>完整三十二子，红方先行</span></button>
+          <button type="button" data-new-fen="classic"><strong>经典残局</strong><span>双炮对单马练习局面</span></button>
+          <button id="new-game-edit" type="button"><strong>空白摆子</strong><span>从空棋盘自由编辑局面</span></button>
+        </div>
       </form>
     </dialog>
 

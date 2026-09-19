@@ -125,6 +125,9 @@ def test_lab_and_fixed_prefix_fen_url_are_publicly_accessible():
     assert direct.status_code == 200
     assert "RakuXQ Lab" in lab.text
     assert 'id="lab-board"' in lab.text
+    assert 'id="lab-new"' in lab.text
+    assert 'id="position-editor"' in lab.text
+    assert 'id="import-file"' in lab.text
     assert 'id="red-assist"' in lab.text
     assert "/static/lab-core.js" in client.get("/static/lab.js").text
 

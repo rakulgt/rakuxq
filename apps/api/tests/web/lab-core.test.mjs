@@ -9,6 +9,7 @@ import {
   currentLine,
   fenFromLocation,
   normalizePublicFen,
+  positionToFen,
   toEngineFen,
   toPublicFen,
   validateImportedTree,
@@ -39,6 +40,24 @@ test("parses canonical, query, and competitor-compatible hash URLs", () => {
 test("rejects malformed board widths and missing kings", () => {
   assert.throws(() => normalizePublicFen("9/9/9/9/9/9/9/9/9/9 w"), /红帅和黑将/);
   assert.throws(() => normalizePublicFen("3aka3/9/9/9/9/9/9/9/9/3K6 w"), /不是九路/);
+});
+
+test("builds a validated FEN from the interactive position editor", () => {
+  const position = Array.from({ length: 10 }, () => Array(9).fill(null));
+  position[0][4] = "k";
+  position[9][4] = "K";
+  position[7][4] = "C";
+  assert.equal(positionToFen(position, "b"), "4k4/9/9/9/9/9/9/4C4/9/4K4 b");
+  position[7][4] = null;
+  assert.throws(() => positionToFen(position, "w"), /将帅不能照面/);
+  position[7][4] = "C";
+  position[9][4] = null;
+  position[9][2] = "K";
+  assert.throws(() => positionToFen(position, "w"), /红帅必须位于九宫内/);
+  position[9][2] = null;
+  position[9][4] = "K";
+  position[0][4] = null;
+  assert.throws(() => positionToFen(position, "w"), /红帅和黑将/);
 });
 
 test("keeps alternate continuations in a variation tree", () => {

@@ -4,6 +4,29 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.4.1-alpha.1] - 2026-09-19
+
+### 中文
+
+- 将 Lab 改造成适合常见 `1280×720` 桌面的一屏研究工作区，完整棋盘不再被首屏裁掉。
+- 增加常驻高频工具栏：新局、开头、上一步、下一步、末尾、翻转、导入、保存/分享和编辑局面。
+- “新局”现在真实回到三十二子标准开局；经典残局与空白摆子作为独立入口，不再与回到当前研究根节点混淆。
+- 增加完整自由摆子流程：红黑十四种棋子、橡皮、清空、行棋方设置、将帅数量、九宫位置和照面校验，以及从编辑结果建立新 FEN。
+- 导入对话框新增本地 JSON/TXT/FEN 文件读取；文件仍只在浏览器内处理，不上传服务器。
+- 增加 Home/End 与左右方向键分支导航，并保留全部原有变化树、复制、JSON、PNG 和外部研究能力。
+
+### English
+
+- Reworked Lab into a compact single-screen workspace where a complete board fits a common
+  `1280×720` desktop viewport.
+- Added a persistent toolbar for new game, branch start/previous/next/end, flip, import,
+  save/share, and position editing.
+- A true new game now restores the standard 32-piece start; the classic puzzle and blank setup
+  are separate, explicit actions.
+- Added a real position editor with all 14 piece types, erasing, clearing, side-to-move selection,
+  king count/palace/facing validation, and creation of a fresh FEN study.
+- Added local JSON/TXT/FEN file import without uploading the selected file to the server.
+
 ## [0.4.0-alpha.1] - 2026-09-19
 
 ### 中文

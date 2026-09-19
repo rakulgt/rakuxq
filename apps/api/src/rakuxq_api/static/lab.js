@@ -7,10 +7,11 @@ import {
   currentLine,
   fenFromLocation,
   normalizePublicFen,
+  positionToFen,
   toEngineFen,
   toPublicFen,
   validateImportedTree,
-} from "/static/lab-core.js?v=0.4.0a1";
+} from "/static/lab-core.js?v=0.4.1a1";
 
 const svgNamespace = "http://www.w3.org/2000/svg";
 const files = "abcdefghi";
@@ -44,6 +45,8 @@ let analysisController = null;
 let analysisGeneration = 0;
 let engineAvailable = false;
 let autoTimer = null;
+let editorPosition = null;
+let editorSelectedPiece = "P";
 
 function showAlert(message) {
   alertBox.textContent = message;
@@ -92,9 +95,33 @@ function currentAssistMode() {
   return game.turn() === "r" ? byId("red-assist").value : byId("black-assist").value;
 }
 
+function pieceFromSymbol(symbol) {
+  if (!symbol) return null;
+  return { color: symbol === symbol.toUpperCase() ? "r" : "b", type: symbol.toLowerCase() };
+}
+
+function visibleBoard() {
+  if (!editorPosition) return game.board();
+  return editorPosition.map((rank) => rank.map(pieceFromSymbol));
+}
+
+function positionFromGame() {
+  return game.board().map((rank) => rank.map((piece) => {
+    if (!piece) return null;
+    return piece.color === "r" ? piece.type.toUpperCase() : piece.type.toLowerCase();
+  }));
+}
+
+function editorPieceAt(square) {
+  if (!editorPosition) return game.get(square);
+  const row = 9 - Number(square[1]);
+  const file = files.indexOf(square[0]);
+  return pieceFromSymbol(editorPosition[row][file]);
+}
+
 function renderPieces() {
   const elements = [];
-  game.board().forEach((row, rowIndex) => {
+  visibleBoard().forEach((row, rowIndex) => {
     row.forEach((piece, fileIndex) => {
       if (!piece) return;
       const square = `${files[fileIndex]}${9 - rowIndex}`;
@@ -115,6 +142,10 @@ function renderPieces() {
 
 function renderHighlights() {
   const elements = [];
+  if (editorPosition) {
+    highlightsLayer.replaceChildren();
+    return;
+  }
   const lastMove = node().move;
   if (lastMove) {
     [lastMove.from, lastMove.to].forEach((square) => {
@@ -155,6 +186,10 @@ function renderHighlights() {
 }
 
 function describeState() {
+  if (editorPosition) {
+    turnOutput.textContent = "摆子中";
+    return "编辑局面";
+  }
   const side = game.turn() === "r" ? "红方" : "黑方";
   turnOutput.textContent = `${side}走`;
   if (game.in_checkmate()) return `${side}被将死`;
@@ -165,6 +200,15 @@ function describeState() {
 }
 
 function renderAnalysis() {
+  if (editorPosition) {
+    byId("analysis-score").textContent = "—";
+    byId("analysis-state").textContent = "完成摆子后可分析局面";
+    byId("analysis-best").textContent = "正在编辑";
+    byId("analysis-pv").textContent = "应用局面后会建立一份新的研究棋谱";
+    ["depth", "nodes", "time", "engine"].forEach((key) => { byId(`analysis-${key}`).textContent = "—"; });
+    analysisArrow = null;
+    return;
+  }
   const analysis = node().analysis;
   if (!analysis) {
     byId("analysis-score").textContent = "—";
@@ -246,7 +290,7 @@ function buildHitareas() {
         r: "46",
         tabindex: "0",
         role: "button",
-        "aria-label": pieceDescription(game.get(square), square),
+        "aria-label": pieceDescription(editorPieceAt(square), square),
       });
       hitarea.addEventListener("click", () => selectSquare(square));
       hitarea.addEventListener("keydown", (event) => {
@@ -271,10 +315,12 @@ function render() {
   const fen = currentFen();
   fenOutput.textContent = fen;
   positionState.textContent = describeState();
-  feedbackTitle.textContent = selectedSquare ? `已选择 ${selectedSquare}` : "选择棋子开始走棋";
+  feedbackTitle.textContent = editorPosition ? "自由摆放棋子" : (selectedSquare ? `已选择 ${selectedSquare}` : "选择棋子开始走棋");
   feedbackMessage.textContent = transientMessage;
-  undoButton.disabled = !node().parent_id;
-  redoButton.disabled = node().children.length === 0;
+  undoButton.disabled = Boolean(editorPosition) || !node().parent_id;
+  redoButton.disabled = Boolean(editorPosition) || node().children.length === 0;
+  byId("lab-first").disabled = Boolean(editorPosition) || tree.current_node_id === "root";
+  byId("lab-last").disabled = Boolean(editorPosition) || node().children.length === 0;
   byId("lab-external-link").href = `https://xiangqiai.com/#/${fen.replace(" ", "%20")}`;
 }
 
@@ -329,6 +375,15 @@ function makeMove(from, to) {
 }
 
 function selectSquare(square) {
+  if (editorPosition) {
+    const row = 9 - Number(square[1]);
+    const file = files.indexOf(square[0]);
+    editorPosition[row][file] = editorSelectedPiece || null;
+    byId("editor-error").textContent = "";
+    transientMessage = editorSelectedPiece ? `已在 ${square} 放置${pieceDescription(pieceFromSymbol(editorSelectedPiece), square).replace(`${square} `, "")}` : `已清空 ${square}`;
+    render();
+    return;
+  }
   const piece = game.get(square);
   if (selectedSquare === square) {
     selectedSquare = null;
@@ -501,6 +556,73 @@ function resetTree(fen) {
   render();
 }
 
+function preferredChildId(item = node()) {
+  return item.preferred_child_id || item.children[0] || null;
+}
+
+function preferredTailId() {
+  let item = node();
+  const visited = new Set();
+  while (item && !visited.has(item.id)) {
+    visited.add(item.id);
+    const childId = preferredChildId(item);
+    if (!childId || !tree.nodes[childId]) return item.id;
+    item = tree.nodes[childId];
+  }
+  return tree.current_node_id;
+}
+
+function leaveEditor() {
+  editorPosition = null;
+  selectedSquare = null;
+  legalMoves = [];
+  byId("position-editor").hidden = true;
+  byId("lab-edit").classList.remove("active");
+  byId("editor-error").textContent = "";
+}
+
+function updateEditorSelection() {
+  document.querySelectorAll("[data-editor-piece]").forEach((button) => {
+    button.classList.toggle("selected", button.dataset.editorPiece === editorSelectedPiece);
+  });
+}
+
+function enterEditor({ empty = false } = {}) {
+  clearPendingAnalysis();
+  editorPosition = empty ? Array.from({ length: 10 }, () => Array(9).fill(null)) : positionFromGame();
+  editorSelectedPiece = empty ? "K" : "P";
+  selectedSquare = null;
+  legalMoves = [];
+  analysisArrow = null;
+  byId("editor-turn").value = game.turn() === "r" ? "w" : "b";
+  byId("position-editor").hidden = false;
+  byId("lab-edit").classList.add("active");
+  updateEditorSelection();
+  transientMessage = empty ? "空棋盘已就绪；请至少摆放双方将帅" : "已进入摆子模式；修改不会生效，直到点击“从此局面开始”";
+  render();
+}
+
+function startNewGame(fen, message) {
+  leaveEditor();
+  transientMessage = message;
+  resetTree(fen);
+  showAlert("");
+  if (window.location.pathname !== "/lab") history.replaceState(null, "", "/lab");
+}
+
+function applyEditedPosition() {
+  try {
+    const fen = positionToFen(editorPosition, byId("editor-turn").value);
+    leaveEditor();
+    transientMessage = "已从编辑后的局面建立新研究";
+    resetTree(fen);
+    showAlert("");
+    if (window.location.pathname !== "/lab") history.replaceState(null, "", "/lab");
+  } catch (error) {
+    byId("editor-error").textContent = error.message;
+  }
+}
+
 function importIccs(value) {
   const tokens = value.trim().split(/[\s,;]+/).filter(Boolean);
   if (!tokens.length || tokens.some((token) => !/^[a-i][0-9][a-i][0-9]$/i.test(token))) {
@@ -533,12 +655,14 @@ function importValue(value) {
       importIccs(raw);
     }
   }
+  leaveEditor();
   selectedSquare = null;
   legalMoves = [];
   analysisArrow = node().analysis?.best_move?.iccs || null;
   transientMessage = "导入完成";
   persist();
   render();
+  history.replaceState(null, "", canonicalFenPath(currentFen()));
 }
 
 function download(name, type, contents) {
@@ -610,24 +734,64 @@ function initializeTree() {
 
 function bindEvents() {
   document.querySelectorAll("[data-tab]").forEach((button) => button.addEventListener("click", () => switchTab(button.dataset.tab)));
+  byId("lab-new").addEventListener("click", () => byId("new-game-dialog").showModal());
+  byId("lab-first").addEventListener("click", () => loadNode("root"));
   undoButton.addEventListener("click", () => {
     if (!node().parent_id) return;
     tree.nodes[node().parent_id].preferred_child_id = node().id;
     loadNode(node().parent_id);
   });
   redoButton.addEventListener("click", () => {
-    const target = node().preferred_child_id || node().children[0];
+    const target = preferredChildId();
     if (target) loadNode(target);
   });
+  byId("lab-last").addEventListener("click", () => loadNode(preferredTailId()));
   byId("moves-root").addEventListener("click", () => loadNode("root"));
   byId("lab-flip").addEventListener("click", () => { flipped = !flipped; transientMessage = flipped ? "已切换为黑方视角" : "已切换为红方视角"; render(); });
-  byId("lab-reset").addEventListener("click", () => { resetTree(tree.initial_fen); transientMessage = "已恢复本局初始局面"; render(); });
+  byId("lab-edit").addEventListener("click", () => { if (editorPosition) { leaveEditor(); transientMessage = "已取消局面编辑"; render(); } else enterEditor(); });
+  document.querySelectorAll("[data-editor-piece]").forEach((button) => button.addEventListener("click", () => {
+    editorSelectedPiece = button.dataset.editorPiece;
+    updateEditorSelection();
+  }));
+  byId("editor-clear").addEventListener("click", () => {
+    editorPosition = Array.from({ length: 10 }, () => Array(9).fill(null));
+    byId("editor-error").textContent = "";
+    transientMessage = "棋盘已清空；请至少摆放双方将帅";
+    render();
+  });
+  byId("editor-cancel").addEventListener("click", () => { leaveEditor(); transientMessage = "已取消局面编辑"; render(); });
+  byId("editor-apply").addEventListener("click", applyEditedPosition);
+  document.querySelectorAll("[data-new-fen]").forEach((button) => button.addEventListener("click", () => {
+    const standard = button.dataset.newFen === "start";
+    byId("new-game-dialog").close();
+    startNewGame(standard ? START_FEN : CLASSIC_FEN, standard ? "标准新局已开始，红方先行" : "经典残局已载入");
+  }));
+  byId("new-game-edit").addEventListener("click", () => {
+    byId("new-game-dialog").close();
+    enterEditor({ empty: true });
+  });
   byId("lab-copy-fen").addEventListener("click", (event) => flashCopy(event.currentTarget, currentFen()));
   byId("lab-copy-link").addEventListener("click", (event) => flashCopy(event.currentTarget, `${location.origin}${canonicalFenPath(currentFen())}`));
   byId("analysis-run").addEventListener("click", () => analyzeCurrent({ manual: true }));
   ["red-assist", "black-assist", "engine-time"].forEach((id) => byId(id).addEventListener("change", () => { render(); maybeAssist(); }));
   byId("lab-import").addEventListener("click", () => { byId("import-error").hidden = true; byId("import-dialog").showModal(); });
   byId("lab-export").addEventListener("click", () => byId("export-dialog").showModal());
+  byId("import-file").addEventListener("change", async (event) => {
+    const [file] = event.currentTarget.files;
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      byId("import-error").textContent = "棋谱文件不能超过 2 MiB";
+      byId("import-error").hidden = false;
+      return;
+    }
+    try {
+      byId("import-value").value = await file.text();
+      byId("import-error").hidden = true;
+    } catch {
+      byId("import-error").textContent = "无法读取这个棋谱文件";
+      byId("import-error").hidden = false;
+    }
+  });
   byId("import-confirm").addEventListener("click", (event) => {
     event.preventDefault();
     try {
@@ -644,9 +808,18 @@ function bindEvents() {
   byId("export-iccs").addEventListener("click", (event) => flashCopy(event.currentTarget, currentLine(tree).slice(1).map((item) => item.move.iccs).join(" ")));
   byId("export-json").addEventListener("click", exportJson);
   byId("export-image").addEventListener("click", exportBoardImage);
+  document.addEventListener("keydown", (event) => {
+    const inFormControl = event.target instanceof Element && event.target.closest("input, textarea, select");
+    if (document.querySelector("dialog[open]") || inFormControl) return;
+    if (event.key === "ArrowLeft" && node().parent_id && !editorPosition) loadNode(node().parent_id);
+    else if (event.key === "ArrowRight" && preferredChildId() && !editorPosition) loadNode(preferredChildId());
+    else if (event.key === "Home" && !editorPosition) { event.preventDefault(); loadNode("root"); }
+    else if (event.key === "End" && !editorPosition) { event.preventDefault(); loadNode(preferredTailId()); }
+    else if (event.key.toLowerCase() === "f") { flipped = !flipped; transientMessage = flipped ? "已切换为黑方视角" : "已切换为红方视角"; render(); }
+  });
 }
 
-  if (typeof Xiangqi === "undefined") {
+if (typeof Xiangqi === "undefined") {
   showAlert("象棋规则组件加载失败，请刷新页面重试。");
 } else {
   initializeTree();

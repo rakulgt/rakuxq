@@ -71,6 +71,49 @@ export function canonicalFenPath(value) {
   return `/fen/${placement}%20${turn}`;
 }
 
+export function positionToFen(position, turn = "w") {
+  if (!Array.isArray(position) || position.length !== 10) {
+    throw new Error("编辑局面必须包含十行");
+  }
+  let redKing = null;
+  let blackKing = null;
+  const ranks = position.map((rank, rankIndex) => {
+    if (!Array.isArray(rank) || rank.length !== 9) {
+      throw new Error(`编辑局面第 ${rankIndex + 1} 行必须包含九个交叉点`);
+    }
+    let empty = 0;
+    let encoded = "";
+    rank.forEach((symbol, fileIndex) => {
+      if (symbol == null || symbol === "") {
+        empty += 1;
+        return;
+      }
+      if (!pieces.has(symbol)) throw new Error(`编辑局面包含不支持的棋子 ${symbol}`);
+      if (symbol === "K") redKing = [rankIndex, fileIndex];
+      if (symbol === "k") blackKing = [rankIndex, fileIndex];
+      if (empty) encoded += String(empty);
+      empty = 0;
+      encoded += symbol;
+    });
+    if (empty) encoded += String(empty);
+    return encoded;
+  });
+  const fen = normalizePublicFen(`${ranks.join("/")} ${turn}`);
+  if (redKing[0] < 7 || redKing[0] > 9 || redKing[1] < 3 || redKing[1] > 5) {
+    throw new Error("红帅必须位于九宫内");
+  }
+  if (blackKing[0] < 0 || blackKing[0] > 2 || blackKing[1] < 3 || blackKing[1] > 5) {
+    throw new Error("黑将必须位于九宫内");
+  }
+  if (redKing[1] === blackKing[1]) {
+    const start = Math.min(redKing[0], blackKing[0]) + 1;
+    const end = Math.max(redKing[0], blackKing[0]);
+    const hasBlocker = position.slice(start, end).some((rank) => rank[redKing[1]]);
+    if (!hasBlocker) throw new Error("将帅不能照面，请在同一路之间放置棋子");
+  }
+  return fen;
+}
+
 export function fenFromLocation(locationLike) {
   const pathname = locationLike.pathname || "/";
   if (pathname.startsWith("/fen/")) {
