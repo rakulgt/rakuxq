@@ -57,7 +57,7 @@
 .analysis-meta dt { color: var(--muted); font-size: 10px; }
 .analysis-meta dd { margin: 3px 0 0; color: #e0e8f1; font-size: 12px; overflow-wrap: anywhere; }
 .lab-primary-action { width: 100%; min-height: 46px; border: 0; border-radius: 9px; background: var(--cyan); color: #041713; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
-.lab-primary-action:disabled { opacity: .45; cursor: wait; }
+.lab-primary-action:disabled { opacity: .45; cursor: not-allowed; }
 .lab-help { color: var(--muted); font-size: 11px; line-height: 1.7; }
 .panel-heading { display: flex; align-items: start; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
 .panel-heading h2 { margin: 3px 0 0; font-size: 22px; }

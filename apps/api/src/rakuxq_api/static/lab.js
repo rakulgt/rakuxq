@@ -392,7 +392,21 @@ function friendlyEngineError(status, payload) {
   return payload?.detail?.message || payload?.detail || `引擎请求失败（HTTP ${status}）`;
 }
 
+function updateEngineControls() {
+  const button = byId("analysis-run");
+  button.disabled = !engineAvailable;
+  button.textContent = engineAvailable ? "分析当前局面" : "托管引擎尚未开放";
+  ["red-assist", "black-assist", "engine-time", "engine-key"].forEach((id) => {
+    byId(id).disabled = !engineAvailable;
+  });
+}
+
 async function analyzeCurrent({ manual = false } = {}) {
+  if (!engineAvailable) {
+    transientMessage = "当前服务未配置解题引擎，棋盘研究、导入和导出仍可正常使用。";
+    render();
+    return;
+  }
   if (game.in_checkmate() || game.in_draw() || game.in_stalemate()) return;
   clearPendingAnalysis();
   const generation = analysisGeneration;
@@ -433,15 +447,14 @@ async function analyzeCurrent({ manual = false } = {}) {
     render();
   } finally {
     if (generation === analysisGeneration) {
-      button.disabled = false;
-      button.textContent = "分析当前局面";
+      updateEngineControls();
     }
   }
 }
 
 function maybeAssist() {
   const mode = currentAssistMode();
-  if (mode !== "off") analyzeCurrent();
+  if (engineAvailable && mode !== "off") analyzeCurrent();
 }
 
 async function checkEngine() {
@@ -453,10 +466,14 @@ async function checkEngine() {
     pill.className = `engine-pill ${engineAvailable ? "ready" : "unavailable"}`;
     pill.textContent = engineAvailable ? "引擎就绪" : "仅棋盘模式";
     if (engineAvailable && health.engine?.version) pill.title = `${health.engine.version} · ${health.engine.network_sha256 || ""}`;
+    updateEngineControls();
     renderAnalysis();
   } catch {
+    engineAvailable = false;
     pill.className = "engine-pill unavailable";
     pill.textContent = "引擎状态未知";
+    updateEngineControls();
+    renderAnalysis();
   }
 }
 
