@@ -1,3 +1,8 @@
+if (window.location.hash.startsWith("#/")) {
+  const encodedFen = window.location.hash.slice(2);
+  window.location.replace(`/fen/${encodedFen}`);
+}
+
 const number = new Intl.NumberFormat("zh-CN");
 const dateTime = new Intl.DateTimeFormat("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
 

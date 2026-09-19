@@ -4,6 +4,18 @@
 `POST /v1/recognitions`，仅在 `status` 为 `accepted` 时消费 `fen` 字段。实验性引擎接口
 可在配置了本地引擎的自托管环境使用；官方托管服务尚未部署受限 NNUE 权重。
 
+## 标准 FEN 网页入口
+
+任何两字段或六字段中国象棋 FEN 都可以直接拼接到固定前缀，打开 RakuXQ Lab：
+
+```text
+https://xq.rakubank.com/fen/3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4%20w
+```
+
+地址只需要把 FEN 中的空格编码为 `%20`；浏览器与 Apple 快捷指令通常会自动完成。网页也兼容
+`/#/<FEN>` 和 `/lab?fen=<FEN>`。两字段输入会在需要调用引擎时规范化为六字段形式，API Key
+必须继续通过 `Authorization` 或 `X-API-Key` 请求头传递，禁止加入 URL。
+
 ## 鉴权与有效期
 
 官方托管服务的识别接口要求每位客户使用独立 API Key，二选一传入：

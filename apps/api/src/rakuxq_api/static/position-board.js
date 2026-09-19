@@ -130,7 +130,7 @@
     fenOutput.textContent = publicFen;
     stateOutput.textContent = describeState();
     messageOutput.textContent = transientMessage;
-    openLink.href = `https://xiangqiai.com/#/${publicFen.replace(" ", "%20")}`;
+    openLink.href = `/fen/${publicFen.replace(" ", "%20")}`;
     undoButton.disabled = game.history().length === 0;
   }
 

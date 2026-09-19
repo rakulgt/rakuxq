@@ -4,6 +4,35 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.4.0-alpha.1] - 2026-09-19
+
+### 中文
+
+- 新增公开 `/lab` 棋局实验室，以及可以直接拼接两字段或六字段标准 FEN 的
+  `/fen/<FEN>` 固定入口。
+- 兼容 `/#/<FEN>` 与 `/lab?fen=<FEN>`，无效局面显示可理解的错误而不是空白或 404。
+- 增加响应式原生棋盘、红黑视角翻转、悔棋、重做、回合时间轴和不会因改走而丢失原线的变化树。
+- 红方与黑方可分别选择关闭、只评分、最佳着法提示或自动代走；每个节点保留评分、PV、深度、
+  节点、耗时、引擎版本和 NNUE SHA-256。
+- 支持 FEN、ICCS 和 RakuXQ JSON 导入，支持复制 FEN/研究链接/ICCS、下载完整 JSON 和 PNG。
+- 棋谱自动保存在浏览器本地；API Key 只存在于当前页面内存，不写入 URL、棋谱或永久存储。
+- 官网入口、示例棋盘和缓存版本已指向 RakuXQ Lab；现有图片识别和 Apple 快捷指令 API 保持兼容。
+
+### English
+
+- Added the public `/lab` workspace and a fixed `/fen/<FEN>` route that accepts appended two-field
+  or six-field standard Xiangqi FEN.
+- Accepted `/#/<FEN>` and `/lab?fen=<FEN>` compatibility forms with understandable invalid-position
+  errors instead of blank pages or 404 responses.
+- Added a responsive native board, board flipping, undo/redo, a move timeline, and a
+  non-destructive variation tree.
+- Each side can independently disable assistance, request score-only or best-move hints, or let the
+  engine move automatically; reproducibility metadata remains attached to each node.
+- Added FEN, ICCS, and RakuXQ JSON import plus FEN/link/ICCS copy, complete JSON download, and PNG
+  board export.
+- Sessions recover from browser-local storage while API keys remain memory-only and never enter
+  URLs, game records, or persistent browser storage.
+
 ## [0.3.0-alpha.1] - 2026-09-18
 
 ### 中文

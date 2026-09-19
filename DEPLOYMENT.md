@@ -10,6 +10,8 @@
 - systemd：`rakuxq-api.service`
 - 回环端口：`127.0.0.1:8040`
 - 公网入口：`https://xq.rakubank.com/v1/recognitions`
+- 棋局实验室：`https://xq.rakubank.com/lab`
+- 标准 FEN 入口：`https://xq.rakubank.com/fen/<standard-fen>`
 - 健康检查：`https://xq.rakubank.com/healthz`
 - 密钥库：`/opt/raku/secrets/rakuxq/api-keys.sqlite3`
 - 临时 Key 来源指纹秘密：`/opt/raku/secrets/rakuxq/trial-key-pepper`

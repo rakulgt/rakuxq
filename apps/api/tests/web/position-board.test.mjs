@@ -28,11 +28,11 @@ test("move, FEN generation, and undo stay consistent", () => {
   assert.equal(game.fen(), before);
 });
 
-test("public FEN deep link preserves the encoded side separator", () => {
-  const url = `https://xiangqiai.com/#/${publicFen.replace(" ", "%20")}`;
+test("RakuXQ FEN deep link preserves the encoded side separator", () => {
+  const url = `https://xq.rakubank.com/fen/${publicFen.replace(" ", "%20")}`;
 
   assert.equal(
     url,
-    "https://xiangqiai.com/#/3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4%20w",
+    "https://xq.rakubank.com/fen/3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4%20w",
   );
 });

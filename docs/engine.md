@@ -68,6 +68,19 @@ curl -X POST http://127.0.0.1:8000/v1/solve \
 
 The engine is never invoked when recognition returns `review_required` or `rejected`.
 
+## Browser lab
+
+Open `http://127.0.0.1:8000/lab` after starting the configured service. A standard position can be
+opened without any separate import step by appending its FEN to `/fen/`:
+
+```text
+http://127.0.0.1:8000/fen/3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4%20w
+```
+
+Red and black assistance are independent: off, score only, best-move hint, or automatic play.
+Analysis metadata is stored with the corresponding local variation-tree node. A key entered in the
+lab is kept in page memory only and is never exported or written to browser-local storage.
+
 ## Stable score semantics
 
 All scores use a fixed **red perspective**, independent of the side to move:

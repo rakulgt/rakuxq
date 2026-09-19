@@ -6,9 +6,9 @@
     <meta name="description" content="RakuXQ 中国象棋图片转 FEN API 开发者教程与 6 分钟临时测试 Key。" />
     <meta name="theme-color" content="#08111f" />
     <title>RakuXQ 开发者文档 · 图片转 FEN API</title>
-    <link rel="icon" href="/static/favicon.svg?v=0.2.1a1" type="image/svg+xml" />
-    <link rel="stylesheet" href="/static/styles.css?v=0.2.1a1" />
-    <script src="/static/developers.js?v=0.2.1a1" defer></script>
+    <link rel="icon" href="/static/favicon.svg?v=0.4.0a1" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.4.0a1" />
+    <script src="/static/developers.js?v=0.4.0a1" defer></script>
   </head>
   <body>
     <div class="ambient ambient-one"></div>
@@ -17,7 +17,7 @@
         <span class="brand-mark" aria-hidden="true">将</span>
         <span><strong>RakuXQ</strong><small>DEVELOPER GUIDE</small></span>
       </a>
-      <nav aria-label="主要导航"><a href="/">返回首页</a><a href="/docs">OpenAPI</a><a class="nav-github" href="https://github.com/rakulgt/rakuxq" rel="noreferrer">GitHub ↗</a></nav>
+      <nav aria-label="主要导航"><a href="/">返回首页</a><a href="/lab">棋局实验室</a><a href="/docs">OpenAPI</a><a class="nav-github" href="https://github.com/rakulgt/rakuxq" rel="noreferrer">GitHub ↗</a></nav>
     </header>
 
     <main class="docs-main">
@@ -48,6 +48,7 @@
             <div><dt>side_to_move</dt><dd><code>red</code> / <code>black</code> / <code>unknown</code></dd></div>
             <div><dt>orientation</dt><dd>通常使用 <code>auto</code></dd></div>
           </dl>
+          <p>取得 <code>fen</code> 后可直接拼接到 <code>https://xq.rakubank.com/fen/</code>，打开原生棋局实验室；只需让浏览器把空格编码为 <code>%20</code>。</p>
         </article>
       </section>
 

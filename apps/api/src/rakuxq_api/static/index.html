@@ -6,11 +6,11 @@
     <meta name="description" content="RakuXQ 将真实世界中的中国象棋图片转换为可计算的 FEN，并走向 NNUE 最佳着法。" />
     <meta name="theme-color" content="#08111f" />
     <title>RakuXQ · 让每一个象棋局面进入计算</title>
-    <link rel="icon" href="/static/favicon.svg?v=0.2.1a1" type="image/svg+xml" />
-    <link rel="stylesheet" href="/static/styles.css?v=0.2.1a1" />
+    <link rel="icon" href="/static/favicon.svg?v=0.4.0a1" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.4.0a1" />
     <script src="/static/vendor/xiangqi.min.js?v=f9019ac" defer></script>
-    <script src="/static/position-board.js?v=0.2.1a1" defer></script>
-    <script src="/static/app.js?v=0.2.1a1" defer></script>
+    <script src="/static/position-board.js?v=0.4.0a1" defer></script>
+    <script src="/static/app.js?v=0.4.0a1" defer></script>
   </head>
   <body>
     <div class="ambient ambient-one"></div>
@@ -21,6 +21,7 @@
         <span><strong>RakuXQ</strong><small>罗酷象棋智能</small></span>
       </a>
       <nav aria-label="主要导航">
+        <a href="/lab">棋局实验室</a>
         <a href="#live">实时记录</a>
         <a href="/developers">开发文档</a>
         <a href="#story">项目来历</a>
@@ -36,7 +37,8 @@
           <h1>让现实中的每一个<br /><em>象棋局面</em>进入计算</h1>
           <p>RakuXQ 把截图、视频画面和真实棋盘照片转换为简洁 FEN。今天解决可靠识别，明天连接 NNUE，给出最佳着法。</p>
           <div class="hero-actions">
-            <a id="shortcut-button" class="button primary disabled" aria-disabled="true">Apple 快捷指令 · 即将开放</a>
+            <a class="button primary" href="/lab">打开棋局实验室</a>
+            <a id="shortcut-button" class="button secondary disabled" aria-disabled="true">Apple 快捷指令 · 即将开放</a>
             <a class="button secondary" href="https://github.com/rakulgt/rakuxq" rel="noreferrer">查看开源代码</a>
           </div>
           <p id="shortcut-note" class="shortcut-note">快捷指令不包含 API Key。公开下载链接将在准备完成后上线。</p>
@@ -78,7 +80,7 @@
             <button id="board-undo" class="position-action" type="button" disabled>悔棋</button>
             <button id="board-reset" class="position-action" type="button">重置</button>
             <button id="board-copy" class="position-action" type="button">复制 FEN</button>
-            <a id="board-open" class="position-action primary" href="https://xiangqiai.com/#/3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4%20w" target="_blank" rel="noreferrer">深入研究 ↗</a>
+            <a id="board-open" class="position-action primary" href="/fen/3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4%20w">进入实验室 →</a>
           </div>
           <div class="fen-preview"><small>CURRENT FEN</small><code id="board-fen">3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w</code></div>
         </div>
@@ -149,7 +151,7 @@
         </div>
         <div class="roadmap-grid">
           <article class="road-card active"><span>01 · NOW</span><h3>局面识别</h3><p>复杂截图、实体棋盘、斜拍、裁剪和遮挡下输出可审计 FEN。</p><b>正在持续优化</b></article>
-          <article class="road-card"><span>02 · NEXT</span><h3>NNUE 最佳着法</h3><p>接入新一代评估与搜索，输出最佳着法、候选变化和评分。</p><b>接口已经预留</b></article>
+          <article class="road-card active"><span>02 · BUILDING</span><h3>棋局实验室</h3><p>标准 FEN 直达、变化树、双方 AI 辅导、打谱复盘和可复现分析。</p><b>v0.4 已进入施工</b></article>
           <article class="road-card"><span>03 · FUTURE</span><h3>随身象棋智能</h3><p>快捷指令、终端推送、训练复盘和开放生态连接成完整闭环。</p><b>长期建设</b></article>
         </div>
       </section>
@@ -160,6 +162,6 @@
       </section>
     </main>
 
-    <footer><div><strong>RakuXQ</strong><span>Built by rakulgt · Raku Intelligence</span></div><div><a href="/developers">开发文档</a><a href="/docs">OpenAPI</a><a href="https://github.com/rakulgt/rakuxq">MIT License</a><span>© 2026</span></div></footer>
+    <footer><div><strong>RakuXQ</strong><span>Built by rakulgt · Raku Intelligence</span></div><div><a href="/lab">棋局实验室</a><a href="/developers">开发文档</a><a href="/docs">OpenAPI</a><a href="https://github.com/rakulgt/rakuxq">MIT License</a><span>© 2026</span></div></footer>
   </body>
 </html>

@@ -285,6 +285,20 @@ def homepage() -> FileResponse:
     return FileResponse(static_root / "index.html", media_type="text/html")
 
 
+@app.get("/lab", include_in_schema=False)
+@app.get("/lab/", include_in_schema=False)
+def position_lab() -> FileResponse:
+    return FileResponse(static_root / "lab.html", media_type="text/html")
+
+
+@app.get("/fen/{fen_value:path}", include_in_schema=False)
+def fen_position(fen_value: str) -> FileResponse:
+    # Validation is intentionally performed by the lab UI so malformed shared links
+    # receive a useful, interactive error instead of an opaque web-server 404.
+    del fen_value
+    return FileResponse(static_root / "lab.html", media_type="text/html")
+
+
 @app.get("/developers", include_in_schema=False)
 def developer_guide() -> FileResponse:
     return FileResponse(static_root / "developers.html", media_type="text/html")

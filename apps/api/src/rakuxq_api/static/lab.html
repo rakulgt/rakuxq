@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="RakuXQ 棋局实验室：打开 FEN、合法走棋、打谱复盘，并通过可替换 NNUE 引擎获得最佳着法。" />
+    <meta name="theme-color" content="#08111f" />
+    <title>RakuXQ Lab · 棋局实验室</title>
+    <link rel="icon" href="/static/favicon.svg?v=0.4.0a1" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.4.0a1" />
+    <link rel="stylesheet" href="/static/lab.css?v=0.4.0a1" />
+    <script src="/static/vendor/xiangqi.min.js?v=f9019ac" defer></script>
+    <script type="module" src="/static/lab.js?v=0.4.0a1"></script>
+  </head>
+  <body class="lab-body">
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <header class="site-header lab-header">
+      <a class="brand" href="/" aria-label="RakuXQ 首页">
+        <span class="brand-mark" aria-hidden="true">将</span>
+        <span><strong>RakuXQ Lab</strong><small>棋局实验室</small></span>
+      </a>
+      <nav aria-label="实验室导航">
+        <a href="/">官网</a>
+        <a href="/developers">开发文档</a>
+        <a href="https://github.com/rakulgt/rakuxq" rel="noreferrer">GitHub ↗</a>
+        <span id="engine-pill" class="engine-pill pending">检查引擎</span>
+      </nav>
+    </header>
+
+    <main class="lab-main">
+      <section class="lab-intro">
+        <div>
+          <span class="kicker">RAKUXQ LAB · v0.4 ALPHA</span>
+          <h1>研究一盘棋，<em>看清每一步</em></h1>
+        </div>
+        <p>输入标准 FEN，或者直接在棋盘上走子。局面、变化分支和分析证据都留在同一个工作面。</p>
+      </section>
+
+      <div id="lab-alert" class="lab-alert" role="alert" hidden></div>
+
+      <section class="lab-workspace" aria-label="RakuXQ 棋局研究工作区">
+        <article class="lab-board-panel">
+          <div class="lab-board-heading">
+            <div><span id="lab-turn" class="live-pill">红方走</span><strong id="lab-position-state">局面就绪</strong></div>
+            <span id="lab-save-state">仅保存在本机</span>
+          </div>
+
+          <svg id="lab-board" class="board lab-board" viewBox="-65 -65 930 1030" role="group" aria-labelledby="lab-board-title lab-board-description">
+            <title id="lab-board-title">RakuXQ 可交互中国象棋棋盘</title>
+            <desc id="lab-board-description">点击当前行棋方的棋子，查看并执行合法着法。</desc>
+            <defs>
+              <linearGradient id="lab-board-surface" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#d8aa69" />
+                <stop offset="1" stop-color="#a96f39" />
+              </linearGradient>
+              <marker id="engine-arrow-head" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" /></marker>
+              <g id="lab-star-full" class="board-star"><path d="M-27-10H-10V-27M27-10H10V-27M-27 10H-10V27M27 10H10V27" /></g>
+              <g id="lab-star-right" class="board-star"><path d="M27-10H10V-27M27 10H10V27" /></g>
+              <g id="lab-star-left" class="board-star"><path d="M-27-10H-10V-27M-27 10H-10V27" /></g>
+            </defs>
+            <rect class="board-surface lab-surface" x="-45" y="-45" width="890" height="990" rx="8" />
+            <g class="board-lines">
+              <path d="M0 0H800M0 100H800M0 200H800M0 300H800M0 400H800M0 500H800M0 600H800M0 700H800M0 800H800M0 900H800" />
+              <path d="M0 0V900M800 0V900M100 0V400M200 0V400M300 0V400M400 0V400M500 0V400M600 0V400M700 0V400M100 500V900M200 500V900M300 500V900M400 500V900M500 500V900M600 500V900M700 500V900" />
+              <path d="M300 0L500 200M500 0L300 200M300 700L500 900M500 700L300 900" />
+            </g>
+            <g class="board-stars">
+              <use href="#lab-star-full" transform="translate(100 200)" /><use href="#lab-star-full" transform="translate(700 200)" />
+              <use href="#lab-star-right" transform="translate(0 300)" /><use href="#lab-star-full" transform="translate(200 300)" /><use href="#lab-star-full" transform="translate(400 300)" /><use href="#lab-star-full" transform="translate(600 300)" /><use href="#lab-star-left" transform="translate(800 300)" />
+              <use href="#lab-star-right" transform="translate(0 600)" /><use href="#lab-star-full" transform="translate(200 600)" /><use href="#lab-star-full" transform="translate(400 600)" /><use href="#lab-star-full" transform="translate(600 600)" /><use href="#lab-star-left" transform="translate(800 600)" />
+              <use href="#lab-star-full" transform="translate(100 700)" /><use href="#lab-star-full" transform="translate(700 700)" />
+            </g>
+            <g class="river-label" aria-hidden="true"><text x="170" y="466">楚河</text><text x="630" y="466">汉界</text></g>
+            <g id="lab-highlights" aria-hidden="true"></g>
+            <g id="lab-pieces" class="pieces" aria-hidden="true"></g>
+            <g id="lab-hitareas"></g>
+          </svg>
+
+          <div class="lab-feedback">
+            <strong id="lab-feedback-title">选择棋子开始走棋</strong>
+            <span id="lab-feedback-message" aria-live="polite">所有落点都经过规则引擎验证</span>
+          </div>
+
+          <div class="lab-controls" aria-label="棋盘操作">
+            <button id="lab-undo" type="button" disabled>悔棋</button>
+            <button id="lab-redo" type="button" disabled>重做</button>
+            <button id="lab-flip" type="button">翻转棋盘</button>
+            <button id="lab-reset" type="button">重置</button>
+            <button id="lab-import" type="button">导入</button>
+            <button id="lab-export" type="button">导出</button>
+          </div>
+
+          <div class="lab-fen-card">
+            <div><span>CURRENT FEN</span><button id="lab-copy-fen" type="button">复制 FEN</button></div>
+            <code id="lab-fen"></code>
+            <div class="lab-link-actions">
+              <button id="lab-copy-link" type="button">复制研究链接</button>
+              <a id="lab-external-link" target="_blank" rel="noreferrer">在象棋AI打开 ↗</a>
+            </div>
+          </div>
+        </article>
+
+        <aside class="lab-sidebar">
+          <div class="lab-tabs" role="tablist" aria-label="研究面板">
+            <button type="button" class="active" role="tab" aria-selected="true" data-tab="analysis">推荐</button>
+            <button type="button" role="tab" aria-selected="false" data-tab="moves">棋谱</button>
+            <button type="button" role="tab" aria-selected="false" data-tab="variations">变化</button>
+            <button type="button" role="tab" aria-selected="false" data-tab="settings">设置</button>
+          </div>
+
+          <section class="lab-tab-panel active" data-panel="analysis">
+            <div class="analysis-hero">
+              <span>红方固定视角</span>
+              <strong id="analysis-score">—</strong>
+              <small id="analysis-state">点击分析，获取当前局面建议</small>
+            </div>
+            <div class="best-move-card">
+              <span>BEST MOVE</span>
+              <strong id="analysis-best">等待分析</strong>
+              <p id="analysis-pv">主要变化将在这里显示</p>
+            </div>
+            <dl class="analysis-meta">
+              <div><dt>深度</dt><dd id="analysis-depth">—</dd></div>
+              <div><dt>节点</dt><dd id="analysis-nodes">—</dd></div>
+              <div><dt>耗时</dt><dd id="analysis-time">—</dd></div>
+              <div><dt>引擎</dt><dd id="analysis-engine">—</dd></div>
+            </dl>
+            <button id="analysis-run" class="lab-primary-action" type="button">分析当前局面</button>
+            <p class="lab-help">未配置引擎时仍可正常走棋、打谱和导出。生产站不会偷偷调用受限权重。</p>
+          </section>
+
+          <section class="lab-tab-panel" data-panel="moves" hidden>
+            <div class="panel-heading"><div><span>MOVE LIST</span><h2>当前主线</h2></div><button id="moves-root" type="button">回到开始</button></div>
+            <ol id="move-list" class="move-list"></ol>
+            <p id="move-empty" class="lab-empty">尚未走子。棋盘上的每一步都会进入棋谱。</p>
+          </section>
+
+          <section class="lab-tab-panel" data-panel="variations" hidden>
+            <div class="panel-heading"><div><span>VARIATION TREE</span><h2>当前节点分支</h2></div></div>
+            <p class="lab-help">悔棋后走出不同着法，不会删除原变化；可以随时切回任一分支。</p>
+            <div id="variation-list" class="variation-list"></div>
+          </section>
+
+          <section class="lab-tab-panel" data-panel="settings" hidden>
+            <div class="panel-heading"><div><span>ENGINE CONTROL</span><h2>双方独立辅导</h2></div></div>
+            <label class="lab-field">红方
+              <select id="red-assist">
+                <option value="off">关闭辅助</option><option value="score">只显示评分</option><option value="hint">提示最佳着法</option><option value="auto">自动代走</option>
+              </select>
+            </label>
+            <label class="lab-field">黑方
+              <select id="black-assist">
+                <option value="off">关闭辅助</option><option value="score">只显示评分</option><option value="hint">提示最佳着法</option><option value="auto">自动代走</option>
+              </select>
+            </label>
+            <label class="lab-field">单次思考时间
+              <select id="engine-time"><option value="100">100 ms</option><option value="500" selected>500 ms</option><option value="1000">1 秒</option><option value="3000">3 秒</option></select>
+            </label>
+            <label class="lab-field">API Key（仅本次浏览器会话）
+              <input id="engine-key" type="password" autocomplete="off" placeholder="本地测试通常不需要" />
+            </label>
+            <p class="lab-help">Key 仅保存在当前标签页的内存中，不写入地址、棋谱或浏览器永久存储。</p>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <dialog id="import-dialog" class="lab-dialog">
+      <form method="dialog">
+        <div class="dialog-heading"><div><span>IMPORT</span><h2>导入局面或棋谱</h2></div><button value="cancel" aria-label="关闭">×</button></div>
+        <p>支持两/六字段 FEN、从标准开局开始的 ICCS 着法序列，以及 RakuXQ JSON。</p>
+        <textarea id="import-value" rows="10" spellcheck="false" placeholder="粘贴 FEN、e2e4 h9g7… 或 RakuXQ JSON"></textarea>
+        <div id="import-error" class="dialog-error" hidden></div>
+        <div class="dialog-actions"><button value="cancel">取消</button><button id="import-confirm" value="default" class="primary">导入</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="export-dialog" class="lab-dialog">
+      <form method="dialog">
+        <div class="dialog-heading"><div><span>EXPORT</span><h2>导出研究成果</h2></div><button value="cancel" aria-label="关闭">×</button></div>
+        <div class="export-grid">
+          <button id="export-fen" type="button"><strong>复制 FEN</strong><span>当前局面</span></button>
+          <button id="export-link" type="button"><strong>复制研究链接</strong><span>无需服务器保存</span></button>
+          <button id="export-iccs" type="button"><strong>复制 ICCS</strong><span>当前主线着法</span></button>
+          <button id="export-json" type="button"><strong>下载 RakuXQ JSON</strong><span>包含全部变化与分析</span></button>
+          <button id="export-image" type="button"><strong>下载棋盘图片</strong><span>PNG 当前局面</span></button>
+        </div>
+      </form>
+    </dialog>
+  </body>
+</html>

@@ -1,11 +1,11 @@
 ---
 document_type: living-project-cognitive-baseline
 project_id: rakuxq
-baseline_revision: "12"
-parent_revision: "11"
+baseline_revision: "13"
+parent_revision: "12"
 change_operation: UPDATE
 status: active
-updated_at: "2026-09-18T20:00:00+08:00"
+updated_at: "2026-09-19T15:30:00+08:00"
 ---
 
 # RakuXQ
@@ -65,6 +65,8 @@ RakuXQ 是面向开发者、自动化用户和中国象棋应用的开源智能�
 - 匿名公开统计使用独立持久化存储，与 12 小时原图审计池和 API Key 数据库解耦；原图审计清除不影响累计数字，公开面板也不能读取原图。
 - 临时 Key 防滥用通过服务端 HMAC 来源指纹、单来源有效期锁、全局活跃上限和入口限流共同实现，不把原始来源地址写入 Key 数据库。
 - 首页棋盘视觉由 RakuXQ 自有 SVG/DOM 组件维护；合法走子、将军与终局规则复用固定提交且保留许可证的 `xiangqi.js`，通过 `w→r` 适配层连接 RakuXQ 简化 FEN，不依赖第三方运行时页面或 CDN。
+- 标准局面研究入口固定为 `/fen/<标准 FEN>`：调用者只需在固定前缀后拼接两字段或六字段 FEN，空格可由浏览器编码为 `%20`；`/#/<FEN>` 与 `/lab?fen=<FEN>` 作为兼容输入，解析后进入同一原生实验室。
+- `/lab` 是走棋、打谱、复盘和 AI 辅导的统一工作面，不按编辑、对弈、复盘拆成割裂页面；棋谱变化、分析证据和 API Key 分别使用本地持久状态、可复现元数据和仅会话内存，任何 Key 都不得进入 URL 或棋谱。
 
 ## 关键决策与被否决路径
 
@@ -81,6 +83,7 @@ RakuXQ 是面向开发者、自动化用户和中国象棋应用的开源智能�
 - 已确认：`xq.rakubank.com` 不是空白 API 根路径，而是包含实时匿名交互流、累计数据、项目动机、技术来历、路线图与 Apple 快捷指令入口的公开官网。
 - 已确认：公共开发者页面允许匿名领取只生效 6 分钟的随机测试 Key，并明确披露一次性显示、短期审计和年度生产 Key 的边界。
 - 已确认：首页不嵌入 xiangqiai.com 页面；RakuXQ 自己承担棋盘视觉与交互，BSD-2-Clause `xiangqi.js` 只承担可替换规则层，xiangqiai.com 保留为当前 FEN 的外部深入研究入口。
+- 已确认：`v0.4` 建设 RakuXQ Lab；标准 FEN 可直接拼接到 `https://xq.rakubank.com/fen/`，实验室提供变化树、红黑独立 AI 模式、本地自动保存及 FEN/ICCS/RakuXQ JSON/PNG 导入导出。生产站在取得权重授权前只公开棋盘能力，不部署受限 NNUE 权重。
 - 已否决：以 OCR 作为主识别路线，因为棋子字体、旋转、遮挡和复杂背景会使文字识别缺乏稳定性。
 - 已否决：用高单格准确率替代整盘准确率，因为一个错误棋子即可使后续引擎结论失真。
 
