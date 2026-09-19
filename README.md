@@ -20,7 +20,7 @@ RakuXQ 是由 **rakulgt / Raku Intelligence（罗酷智能）** 发起的开源�
 真实棋盘照片、斜拍、裁剪、背景噪声和部分遮挡；`v0.3` 已增加可替换 UCI 引擎边界，开始
 返回最佳着法和候选变化，后续继续完成中文着法与终端推送。
 
-> 当前源码版本：`v0.4.1-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
+> 当前源码版本：`v0.4.2-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
 > Pikafish UCI 适配器进入本地非商业技术验证。官方托管服务暂不部署受限 NNUE 权重。
 
 ### 从 lgtXQ 到 RakuXQ
@@ -59,7 +59,7 @@ RakuXQ 的发起人是 **李国泰（rakulgt，<lgt@rakubank.com>）**。这个�
 - **公开运行面板**：官网匿名展示最近 72 小时交互与历史累计统计，不公开原图或客户标识。
 - **即领即试**：公开开发文档可领取明文只显示一次、6 分钟失效的临时测试 Key。
 - **交互局面研究器**：首页经典残局支持合法落点、走子、吃子、悔棋、重置、实时 FEN 与外部深入研究。
-- **RakuXQ Lab**：标准 FEN 直达统一研究工作台；紧凑工具栏提供标准新局、分支首尾导航、翻转、自由摆子、本地文件导入、保存分享、非破坏变化树与红黑独立 AI 辅导。
+- **RakuXQ Lab**：标准 FEN 直达统一研究工作台；桌面顶栏、分组侧边菜单和常驻招法轨提供一键标准新局、引擎执红/黑、分析与立即出招、分支导航、翻转、自由摆子、本地文件导入、保存分享和非破坏变化树。
 
 ### 标准 FEN 直达
 
@@ -228,7 +228,7 @@ screenshots, web boards, physical-board photos, perspective distortion, cropping
 noise, and partial occlusion. Version `0.3` adds a replaceable UCI engine boundary for best moves
 and principal variations; Chinese notation and terminal notifications remain on the roadmap.
 
-> Current source release: `v0.4.1-alpha.1`. The vision pipeline works on a growing set of real
+> Current source release: `v0.4.2-alpha.1`. The vision pipeline works on a growing set of real
 > screenshots and physical-board photos. The Pikafish UCI adapter is undergoing local,
 > non-commercial interoperability validation; restricted NNUE weights are not deployed by the
 > official hosted service.
@@ -284,9 +284,9 @@ code into the first release. See [`docs/history.md`](docs/history.md) for the fu
   expires after six minutes.
 - **Interactive position playground**: the homepage puzzle supports legal targets, moves,
   captures, undo, reset, live FEN, and handoff to an external analysis page.
-- **RakuXQ Lab**: a standard-FEN deep link opens one compact workspace with a true standard new
-  game, branch navigation, board flipping, position editing, file import, save/share export,
-  non-destructive variations, per-side AI assistance, and local recovery.
+- **RakuXQ Lab**: a standard-FEN deep link opens one compact workspace with a desktop action bar,
+  grouped side drawer, persistent move rail, one-click standard new game, per-side engine control,
+  analysis/play-now actions, branch navigation, position editing, import/export, and local recovery.
 
 ### Standard FEN deep links
 

@@ -1,3 +1,3 @@
 """RakuXQ Vision API."""
 
-__version__ = "0.4.1a1"
+__version__ = "0.4.2a1"

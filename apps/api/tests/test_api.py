@@ -126,10 +126,17 @@ def test_lab_and_fixed_prefix_fen_url_are_publicly_accessible():
     assert "RakuXQ Lab" in lab.text
     assert 'id="lab-board"' in lab.text
     assert 'id="lab-new"' in lab.text
+    assert 'id="lab-menu-drawer"' in lab.text
+    assert 'id="engine-red"' in lab.text
+    assert 'id="lab-variation"' in lab.text
+    assert 'id="rail-move-list"' in lab.text
     assert 'id="position-editor"' in lab.text
     assert 'id="import-file"' in lab.text
     assert 'id="red-assist"' in lab.text
-    assert "/static/lab-core.js" in client.get("/static/lab.js").text
+    lab_script = client.get("/static/lab.js").text
+    assert "/static/lab-core.js" in lab_script
+    assert 'byId("lab-new").addEventListener("click", () => startNewGame(START_FEN' in lab_script
+    assert "new-game-dialog" not in lab_script
 
 
 def test_public_developer_guide_is_available_without_api_key():

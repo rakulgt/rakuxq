@@ -11,7 +11,7 @@ import {
   toEngineFen,
   toPublicFen,
   validateImportedTree,
-} from "/static/lab-core.js?v=0.4.1a1";
+} from "/static/lab-core.js?v=0.4.2a1";
 
 const svgNamespace = "http://www.w3.org/2000/svg";
 const files = "abcdefghi";
@@ -93,6 +93,17 @@ function currentFen() {
 
 function currentAssistMode() {
   return game.turn() === "r" ? byId("red-assist").value : byId("black-assist").value;
+}
+
+function assistControl(side) {
+  return byId(side === "r" ? "red-assist" : "black-assist");
+}
+
+function moveSummary(item) {
+  if (!item?.move) return "开始局面";
+  const color = item.move.color === "r" ? "红" : "黑";
+  const piece = pieceNames[item.move.color]?.[String(item.move.piece || "").toLowerCase()] || "棋";
+  return `${color}${piece} ${item.move.from}→${item.move.to}`;
 }
 
 function pieceFromSymbol(symbol) {
@@ -240,13 +251,50 @@ function renderMoves() {
     if (item.id === tree.current_node_id) row.className = "current";
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = item.move.iccs;
+    button.textContent = moveSummary(item);
     button.addEventListener("click", () => loadNode(item.id));
     const score = document.createElement("small");
     score.textContent = item.analysis?.score?.display || "";
     row.append(button, score);
     return row;
   }));
+}
+
+function renderMoveRail() {
+  const line = currentLine(tree).slice(1);
+  const list = byId("rail-move-list");
+  byId("rail-empty").hidden = line.length > 0;
+  byId("rail-position").textContent = line.length ? `第 ${line.length} 步` : "开始";
+  byId("rail-root").classList.toggle("current", tree.current_node_id === "root");
+  list.replaceChildren(...line.map((item, index) => {
+    const row = document.createElement("li");
+    if (item.id === tree.current_node_id) row.className = "current";
+    const button = document.createElement("button");
+    button.type = "button";
+    const number = document.createElement("span");
+    number.textContent = String(index + 1);
+    const label = document.createElement("strong");
+    label.textContent = moveSummary(item);
+    const score = document.createElement("small");
+    score.textContent = item.analysis?.score?.display || item.move.iccs;
+    button.append(number, label, score);
+    button.addEventListener("click", () => loadNode(item.id));
+    row.append(button);
+    return row;
+  }));
+}
+
+function renderEngineToolbar() {
+  const redAuto = assistControl("r").value === "auto";
+  const blackAuto = assistControl("b").value === "auto";
+  const analysisMode = assistControl("r").value === "hint" && assistControl("b").value === "hint";
+  [["engine-red", redAuto], ["engine-black", blackAuto], ["analysis-mode", analysisMode]].forEach(([id, active]) => {
+    const button = byId(id);
+    button.disabled = !engineAvailable || Boolean(editorPosition);
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  byId("engine-play").disabled = !engineAvailable || Boolean(editorPosition) || game.in_checkmate() || game.in_draw() || game.in_stalemate();
 }
 
 function renderVariations() {
@@ -311,7 +359,9 @@ function render() {
   renderPieces();
   buildHitareas();
   renderMoves();
+  renderMoveRail();
   renderVariations();
+  renderEngineToolbar();
   const fen = currentFen();
   fenOutput.textContent = fen;
   positionState.textContent = describeState();
@@ -454,15 +504,16 @@ function updateEngineControls() {
   ["red-assist", "black-assist", "engine-time", "engine-key"].forEach((id) => {
     byId(id).disabled = !engineAvailable;
   });
+  renderEngineToolbar();
 }
 
 async function analyzeCurrent({ manual = false } = {}) {
   if (!engineAvailable) {
     transientMessage = "当前服务未配置解题引擎，棋盘研究、导入和导出仍可正常使用。";
     render();
-    return;
+    return null;
   }
-  if (game.in_checkmate() || game.in_draw() || game.in_stalemate()) return;
+  if (game.in_checkmate() || game.in_draw() || game.in_stalemate()) return null;
   clearPendingAnalysis();
   const generation = analysisGeneration;
   const targetNode = tree.current_node_id;
@@ -481,7 +532,7 @@ async function analyzeCurrent({ manual = false } = {}) {
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(friendlyEngineError(response.status, payload));
-    if (generation !== analysisGeneration || targetNode !== tree.current_node_id || targetFen !== currentFen()) return;
+    if (generation !== analysisGeneration || targetNode !== tree.current_node_id || targetFen !== currentFen()) return null;
     tree.nodes[targetNode].analysis = payload;
     engineAvailable = true;
     showAlert("");
@@ -495,15 +546,29 @@ async function analyzeCurrent({ manual = false } = {}) {
         makeMove(iccs.slice(0, 2), iccs.slice(2, 4));
       }, 450);
     }
+    return payload;
   } catch (error) {
-    if (error.name === "AbortError") return;
+    if (error.name === "AbortError") return null;
     transientMessage = error.message;
     showAlert(error.message);
     render();
+    return null;
   } finally {
     if (generation === analysisGeneration) {
       updateEngineControls();
     }
+  }
+}
+
+async function playEngineMove() {
+  if (!engineAvailable || editorPosition) return;
+  const targetNode = tree.current_node_id;
+  const analysis = node().analysis || await analyzeCurrent({ manual: true });
+  if (!analysis || tree.current_node_id !== targetNode) return;
+  const iccs = analysis.best_move?.iccs;
+  if (!iccs || !makeMove(iccs.slice(0, 2), iccs.slice(2, 4))) {
+    transientMessage = "引擎没有返回可执行的合法着法";
+    render();
   }
 }
 
@@ -543,6 +608,30 @@ function switchTab(name) {
     panel.classList.toggle("active", active);
     panel.hidden = !active;
   });
+}
+
+function setMenuOpen(open) {
+  byId("lab-menu-drawer").hidden = !open;
+  byId("lab-menu-drawer").setAttribute("aria-hidden", String(!open));
+  byId("lab-menu-backdrop").hidden = !open;
+  byId("lab-menu").setAttribute("aria-expanded", String(open));
+}
+
+function toggleEngineSide(side) {
+  const control = assistControl(side);
+  control.value = control.value === "auto" ? "off" : "auto";
+  transientMessage = `${side === "r" ? "红方" : "黑方"}自动行棋${control.value === "auto" ? "已开启" : "已关闭"}`;
+  render();
+  maybeAssist();
+}
+
+function toggleAnalysisMode() {
+  const enabled = assistControl("r").value === "hint" && assistControl("b").value === "hint";
+  assistControl("r").value = enabled ? "off" : "hint";
+  assistControl("b").value = enabled ? "off" : "hint";
+  transientMessage = enabled ? "分析模式已关闭" : "分析模式已开启；双方行棋后都会更新提示";
+  render();
+  maybeAssist();
 }
 
 function resetTree(fen) {
@@ -734,7 +823,40 @@ function initializeTree() {
 
 function bindEvents() {
   document.querySelectorAll("[data-tab]").forEach((button) => button.addEventListener("click", () => switchTab(button.dataset.tab)));
-  byId("lab-new").addEventListener("click", () => byId("new-game-dialog").showModal());
+  byId("lab-menu").addEventListener("click", () => setMenuOpen(true));
+  byId("lab-menu-close").addEventListener("click", () => setMenuOpen(false));
+  byId("lab-menu-backdrop").addEventListener("click", () => setMenuOpen(false));
+  byId("lab-new").addEventListener("click", () => startNewGame(START_FEN, "标准新局已开始，红方先行"));
+  byId("menu-standard-new").addEventListener("click", () => {
+    setMenuOpen(false);
+    startNewGame(START_FEN, "标准新局已开始，红方先行");
+  });
+  byId("menu-classic").addEventListener("click", () => {
+    setMenuOpen(false);
+    startNewGame(CLASSIC_FEN, "经典残局已载入");
+  });
+  byId("menu-empty-edit").addEventListener("click", () => {
+    setMenuOpen(false);
+    enterEditor({ empty: true });
+  });
+  document.querySelectorAll("[data-menu-tab]").forEach((button) => button.addEventListener("click", () => {
+    setMenuOpen(false);
+    switchTab(button.dataset.menuTab);
+  }));
+  byId("menu-import").addEventListener("click", () => {
+    setMenuOpen(false);
+    byId("import-error").hidden = true;
+    byId("import-dialog").showModal();
+  });
+  byId("menu-export").addEventListener("click", () => {
+    setMenuOpen(false);
+    byId("export-dialog").showModal();
+  });
+  byId("engine-red").addEventListener("click", () => toggleEngineSide("r"));
+  byId("engine-black").addEventListener("click", () => toggleEngineSide("b"));
+  byId("analysis-mode").addEventListener("click", toggleAnalysisMode);
+  byId("engine-play").addEventListener("click", playEngineMove);
+  byId("lab-variation").addEventListener("click", () => switchTab("variations"));
   byId("lab-first").addEventListener("click", () => loadNode("root"));
   undoButton.addEventListener("click", () => {
     if (!node().parent_id) return;
@@ -747,6 +869,7 @@ function bindEvents() {
   });
   byId("lab-last").addEventListener("click", () => loadNode(preferredTailId()));
   byId("moves-root").addEventListener("click", () => loadNode("root"));
+  byId("rail-root").addEventListener("click", () => loadNode("root"));
   byId("lab-flip").addEventListener("click", () => { flipped = !flipped; transientMessage = flipped ? "已切换为黑方视角" : "已切换为红方视角"; render(); });
   byId("lab-edit").addEventListener("click", () => { if (editorPosition) { leaveEditor(); transientMessage = "已取消局面编辑"; render(); } else enterEditor(); });
   document.querySelectorAll("[data-editor-piece]").forEach((button) => button.addEventListener("click", () => {
@@ -761,15 +884,6 @@ function bindEvents() {
   });
   byId("editor-cancel").addEventListener("click", () => { leaveEditor(); transientMessage = "已取消局面编辑"; render(); });
   byId("editor-apply").addEventListener("click", applyEditedPosition);
-  document.querySelectorAll("[data-new-fen]").forEach((button) => button.addEventListener("click", () => {
-    const standard = button.dataset.newFen === "start";
-    byId("new-game-dialog").close();
-    startNewGame(standard ? START_FEN : CLASSIC_FEN, standard ? "标准新局已开始，红方先行" : "经典残局已载入");
-  }));
-  byId("new-game-edit").addEventListener("click", () => {
-    byId("new-game-dialog").close();
-    enterEditor({ empty: true });
-  });
   byId("lab-copy-fen").addEventListener("click", (event) => flashCopy(event.currentTarget, currentFen()));
   byId("lab-copy-link").addEventListener("click", (event) => flashCopy(event.currentTarget, `${location.origin}${canonicalFenPath(currentFen())}`));
   byId("analysis-run").addEventListener("click", () => analyzeCurrent({ manual: true }));
@@ -809,6 +923,10 @@ function bindEvents() {
   byId("export-json").addEventListener("click", exportJson);
   byId("export-image").addEventListener("click", exportBoardImage);
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !byId("lab-menu-drawer").hidden) {
+      setMenuOpen(false);
+      return;
+    }
     const inFormControl = event.target instanceof Element && event.target.closest("input, textarea, select");
     if (document.querySelector("dialog[open]") || inFormControl) return;
     if (event.key === "ArrowLeft" && node().parent_id && !editorPosition) loadNode(node().parent_id);

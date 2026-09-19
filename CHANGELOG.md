@@ -4,6 +4,28 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.4.2-alpha.1] - 2026-09-19
+
+### 中文
+
+- 重新标定桌面棋盘尺寸：`1280×720` 下完整棋盘清晰可见，同时比上一版更接近专业棋谱工具的有效占屏比例。
+- 顶部操作区升级为真正可用的菜单、新局、引擎执红、引擎执黑、分析模式、立即出招、变招、翻转、导入、保存/分享和编辑入口。
+- “新局”改为单击立即回到标准三十二子开局，不再弹出二次选择；经典残局和空白摆子收纳到侧边菜单。
+- 新增分组侧边菜单与桌面常驻主线招法轨，棋谱显示棋子、起点、终点、ICCS 和已有评分，并可直接跳转任一步。
+- 压缩引擎面板的信息密度，评分、最佳着法、PV、深度、节点、耗时和引擎身份在同一屏内保持清晰响应。
+
+### English
+
+- Rebalanced the desktop board so the complete position remains visible at `1280×720` while using
+  a more practical share of the screen.
+- Made the top actions functional: menu, new game, engine as Red/Black, analysis mode, play now,
+  variations, flip, import, save/share, and position editing.
+- New Game now resets directly to the standard 32-piece start with one click; the classic puzzle
+  and blank editor live in the side menu.
+- Added a grouped side drawer and a persistent desktop main-line rail with navigable move details,
+  ICCS, and available scores.
+- Increased analysis-panel density without hiding engine evidence or licensing-safe unavailable states.
+
 ## [0.4.1-alpha.1] - 2026-09-19
 
 ### 中文
