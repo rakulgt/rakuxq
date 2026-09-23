@@ -1,8 +1,8 @@
 # RakuXQ 当前交接状态
 
-基线时间：`2026-09-19T18:57:14+08:00`
+基线时间：`2026-09-23T20:36:08+08:00`
 当前生产稳定版本：`v0.4.2-alpha.1`
-当前源码开发版本：`v0.4.2-alpha.1`
+当前源码开发版本：`v0.4.3-alpha.1`
 
 ## 最近完成
 
@@ -52,6 +52,8 @@
 - 对成熟棋谱工具的桌面信息架构完成一次实测吸收：Lab 新增分组侧边菜单、桌面常驻主线招法轨和紧凑引擎数据面板，同时保持 RakuXQ 自有视觉风格和现有真实能力边界。
 - 顶部菜单的引擎执红/黑、分析模式、立即出招与变招入口已连接既有引擎和变化树逻辑；生产没有合法 NNUE 权重时明确禁用，不伪造分析结果。
 - 顶栏“新局”已改为一次点击立即回到标准三十二子开局；经典残局与空白摆子移入侧边菜单，不再弹出二次确认窗口。
+- 图片接口已增加标准 `Server-Timing`，并将鉴权、请求体接收、应用处理、响应发送和总耗时写入 12 小时匿名诊断字段；无有效 Key 的请求仍不会保存请求体。
+- 生产 Nginx 模板已启用 HTTP/2，并将项目 access log 改为不含 IP、Key、查询参数和设备信息的专用分段耗时格式；既有 TLS 会话缓存保持不变。
 
 ## 当前验证
 
@@ -66,6 +68,7 @@
 - `python -m pip wheel . --no-deps`：成功构建 `rakuxq_api-0.4.0a1-py3-none-any.whl`，SHA-256 为 `f779129a2d3c1d3aca9564a772222cc68fe78b7d117d0122124c1fb6e206de1d`。
 - `python -m pip wheel . --no-deps --no-build-isolation`：成功构建 `rakuxq_api-0.4.1a1-py3-none-any.whl`，SHA-256 为 `b1a2e05108ad0fdcb30675c30f40525510f17945900c314955001471bfc18843`。
 - `python -m pip wheel . --no-deps --no-build-isolation`：成功构建 `rakuxq_api-0.4.2a1-py3-none-any.whl`，SHA-256 为 `ba4c3f8b23f0739be64adbd2afcddb59bd93da325d99546b3a7f40f84e1d86c6`。
+- `python -m pip wheel . --no-deps --no-build-isolation`：成功构建 `rakuxq_api-0.4.3a1-py3-none-any.whl`，SHA-256 为 `f2d8dba3dbd2e17ea49bf2ce7f620dea487d3b7a5ca14b270f775695f8db7075`。
 - RakuXQ Lab 浏览器验收：用户提供的长 FEN 地址直接还原；本地 Pikafish 返回评分/最佳着法/PV；走棋、悔棋、双分支保留和 FEN 导入通过；390×844 移动视口无横向溢出。
 - RakuXQ Lab 紧凑版浏览器验收：`1280×720` 首屏完整显示整张棋盘；标准新局恢复正确三十二子 FEN；自由摆子完成清空、逐格放置、缺少将帅拒绝和有效局面应用；控制台无错误。
 - RakuXQ Lab v0.4.2 浏览器验收：`1280×720` 下棋盘、引擎面板与主线招法轨同时可见；从已走一步的本地研究点击“新局”后不弹窗并立即恢复标准开局 FEN；侧边菜单可正常打开并由 Esc 关闭。

@@ -75,6 +75,15 @@ def test_audit_preserves_original_upload_and_response_for_twelve_hours(tmp_path)
     assert metadata["request"]["uploads"][0]["sha256"]
     assert metadata["response"]["http_status"] == 200
     assert metadata["response"]["recognition_status"] == "accepted"
+    assert metadata["request_body_complete"] is True
+    assert metadata["timings_ms"]["authentication"] >= 0
+    assert metadata["timings_ms"]["request_receive"] >= 0
+    assert metadata["timings_ms"]["application"] >= 0
+    assert metadata["timings_ms"]["response_send"] >= 0
+    assert metadata["timings_ms"]["total"] == metadata["duration_ms"]
+    assert response.headers["server-timing"].startswith("auth;dur=")
+    assert ", receive;dur=" in response.headers["server-timing"]
+    assert ", app;dur=" in response.headers["server-timing"]
     assert "authorization" not in json.dumps(metadata).lower()
 
 
@@ -141,7 +150,9 @@ def test_secured_audit_keeps_only_active_key_requests(tmp_path):
     secured_client = TestClient(secured)
     upload = {"image": ("board.png", b"authenticated-image", "image/png")}
 
-    assert secured_client.post("/v1/recognitions", files=upload).status_code == 200
+    anonymous_response = secured_client.post("/v1/recognitions", files=upload)
+    assert anonymous_response.status_code == 200
+    assert "server-timing" in anonymous_response.headers
     assert not (tmp_path / "audits").exists()
 
     response = secured_client.post(
@@ -151,6 +162,7 @@ def test_secured_audit_keeps_only_active_key_requests(tmp_path):
     )
 
     assert response.status_code == 200
+    assert "server-timing" in response.headers
     record = _records(tmp_path / "audits")[0]
     metadata = json.loads((record / "interaction.json").read_text("utf-8"))
     assert metadata["request"]["key_id"] == key_id

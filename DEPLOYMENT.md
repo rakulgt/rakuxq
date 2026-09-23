@@ -60,6 +60,11 @@ Apple 快捷指令公开分享地址通过服务器环境变量 `RAKUXQ_SHORTCUT
 Cloudflare 的 SSL/TLS 模式在仅 DNS 状态下不参与本域名传输。切回代理模式前必须重新进行上传延迟、
 真实客户端 IP、限流和 HTTPS 验收。
 
+TLS 入口启用 HTTP/2；Let's Encrypt 公共选项提供会话缓存与 TLS 1.2/1.3。图片接口响应通过
+`Server-Timing` 披露请求接收和应用处理耗时。项目 access log 使用不含 IP、Key、查询参数和
+User-Agent 的专用格式，只记录方法、路径、状态、请求/响应字节数以及 Nginx/上游分段耗时，
+并继续按小时轮转 48 份。
+
 ## API Key 运营
 
 服务端只保存 Key 的 SHA-256 哈希。签发时明文只显示一次：

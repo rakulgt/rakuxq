@@ -4,6 +4,22 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.4.3-alpha.1] - 2026-09-23
+
+### 中文
+
+- 图片接口增加标准 `Server-Timing` 响应头，直接区分请求体接收与应用处理耗时。
+- 12 小时短期审计增加鉴权、请求接收、应用处理、响应发送和总耗时五段匿名指标，并记录请求体是否完整。
+- Nginx 启用 HTTP/2，沿用现有 TLS 会话缓存；项目访问日志改为不含 IP、Key、查询参数和设备信息的专用分段耗时格式。
+- 保持原有 JSON/FEN 契约、短期原图保留规则和推理模型不变。
+
+### English
+
+- Added the standard `Server-Timing` response header to image endpoints, separating request-body receipt from application work.
+- Split the 12-hour audit timing into authentication, request receipt, application, response send, and total duration, with an explicit request-body completeness flag.
+- Enabled HTTP/2 while retaining the existing TLS session cache, and switched project access logs to an anonymous timing format without IPs, keys, query strings, or device data.
+- Preserved the existing JSON/FEN contracts, short-lived image retention policy, and inference model.
+
 ## [0.4.2-alpha.1] - 2026-09-19
 
 ### 中文

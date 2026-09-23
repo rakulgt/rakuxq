@@ -117,6 +117,14 @@ else:
 
 服务没有人工或大模型兜底路径。模型未就绪时必须返回 `503`，不能根据文件名、历史答案或手工输入返回 FEN。
 
+### 延迟诊断
+
+图片接口响应包含标准 `Server-Timing`：`auth` 表示鉴权时间，`receive` 表示鉴权后到完整收到
+请求体的时间，`app` 表示请求体完整后到响应头就绪的应用处理时间。官方托管服务的 12 小时
+短期审计还记录 `authentication`、`request_receive`、`application`、`response_send` 和 `total`
+五段毫秒值，并标明请求体是否完整。
+这些指标不包含 API Key、IP、文件名、设备信息或其他客户标识。
+
 ## `POST /v1/analyses`
 
 将已经确认的中国象棋 FEN 提交给可配置的本地引擎。请求体为 JSON：

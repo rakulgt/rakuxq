@@ -56,6 +56,8 @@ class InteractionAuditStore:
         response_body: bytes,
         response_truncated: bool,
         duration_ms: int,
+        timings_ms: dict[str, int | None],
+        request_body_complete: bool,
         key_id: str,
     ) -> None:
         parsed = await self._parse_request(scope, request_body, request_truncated)
@@ -70,6 +72,8 @@ class InteractionAuditStore:
             response_body,
             response_truncated,
             duration_ms,
+            timings_ms,
+            request_body_complete,
             key_id,
         )
 
@@ -133,6 +137,8 @@ class InteractionAuditStore:
         response_body: bytes,
         response_truncated: bool,
         duration_ms: int,
+        timings_ms: dict[str, int | None],
+        request_body_complete: bool,
         key_id: str,
     ) -> None:
         now = datetime.now(UTC)
@@ -209,6 +215,8 @@ class InteractionAuditStore:
                 "warnings": self._nested(parsed_response, "warnings"),
             },
             "duration_ms": duration_ms,
+            "timings_ms": timings_ms,
+            "request_body_complete": request_body_complete,
         }
         self._write_private(
             record_dir / "interaction.json",
@@ -283,18 +291,17 @@ class InteractionAuditMiddleware:
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         store = self.store_getter()
         if (
-            store is None
-            or scope["type"] != "http"
+            scope["type"] != "http"
             or scope.get("method") != "POST"
             or scope.get("path") not in AUDITED_PATHS
         ):
             await self.app(scope, receive, send)
             return
 
+        started = perf_counter()
         key_id = self._active_key_id(scope)
-        if key_id is None:
-            await self.app(scope, receive, send)
-            return
+        authentication_completed_at = perf_counter()
+        capture_enabled = store is not None and key_id is not None
 
         request_body = bytearray()
         request_truncated = False
@@ -302,53 +309,114 @@ class InteractionAuditMiddleware:
         response_truncated = False
         response_status = 500
         response_headers: list[tuple[bytes, bytes]] = []
-        started = perf_counter()
+        request_completed_at: float | None = None
+        response_started_at: float | None = None
+        response_completed_at: float | None = None
 
         async def audited_receive() -> Message:
-            nonlocal request_truncated
+            nonlocal request_completed_at, request_truncated
             message = await receive()
             if message["type"] == "http.request":
                 chunk = message.get("body", b"")
-                remaining = self.max_request_bytes - len(request_body)
-                if len(chunk) > remaining:
-                    request_body.extend(chunk[: max(remaining, 0)])
-                    request_truncated = True
-                else:
-                    request_body.extend(chunk)
+                if capture_enabled:
+                    remaining = self.max_request_bytes - len(request_body)
+                    if len(chunk) > remaining:
+                        request_body.extend(chunk[: max(remaining, 0)])
+                        request_truncated = True
+                    else:
+                        request_body.extend(chunk)
+                if not message.get("more_body", False):
+                    request_completed_at = perf_counter()
             return message
 
         async def audited_send(message: Message) -> None:
+            nonlocal response_completed_at, response_started_at
             nonlocal response_status, response_headers, response_truncated
             if message["type"] == "http.response.start":
+                response_started_at = perf_counter()
                 response_status = message["status"]
-                response_headers = list(message.get("headers", []))
+                outgoing_headers = list(message.get("headers", []))
+                receive_finished = request_completed_at or response_started_at
+                authentication_ms = round((authentication_completed_at - started) * 1000)
+                receive_ms = round(
+                    (receive_finished - authentication_completed_at) * 1000
+                )
+                application_ms = (
+                    round((response_started_at - request_completed_at) * 1000)
+                    if request_completed_at is not None
+                    else 0
+                )
+                outgoing_headers.append(
+                    (
+                        b"server-timing",
+                        (
+                            f"auth;dur={authentication_ms}, receive;dur={receive_ms}, "
+                            f"app;dur={application_ms}"
+                        ).encode("ascii"),
+                    )
+                )
+                message = {**message, "headers": outgoing_headers}
+                response_headers = outgoing_headers
             elif message["type"] == "http.response.body":
                 chunk = message.get("body", b"")
-                remaining = self.max_response_bytes - len(response_body)
-                if len(chunk) > remaining:
-                    response_body.extend(chunk[: max(remaining, 0)])
-                    response_truncated = True
-                else:
-                    response_body.extend(chunk)
+                if capture_enabled:
+                    remaining = self.max_response_bytes - len(response_body)
+                    if len(chunk) > remaining:
+                        response_body.extend(chunk[: max(remaining, 0)])
+                        response_truncated = True
+                    else:
+                        response_body.extend(chunk)
             await send(message)
+            if message["type"] == "http.response.body" and not message.get(
+                "more_body", False
+            ):
+                response_completed_at = perf_counter()
 
         try:
             await self.app(scope, audited_receive, audited_send)
         finally:
-            try:
-                await store.record(
-                    scope=scope,
-                    request_body=bytes(request_body),
-                    request_truncated=request_truncated,
-                    response_status=response_status,
-                    response_headers=response_headers,
-                    response_body=bytes(response_body),
-                    response_truncated=response_truncated,
-                    duration_ms=round((perf_counter() - started) * 1000),
-                    key_id=key_id,
-                )
-            except Exception:
-                LOGGER.exception("failed to persist interaction audit record")
+            if capture_enabled and store is not None and key_id is not None:
+                completed = response_completed_at or perf_counter()
+                receive_finished = request_completed_at or response_started_at or completed
+                application_started = request_completed_at
+                application_finished = response_started_at
+                response_started = response_started_at
+                timings_ms: dict[str, int | None] = {
+                    "authentication": round(
+                        (authentication_completed_at - started) * 1000
+                    ),
+                    "request_receive": round(
+                        (receive_finished - authentication_completed_at) * 1000
+                    ),
+                    "application": (
+                        round((application_finished - application_started) * 1000)
+                        if application_started is not None
+                        and application_finished is not None
+                        else None
+                    ),
+                    "response_send": (
+                        round((completed - response_started) * 1000)
+                        if response_started is not None
+                        else None
+                    ),
+                    "total": round((completed - started) * 1000),
+                }
+                try:
+                    await store.record(
+                        scope=scope,
+                        request_body=bytes(request_body),
+                        request_truncated=request_truncated,
+                        response_status=response_status,
+                        response_headers=response_headers,
+                        response_body=bytes(response_body),
+                        response_truncated=response_truncated,
+                        duration_ms=timings_ms["total"] or 0,
+                        timings_ms=timings_ms,
+                        request_body_complete=request_completed_at is not None,
+                        key_id=key_id,
+                    )
+                except Exception:
+                    LOGGER.exception("failed to persist interaction audit record")
 
     def _active_key_id(self, scope: Scope) -> str | None:
         if not self.require_api_key:

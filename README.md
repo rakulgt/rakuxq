@@ -20,7 +20,7 @@ RakuXQ 是由 **rakulgt / Raku Intelligence（罗酷智能）** 发起的开源�
 真实棋盘照片、斜拍、裁剪、背景噪声和部分遮挡；`v0.3` 已增加可替换 UCI 引擎边界，开始
 返回最佳着法和候选变化，后续继续完成中文着法与终端推送。
 
-> 当前源码版本：`v0.4.2-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
+> 当前源码版本：`v0.4.3-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
 > Pikafish UCI 适配器进入本地非商业技术验证。官方托管服务暂不部署受限 NNUE 权重。
 
 ### 从 lgtXQ 到 RakuXQ
@@ -51,6 +51,7 @@ RakuXQ 的发起人是 **李国泰（rakulgt，<lgt@rakubank.com>）**。这个�
 - **面向真实世界**：包含棋盘定位、透视校正、90 个交叉点分类和局面合法性检查。
 - **拒绝静默猜测**：返回 `accepted` 或 `review_required`，低可靠结果不会冒充确定答案。
 - **可审计修正**：保留原始类别、置信度、自动纠正方法和规则补空坐标。
+- **可诊断延迟**：托管 API 返回标准 `Server-Timing`，短期审计将鉴权、图片接收、应用处理、响应发送与总耗时分段记录。
 - **支持局部棋盘**：经几何计算确认在画面外的交叉点可按产品规则视为空位并显式警告。
 - **快捷指令友好**：推荐解析 `POST /v1/recognitions` JSON，仅在 `accepted` 时取得 `fen`。
 - **可运营托管**：官方服务支持每客户独立 API Key、到期、续费和吊销。
@@ -228,7 +229,7 @@ screenshots, web boards, physical-board photos, perspective distortion, cropping
 noise, and partial occlusion. Version `0.3` adds a replaceable UCI engine boundary for best moves
 and principal variations; Chinese notation and terminal notifications remain on the roadmap.
 
-> Current source release: `v0.4.2-alpha.1`. The vision pipeline works on a growing set of real
+> Current source release: `v0.4.3-alpha.1`. The vision pipeline works on a growing set of real
 > screenshots and physical-board photos. The Pikafish UCI adapter is undergoing local,
 > non-commercial interoperability validation; restricted NNUE weights are not deployed by the
 > official hosted service.
@@ -268,6 +269,9 @@ code into the first release. See [`docs/history.md`](docs/history.md) for the fu
   silently presenting uncertain output as fact.
 - **Traceable corrections**: raw labels, confidence, correction methods, and assumed-empty
   coordinates remain available for inspection.
+- **Diagnosable latency**: the hosted API emits standard `Server-Timing` metrics and splits
+  short-lived audit timing into authentication, request receipt, application work, response send,
+  and total time.
 - **Partial-board support**: geometrically out-of-frame intersections may be treated as empty
   under an explicit, disclosed product rule.
 - **Apple Shortcuts ready**: clients parse `POST /v1/recognitions` JSON and consume `fen` only

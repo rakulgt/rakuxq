@@ -174,6 +174,9 @@ def test_shortcuts_endpoint_returns_plain_fen():
     assert response.headers["x-rakuxq-provider"] == "fixed-api-test"
     assert response.headers["x-rakuxq-model-version"] == "test"
     assert response.headers["x-rakuxq-request-id"].startswith("rec_")
+    assert response.headers["server-timing"].startswith("auth;dur=")
+    assert ", receive;dur=" in response.headers["server-timing"]
+    assert ", app;dur=" in response.headers["server-timing"]
     assert response.text == (
         "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w"
     )

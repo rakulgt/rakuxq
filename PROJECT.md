@@ -1,11 +1,11 @@
 ---
 document_type: living-project-cognitive-baseline
 project_id: rakuxq
-baseline_revision: "14"
-parent_revision: "13"
+baseline_revision: "15"
+parent_revision: "14"
 change_operation: UPDATE
 status: active
-updated_at: "2026-09-19T15:31:00+08:00"
+updated_at: "2026-09-23T20:20:00+08:00"
 ---
 
 # RakuXQ
@@ -56,6 +56,7 @@ RakuXQ 是面向开发者、自动化用户和中国象棋应用的开源智能�
 
 - 对外维持版本化的图片识别 HTTP API；Apple 快捷指令只是其中一个客户端。
 - 识别流水线由可替换 provider 承担，领域层统一完成方向归一化、FEN 构造、合法性检查、置信度门控与响应协议。
+- 托管 API 的延迟观测必须区分鉴权、请求体接收、应用处理、响应发送和总耗时；公开响应只给标准匿名计时，不披露客户或请求标识。
 - 棋盘定位不能永久依赖四角全部可见；部分棋盘回退路径应利用定位星、九宫斜线、楚河汉界、横纵线交点和固定格距拟合完整 9×10 网格，并生成每个交叉点的可见性掩码。
 - 第一阶段允许以可追溯的开源模型建立基线，但最终形成 RakuXQ 自有数据、评测和权重能力。
 - 同一图片中存在多个相同字形和材质棋子时，允许用高置信棋子建立临时视觉原型，保守复核低置信明确棋种；该方法不得把空位或未知格提升成棋子，也不能替代未来独立占位检测器和自有分类模型。
