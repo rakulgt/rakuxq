@@ -4,6 +4,20 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.4.3-alpha.2] - 2026-09-24
+
+### 中文
+
+- 增加免费的 VPN/境外出口对照入口 `vpn.xq.rakubank.com`，与现有国内直连入口共享同一 API、鉴权、限流和短期审计规则。
+- 源站证书和 Nginx 虚拟主机支持两个主机名；响应增加 `X-RakuXQ-Ingress`，匿名时序日志增加主机名，便于比较直连与 Cloudflare 免费代理路线。
+- 保持 `xq.rakubank.com` 为 Cloudflare 灰云直连，不改变既有 Apple 快捷指令和 API 契约。
+
+### English
+
+- Added `vpn.xq.rakubank.com` as a free comparison ingress for VPN and overseas-exit clients, sharing the existing API, authentication, rate limits, and short-lived audit policy.
+- Extended the origin certificate and Nginx virtual host to both names, added `X-RakuXQ-Ingress`, and included the hostname in anonymous timing logs for direct-versus-Cloudflare measurements.
+- Kept `xq.rakubank.com` on DNS-only direct routing without changing the existing Apple Shortcut or API contracts.
+
 ## [0.4.3-alpha.1] - 2026-09-23
 
 ### 中文

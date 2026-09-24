@@ -3,6 +3,7 @@
 ## 已登记拓扑
 
 - 正式域名：`xq.rakubank.com`
+- 免费 VPN 路线对照域名：`vpn.xq.rakubank.com`（Cloudflare 免费代理试验入口）
 - 服务器：`raku-cn-prod-01` (`1.117.71.5`)
 - 部署根：`/opt/raku/portable/rakuxq`
 - 版本目录：`/opt/raku/portable/rakuxq/releases/<git-revision>`
@@ -59,6 +60,11 @@ Apple 快捷指令公开分享地址通过服务器环境变量 `RAKUXQ_SHORTCUT
 客户端上传图片时绕行境外 Cloudflare 节点。客户端直接使用源站 Let's Encrypt 证书建立 HTTPS；
 Cloudflare 的 SSL/TLS 模式在仅 DNS 状态下不参与本域名传输。切回代理模式前必须重新进行上传延迟、
 真实客户端 IP、限流和 HTTPS 验收。
+
+`vpn.xq.rakubank.com` 是零成本路线实验，不替代正式域名：先以灰云完成包含两个主机名的源站证书签发，
+再切换为 Cloudflare 免费橙云并比较手机 VPN 开关下的上传耗时。两个入口共享应用和数据策略；响应头
+`X-RakuXQ-Ingress` 与匿名 Nginx 时序日志中的 `host` 用于区分路线。Cloudflare 代理验收未通过时，
+将该记录恢复为灰云或停用，不改动 `xq.rakubank.com`。
 
 TLS 入口启用 HTTP/2；Let's Encrypt 公共选项提供会话缓存与 TLS 1.2/1.3。图片接口响应通过
 `Server-Timing` 披露请求接收和应用处理耗时。项目 access log 使用不含 IP、Key、查询参数和
