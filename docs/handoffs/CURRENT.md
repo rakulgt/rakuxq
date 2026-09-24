@@ -1,7 +1,7 @@
 # RakuXQ 当前交接状态
 
 基线时间：`2026-09-23T20:50:21+08:00`
-当前生产稳定版本：`v0.4.3-alpha.1`
+当前生产稳定版本：`v0.4.3-alpha.2`
 当前源码开发版本：`v0.4.3-alpha.2`
 
 ## 最近完成
@@ -70,6 +70,7 @@
 - `python -m pip wheel . --no-deps --no-build-isolation`：成功构建 `rakuxq_api-0.4.1a1-py3-none-any.whl`，SHA-256 为 `b1a2e05108ad0fdcb30675c30f40525510f17945900c314955001471bfc18843`。
 - `python -m pip wheel . --no-deps --no-build-isolation`：成功构建 `rakuxq_api-0.4.2a1-py3-none-any.whl`，SHA-256 为 `ba4c3f8b23f0739be64adbd2afcddb59bd93da325d99546b3a7f40f84e1d86c6`。
 - `python -m pip wheel . --no-deps --no-build-isolation`：成功构建 `rakuxq_api-0.4.3a1-py3-none-any.whl`，SHA-256 为 `f2d8dba3dbd2e17ea49bf2ce7f620dea487d3b7a5ca14b270f775695f8db7075`。
+- `python -m pip wheel . --no-deps`：成功构建 `rakuxq_api-0.4.3a2-py3-none-any.whl`，SHA-256 为 `0a8a354f0a02d5bf85060809f864b387cedef7b69cf4b43ff334b6a8d33eb8af`。
 - RakuXQ Lab 浏览器验收：用户提供的长 FEN 地址直接还原；本地 Pikafish 返回评分/最佳着法/PV；走棋、悔棋、双分支保留和 FEN 导入通过；390×844 移动视口无横向溢出。
 - RakuXQ Lab 紧凑版浏览器验收：`1280×720` 首屏完整显示整张棋盘；标准新局恢复正确三十二子 FEN；自由摆子完成清空、逐格放置、缺少将帅拒绝和有效局面应用；控制台无错误。
 - RakuXQ Lab v0.4.2 浏览器验收：`1280×720` 下棋盘、引擎面板与主线招法轨同时可见；从已走一步的本地研究点击“新局”后不弹窗并立即恢复标准开局 FEN；侧边菜单可正常打开并由 Esc 关闭。
@@ -101,6 +102,7 @@
 - v0.4.1-alpha.1 已发布到正式域名：公网 Lab 和标准 FEN 深链返回 `200`，`1280×720` 首屏完整显示棋盘，新局与常驻工具栏上线；服务 `active`、`NRestarts=0`。完整记录见 `docs/deployments/20260919-134119-v0.4.1-alpha.1.md`。
 - v0.4.2-alpha.1 已发布到正式域名：公网 Lab 返回 `200` 并使用 `v=0.4.2a1` 资源；桌面侧边菜单、常驻主线招法轨和一键无弹窗新局上线；健康检查为 `0.4.2a1`，服务 `active`、`NRestarts=0`。完整记录见 `docs/deployments/20260919-201010-v0.4.2-alpha.1.md`。
 - v0.4.3-alpha.1 已发布到正式域名：公网协商 HTTP/2，限速上传的 `Server-Timing` 与短期审计均准确归因到 `request_receive`；健康检查为 `0.4.3a1`，服务 `active`、`NRestarts=0`。完整记录见 `docs/deployments/20260923-205021-v0.4.3-alpha.1.md`。
+- v0.4.3-alpha.2 已发布：现有源站证书同时覆盖 `xq.rakubank.com` 与 `vpn.xq.rakubank.com`，两个健康检查均返回 `0.4.3a2` 和正确入口头；免费 Cloudflare 路线尚待把 `vpn.xq` 从灰云切为橙云后完成真实图片 A/B 测速。完整记录见 `docs/deployments/20260924-180554-v0.4.3-alpha.2.md`。
 
 ## 未完成
 
