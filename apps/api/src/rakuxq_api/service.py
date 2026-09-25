@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import cast
 from uuid import uuid4
 
 from .domain import (
@@ -11,6 +12,7 @@ from .domain import (
 )
 from .fen import FenError, normalize_orientation, to_fen, to_full_fen, to_piece_placement
 from .providers.base import RecognitionProvider
+from .semantic import correct_crossed_king_camps
 from .validation import validate_position
 
 
@@ -77,6 +79,20 @@ class RecognitionService:
                 assumed_coordinates.add(coordinate)
 
         grid = normalize_orientation(resolved_grid, effective_orientation)
+        grid, semantic_correction = correct_crossed_king_camps(grid)
+        if semantic_correction is not None:
+            semantic_corrections = cast(
+                list[dict[str, object]],
+                prediction.metadata.setdefault("semantic_corrections", []),
+            )
+            semantic_corrections.append(
+                {
+                    "kind": semantic_correction.kind,
+                    "reason": semantic_correction.reason,
+                    "before_blocking": list(semantic_correction.before_blocking),
+                    "after_blocking": list(semantic_correction.after_blocking),
+                }
+            )
         position_warnings = validate_position(grid)
         warnings = [warning.code for warning in position_warnings]
 
@@ -122,6 +138,8 @@ class RecognitionService:
             warnings.append("UNCERTAIN_CELLS_ASSUMED_EMPTY")
         if any(cell.refinement is not None for cell in prediction.cells):
             warnings.append("SAME_IMAGE_PROTOTYPE_REFINEMENT")
+        if semantic_correction is not None:
+            warnings.append("SEMANTIC_CAMP_INVERSION_CORRECTED")
         if (
             partial_board
             and empty_threshold <= minimum_empty < self.minimum_cell_confidence

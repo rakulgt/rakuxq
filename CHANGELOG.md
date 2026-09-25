@@ -4,6 +4,20 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.4.4-alpha.1] - 2026-09-25
+
+### 中文
+
+- 新增象棋语义阵营纠错：方向归一化后若红帅、黑将成对落入对方九宫，并且交换红黑阵营可严格改善局面合法性，则自动纠正整盘棋子阵营。
+- 纠正采用拒识优先策略；缺失主帅、单个主帅越界或交换后未改善时不触发，其他低置信与棋种问题仍返回 `review_required`。
+- 完整保留模型原始网格、纠正原因及纠正前后阻断警告，并加入真实金色棋子皮肤失败案例回归测试。
+
+### English
+
+- Added a Xiangqi-aware camp correction: after orientation normalization, a whole-board red/black swap is applied only when both kings are cross-placed in the opposing palaces and the swap strictly improves position legality.
+- Kept rejection-first behavior: missing kings, a single displaced king, or a non-improving swap never triggers correction, while unrelated low-confidence or piece-type issues still require review.
+- Preserved the raw model grid, correction reason, and before/after blocking warnings, with a regression case derived from the real gold-disc visual-skin failure.
+
 ## [0.4.3-alpha.2] - 2026-09-24
 
 ### 中文
