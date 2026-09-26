@@ -1,12 +1,13 @@
 # RakuXQ 当前交接状态
 
-基线时间：`2026-09-26T14:46:50+08:00`
-当前生产稳定版本：`v0.4.4-alpha.3`
+基线时间：`2026-09-26T14:55:00+08:00`
+当前生产稳定版本：`v0.4.4-alpha.4`
 当前源码开发版本：`v0.4.4-alpha.4`
 
 ## 最近完成
 
 - 修复颜色锚点误传播缺陷：最新真实请求中原始模型以 91%–92% 置信度正确输出红马 `N`、黑卒 `p`、红士 `A`，旧后处理却错误改成 `n/P/a`。新版取消颜色对阵营的自动改写，只保留带 `applied=false` 的诊断候选；新增该三连误改的永久回归测试。
+- v0.4.4-alpha.4 已发布：用本次故障对应的 12 小时留存原图在生产程序内复测，结果从 `review_required` 修正为 `accepted`，FEN 为 `4c4/5k3/9/9/9/3RR4/3NPp3/3AK4/3CC4/3AN4 w`；红马、黑卒、红士全部保留原始高置信类别，颜色冲突仅记录为 `applied=false`。两个公网入口均返回 `0.4.4a4`，服务 `active`、`NRestarts=0`。完整记录见 `docs/deployments/20260926-145500-v0.4.4-alpha.4.md`。
 - 增加免费单层加速入口 `xq-fast.rakubank.com`：使用 Cloudflare 橙云，为手机 VPN 或境外出口上传提供独立路线，同时保留 `xq.rakubank.com` 国内直连入口及统一鉴权、限流、审计和匿名计时。
 - v0.4.4-alpha.3 已发布：新旧健康检查均返回 `0.4.4a3`，新入口经 Cloudflare 返回正确入口头；142 KB 真实 JPEG 的源站接收耗时 72 ms、应用处理 330 ms、Nginx 总耗时 404 ms，公网客户端端到端约 2.0 秒。最终源站证书仅覆盖 `xq` 与 `xq-fast`，Certbot 自动续期 dry-run 通过；旧 `vpn.xq` 已退出 Nginx 与续期配置，可安全删除 DNS。完整记录见 `docs/deployments/20260926-141400-v0.4.4-alpha.3.md`。
 - 修正 v0.4.4-alpha.1 将棋盘方向反转误当作阵营反转的问题：帅、将身份现在不可变；黑方在下时旋转整盘坐标，不再把帅改成将、将改成帅。
@@ -78,6 +79,7 @@
 - `python -m pip wheel . --no-deps --no-build-isolation`：成功构建 `rakuxq_api-0.4.2a1-py3-none-any.whl`，SHA-256 为 `ba4c3f8b23f0739be64adbd2afcddb59bd93da325d99546b3a7f40f84e1d86c6`。
 - `python -m pip wheel . --no-deps --no-build-isolation`：成功构建 `rakuxq_api-0.4.3a1-py3-none-any.whl`，SHA-256 为 `f2d8dba3dbd2e17ea49bf2ce7f620dea487d3b7a5ca14b270f775695f8db7075`。
 - `python -m pip wheel . --no-deps`：成功构建 `rakuxq_api-0.4.3a2-py3-none-any.whl`，SHA-256 为 `0a8a354f0a02d5bf85060809f864b387cedef7b69cf4b43ff334b6a8d33eb8af`。
+- `python -m pip wheel . --no-deps`：成功构建 `rakuxq_api-0.4.4a4-py3-none-any.whl`，SHA-256 为 `3aa91c63ec4b0cee086001a4c9db594c8bb7a5993538e7e3bae1c5a05d934b2f`。
 - RakuXQ Lab 浏览器验收：用户提供的长 FEN 地址直接还原；本地 Pikafish 返回评分/最佳着法/PV；走棋、悔棋、双分支保留和 FEN 导入通过；390×844 移动视口无横向溢出。
 - RakuXQ Lab 紧凑版浏览器验收：`1280×720` 首屏完整显示整张棋盘；标准新局恢复正确三十二子 FEN；自由摆子完成清空、逐格放置、缺少将帅拒绝和有效局面应用；控制台无错误。
 - RakuXQ Lab v0.4.2 浏览器验收：`1280×720` 下棋盘、引擎面板与主线招法轨同时可见；从已走一步的本地研究点击“新局”后不弹窗并立即恢复标准开局 FEN；侧边菜单可正常打开并由 Esc 关闭。
@@ -93,7 +95,7 @@
 - 新增三例用户人工核验：横置实体棋盘的 `accepted` FEN `CR1akab2/5R3/6n2/p1p1p3p/3r2p2/2P3P2/P7P/2NC5/4A4/2B1KAr2 w - - 0 1` 全部正确；稀疏实体残局的候选 FEN `4k4/4a4/4P4/9/9/9/9/9/9/5K3 w - - 0 1` 全部正确；被弹窗遮挡关键内容的案例正确返回 `review_required`，没有作为可直接消费的 FEN 自动通过。这些历史图片未进入项目或训练集；官方托管自 `v0.1.2-alpha.1` 起仅对有效 Key 调用启用 12 小时短期留存。
 - `scripts/check-document-governance.ps1`：RakuXQ 无错误；工作区其他遗留项目仍有 10 条既有迁移警告。
 - 生产公网验收：健康检查返回 `status=ok`；无 Key 返回 HTTP `401` / `API_KEY_REQUIRED`；有效 Key + 真实基准图片返回 `accepted` 和正确 FEN `3k5/9/9/9/9/9/3p5/2pANR3/3KNR3/3ACC3 w - - 0 1`。
-- 生产运行状态：服务器发布标识为 `1e1a0231c102c94d78b265f1b47d7ae6b526601c`；服务 `active`、`NRestarts=0`，短期清理与匿名统计备份 timer 均为 `active`，Nginx 配置检查通过。
+- 生产运行状态：服务器发布标识为 `261984e36f62f89d8c3a12363f4013046d267b7f`；服务 `active`、`NRestarts=0`，Nginx 配置检查通过，两个公网入口均返回 `version=0.4.4a4`。
 - 生产短期审计验收：公网上传后的服务器原图 SHA-256 与本地原图完全一致；有效 Key 的 `422` 参数错误被完整记录，无 Key 请求不留存；13 小时测试记录被清理。完整记录见 `docs/deployments/20260917-180422-v0.1.2-alpha.1.md`。
 - 生产 URL 别名验收：以真实图片和字面值 `%20w` 调用成功完成模型推理，响应规范化为 `side_to_move=red`，FEN 使用 `w`；健康检查报告 `version=0.1.2a2`。完整记录见 `docs/deployments/20260917-181607-v0.1.2-alpha.2.md`。
 - 生产简化 FEN 验收：真实图片响应的 `fen` 只包含布局与 `w`，`full_fen` 保留完整形式；健康检查报告 `version=0.1.2a3`。完整记录见 `docs/deployments/20260917-183215-v0.1.2-alpha.3.md`。
