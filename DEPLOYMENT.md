@@ -4,7 +4,6 @@
 
 - 正式域名：`xq.rakubank.com`
 - 免费 VPN/境外出口加速域名：`xq-fast.rakubank.com`（Cloudflare 橙云）
-- 旧路线实验域名：`vpn.xq.rakubank.com`（迁移后可删除；不作为客户端入口）
 - 服务器：`raku-cn-prod-01` (`1.117.71.5`)
 - 部署根：`/opt/raku/portable/rakuxq`
 - 版本目录：`/opt/raku/portable/rakuxq/releases/<git-revision>`
@@ -66,7 +65,8 @@ Cloudflare 的 SSL/TLS 模式在仅 DNS 状态下不参与本域名传输。切�
 SSL；一级子域名结构确保免费边缘证书能够覆盖。两个入口共享应用、鉴权、限流和数据策略；响应头
 `X-RakuXQ-Ingress` 与匿名 Nginx 时序日志中的 `host` 用于区分路线。Apple 快捷指令在手机 VPN
 开启或直连上传异常时使用该入口，普通中国大陆网络仍可使用 `xq.rakubank.com`。旧的多层域名
-`vpn.xq.rakubank.com` 不受免费 Universal SSL 默认覆盖，完成迁移后可从 DNS 和源站证书中删除。
+`vpn.xq.rakubank.com` 不受免费 Universal SSL 默认覆盖，已从 Nginx 与源站续期证书移除；其 DNS
+记录可以安全删除。
 
 TLS 入口启用 HTTP/2；Let's Encrypt 公共选项提供会话缓存与 TLS 1.2/1.3。图片接口响应通过
 `Server-Timing` 披露请求接收和应用处理耗时。项目 access log 使用不含 IP、Key、查询参数和
