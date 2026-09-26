@@ -100,11 +100,12 @@ def test_same_image_prototype_never_promotes_unknown_or_empty():
     assert details == []
 
 
-def test_king_anchor_colours_refine_non_king_camp_without_changing_identity():
+def test_king_anchor_colours_are_diagnostic_only_and_never_change_raw_symbols():
     import cv2
 
     warped = np.full((500, 450, 3), (210, 180, 130), dtype=np.uint8)
     symbols = ["."] * 90
+    confidences = np.full(90, 0.99, dtype=np.float32)
     visible = [True] * 90
 
     def mark(index: int, symbol: str, colour: tuple[int, int, int]):
@@ -118,18 +119,55 @@ def test_king_anchor_colours_refine_non_king_camp_without_changing_identity():
     mark(27, "R", (25, 25, 25))
     mark(54, "r", (220, 25, 25))
 
-    refined, details = OnnxRecognitionProvider._king_anchor_color_refinement(
-        warped, symbols, visible
+    original = symbols.copy()
+    details = OnnxRecognitionProvider._king_anchor_color_diagnostics(
+        warped, symbols, confidences, visible
     )
 
-    assert refined[4] == "k"
-    assert refined[85] == "K"
-    assert refined[27] == "r"
-    assert refined[54] == "R"
-    assert {(detail["from"], detail["to"]) for detail in details} == {
+    assert symbols == original
+    assert {(detail["from"], detail["suggested"]) for detail in details} == {
         ("R", "r"),
         ("r", "R"),
     }
+    assert all(detail["applied"] is False for detail in details)
+
+
+def test_king_anchor_diagnostics_do_not_override_real_failure_pattern():
+    import cv2
+
+    warped = np.full((500, 450, 3), (210, 180, 130), dtype=np.uint8)
+    symbols = ["."] * 90
+    confidences = np.full(90, 0.99, dtype=np.float32)
+    visible = [True] * 90
+
+    def mark(index: int, symbol: str, confidence: float, colour: tuple[int, int, int]):
+        rank, file = divmod(index, 9)
+        center = (round(50 + file * 43.75), round(50 + rank * (400 / 9)))
+        cv2.circle(warped, center, 17, colour, -1)
+        symbols[index] = symbol
+        confidences[index] = confidence
+
+    mark(14, "k", 0.90, (25, 25, 25))
+    mark(67, "K", 0.95, (220, 25, 25))
+    mark(57, "N", 0.9219509, (25, 25, 25))
+    mark(59, "p", 0.9194706, (220, 25, 25))
+    mark(66, "A", 0.9115211, (25, 25, 25))
+
+    original = symbols.copy()
+    details = OnnxRecognitionProvider._king_anchor_color_diagnostics(
+        warped, symbols, confidences, visible
+    )
+
+    assert symbols == original
+    assert symbols[57] == "N"
+    assert symbols[59] == "p"
+    assert symbols[66] == "A"
+    assert {(detail["from"], detail["suggested"]) for detail in details} == {
+        ("N", "n"),
+        ("p", "P"),
+        ("A", "a"),
+    }
+    assert all(detail["raw_confidence"] > 0.91 for detail in details)
 
 
 def test_king_anchor_colours_do_nothing_when_anchor_colours_are_indistinguishable():
@@ -137,6 +175,7 @@ def test_king_anchor_colours_do_nothing_when_anchor_colours_are_indistinguishabl
 
     warped = np.full((500, 450, 3), (210, 180, 130), dtype=np.uint8)
     symbols = ["."] * 90
+    confidences = np.full(90, 0.99, dtype=np.float32)
     visible = [True] * 90
     for index, symbol in ((4, "k"), (85, "K"), (27, "R")):
         rank, file = divmod(index, 9)
@@ -144,9 +183,8 @@ def test_king_anchor_colours_do_nothing_when_anchor_colours_are_indistinguishabl
         cv2.circle(warped, center, 17, (80, 80, 80), -1)
         symbols[index] = symbol
 
-    refined, details = OnnxRecognitionProvider._king_anchor_color_refinement(
-        warped, symbols, visible
+    details = OnnxRecognitionProvider._king_anchor_color_diagnostics(
+        warped, symbols, confidences, visible
     )
 
-    assert refined == symbols
     assert details == []

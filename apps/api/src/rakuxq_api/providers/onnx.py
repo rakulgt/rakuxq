@@ -128,22 +128,23 @@ class OnnxRecognitionProvider(RecognitionProvider):
         return exp / exp.sum(axis=-1, keepdims=True)
 
     @staticmethod
-    def _king_anchor_color_refinement(
+    def _king_anchor_color_diagnostics(
         warped,
         symbols: list[str],
+        confidences,
         visible: list[bool],
         minimum_anchor_distance: float = 0.04,
         minimum_assignment_margin: float = 0.02,
         maximum_nearest_distance: float = 0.50,
     ):
-        """Refine camp case from the visual colours anchored by 帅 and 将.
+        """Record colour-based camp hypotheses without changing model output.
 
         Piece identity is established first by the layout model.  The unique 帅
         (``K``) and 将 (``k``) patches then define image-local red and black colour
-        prototypes.  Only the camp case of an already-known non-king piece may
-        change, and only when both anchors are visually distinct and one anchor
-        is a decisive match.  Empty/unknown cells and the king identities never
-        change here.
+        prototypes.  Whole-patch colour histograms are affected by disc colour,
+        board texture, shadows, and reflections, so they are not safe evidence
+        for mutating a recognized camp.  Candidate disagreements remain in
+        metadata for audit and future ink-segmentation work only.
         """
         import cv2
         import numpy as np
@@ -151,7 +152,7 @@ class OnnxRecognitionProvider(RecognitionProvider):
         red_anchors = [index for index, symbol in enumerate(symbols) if symbol == "K"]
         black_anchors = [index for index, symbol in enumerate(symbols) if symbol == "k"]
         if len(red_anchors) != 1 or len(black_anchors) != 1:
-            return symbols.copy(), []
+            return []
 
         mask = np.zeros((37, 37), dtype=np.uint8)
         cv2.circle(mask, (18, 18), 17, 255, -1)
@@ -177,14 +178,13 @@ class OnnxRecognitionProvider(RecognitionProvider):
         red_anchor = features.get(red_index)
         black_anchor = features.get(black_index)
         if red_anchor is None or black_anchor is None:
-            return symbols.copy(), []
+            return []
         anchor_distance = float(
             cv2.compareHist(red_anchor, black_anchor, cv2.HISTCMP_BHATTACHARYYA)
         )
         if anchor_distance < minimum_anchor_distance:
-            return symbols.copy(), []
+            return []
 
-        refined = symbols.copy()
         details: list[dict[str, object]] = []
         for index in occupied:
             symbol = symbols[index]
@@ -205,21 +205,23 @@ class OnnxRecognitionProvider(RecognitionProvider):
             inferred_red = red_distance < black_distance
             if inferred_red == symbol.isupper():
                 continue
-            corrected = symbol.upper() if inferred_red else symbol.lower()
-            refined[index] = corrected
+            suggested = symbol.upper() if inferred_red else symbol.lower()
             details.append(
                 {
                     "rank": index // 9,
                     "file": index % 9,
                     "from": symbol,
-                    "to": corrected,
+                    "suggested": suggested,
+                    "raw_confidence": float(confidences[index]),
+                    "applied": False,
+                    "reason": "diagnostic_only_unsegmented_patch_colour",
                     "red_distance": red_distance,
                     "black_distance": black_distance,
                     "assignment_margin": margin,
                     "anchor_distance": anchor_distance,
                 }
             )
-        return refined, details
+        return details
 
     @staticmethod
     def _same_image_prototype_refinement(
@@ -450,15 +452,16 @@ class OnnxRecognitionProvider(RecognitionProvider):
         confidences = probabilities[np.arange(90), indexes]
         raw_symbols = [LABELS[int(index)] for index in indexes]
         projected_points, visible = self._visible_grid_mask(corners, width, height)
-        camp_symbols, camp_refinements = self._king_anchor_color_refinement(
+        camp_diagnostics = self._king_anchor_color_diagnostics(
             warped,
             raw_symbols,
+            confidences,
             visible,
         )
         refined_symbols, effective_confidences, refinements = (
             self._same_image_prototype_refinement(
                 warped,
-                camp_symbols,
+                raw_symbols,
                 confidences,
                 visible,
             )
@@ -482,12 +485,8 @@ class OnnxRecognitionProvider(RecognitionProvider):
                         refinement
                         for refinement, changed in (
                             (
-                                "king_anchor_color",
-                                camp_symbols[index] != raw_symbols[index],
-                            ),
-                            (
                                 "same_image_prototype",
-                                refined_symbols[index] != camp_symbols[index],
+                                refined_symbols[index] != raw_symbols[index],
                             ),
                         )
                         if changed
@@ -530,7 +529,8 @@ class OnnxRecognitionProvider(RecognitionProvider):
                     if not is_visible
                 ],
                 "prototype_refinements": refinements,
-                "camp_color_refinements": camp_refinements,
+                "camp_color_refinements": [],
+                "camp_color_diagnostics": camp_diagnostics,
                 "timings_ms": {
                     "load": round((loaded - started) * 1000),
                     "decode": round((decoded - loaded) * 1000),

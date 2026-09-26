@@ -148,12 +148,6 @@ class RecognitionService:
             for cell in prediction.cells
         ):
             warnings.append("SAME_IMAGE_PROTOTYPE_REFINEMENT")
-        if any(
-            cell.refinement is not None
-            and "king_anchor_color" in cell.refinement
-            for cell in prediction.cells
-        ):
-            warnings.append("KING_ANCHOR_COLOR_REFINEMENT")
         if semantic_orientation is not None:
             warnings.append("SEMANTIC_ORIENTATION_ROTATED")
         if (

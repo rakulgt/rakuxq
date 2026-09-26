@@ -4,6 +4,20 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.4.4-alpha.4] - 2026-09-26
+
+### 中文
+
+- 修复帅/将颜色锚点覆盖高置信原始分类的回归：真实案例中的红马、黑卒和红士不再被错误改成黑马、红兵和黑士。
+- 在完成可靠字迹分割与多棋子一致性验证前，整块棋子图像的颜色比较降级为只读诊断；响应保留候选、距离和原始置信度，但明确标记 `applied=false`，不再修改 FEN。
+- 新增对应 `N→n`、`p→P`、`A→a` 三连误改的回归测试，并保留帅/将身份不可变与方向旋转规则。
+
+### English
+
+- Fixed a regression where king-anchored colour matching overrode high-confidence raw classes, turning a real red horse, black pawn, and red advisor into the opposite camps.
+- Downgraded whole-patch colour comparison to read-only diagnostics until reliable ink segmentation and multi-piece consensus exist; candidate matches, distances, and raw confidence remain auditable with `applied=false` but no longer mutate FEN.
+- Added a regression test for the exact `N→n`, `p→P`, and `A→a` failure pattern while preserving immutable king identities and semantic board rotation.
+
 ## [0.4.4-alpha.3] - 2026-09-26
 
 ### 中文
