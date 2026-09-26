@@ -1,8 +1,9 @@
 import unittest
 
+from rakuxq_api.domain import Orientation
 from rakuxq_api.semantic import (
-    correct_crossed_king_camps,
-    swap_piece_camps,
+    infer_orientation_from_kings,
+    rotate_grid_180,
 )
 
 LEGAL_GRID = [
@@ -18,7 +19,7 @@ LEGAL_GRID = [
     list("RNBAKABNR"),
 ]
 
-GOLD_DISC_SKIN_FAILURE_GRID = [
+REAL_FAILURE_GRID = [
     list("..n......"),
     list("......c.."),
     list("....Kc..r"),
@@ -32,49 +33,44 @@ GOLD_DISC_SKIN_FAILURE_GRID = [
 ]
 
 
-class SemanticCorrectionTests(unittest.TestCase):
-    def test_swap_piece_camps_preserves_coordinates_and_empty_cells(self):
-        swapped = swap_piece_camps(LEGAL_GRID)
+class SemanticOrientationTests(unittest.TestCase):
+    def test_rotate_preserves_piece_identity_and_changes_coordinates(self):
+        rotated = rotate_grid_180(LEGAL_GRID)
 
-        self.assertEqual(swapped[0], list("RNBAKABNR"))
-        self.assertEqual(swapped[1], list("........."))
-        self.assertEqual(swapped[9], list("rnbakabnr"))
+        self.assertEqual(rotated[0], list("RNBAKABNR"))
+        self.assertEqual(rotated[1], list("........."))
+        self.assertEqual(rotated[9], list("rnbakabnr"))
+        self.assertEqual(sum(row.count("K") for row in rotated), 1)
+        self.assertEqual(sum(row.count("k") for row in rotated), 1)
 
-    def test_crossed_kings_trigger_auditable_global_swap(self):
-        inverted = swap_piece_camps(LEGAL_GRID)
+    def test_crossed_kings_infer_black_bottom_orientation(self):
+        black_bottom = rotate_grid_180(LEGAL_GRID)
 
-        corrected, correction = correct_crossed_king_camps(inverted)
+        decision = infer_orientation_from_kings(black_bottom)
 
-        self.assertEqual(corrected, LEGAL_GRID)
-        self.assertIsNotNone(correction)
-        self.assertEqual(correction.kind, "global_camp_swap")
-        self.assertEqual(correction.after_blocking, ())
+        self.assertIsNotNone(decision)
+        self.assertEqual(decision.orientation, Orientation.BLACK_BOTTOM)
+        self.assertEqual(decision.kind, "rotate_180")
+        self.assertEqual(decision.after_blocking, ())
 
-    def test_legal_grid_is_never_changed(self):
-        corrected, correction = correct_crossed_king_camps(LEGAL_GRID)
-
-        self.assertEqual(corrected, LEGAL_GRID)
-        self.assertIsNone(correction)
+    def test_legal_red_bottom_grid_needs_no_orientation_change(self):
+        self.assertIsNone(infer_orientation_from_kings(LEGAL_GRID))
 
     def test_missing_king_is_not_enough_evidence(self):
         grid = [row.copy() for row in LEGAL_GRID]
         grid[9][4] = "."
         grid[2][4] = "K"
 
-        corrected, correction = correct_crossed_king_camps(grid)
+        self.assertIsNone(infer_orientation_from_kings(grid))
 
-        self.assertEqual(corrected, grid)
-        self.assertIsNone(correction)
+    def test_real_failure_rotates_without_turning_shuai_into_jiang(self):
+        decision = infer_orientation_from_kings(REAL_FAILURE_GRID)
+        corrected = rotate_grid_180(REAL_FAILURE_GRID)
 
-    def test_real_gold_disc_skin_failure_is_corrected(self):
-        corrected, correction = correct_crossed_king_camps(
-            GOLD_DISC_SKIN_FAILURE_GRID
-        )
-
-        self.assertIsNotNone(correction)
-        self.assertEqual(corrected[2][4], "k")
-        self.assertEqual(corrected[7][5], "K")
-        self.assertEqual(correction.after_blocking, ())
+        self.assertIsNotNone(decision)
+        self.assertEqual(corrected[7][4], "K")
+        self.assertEqual(corrected[2][3], "k")
+        self.assertEqual(decision.after_blocking, ())
 
 
 if __name__ == "__main__":

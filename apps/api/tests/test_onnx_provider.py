@@ -98,3 +98,55 @@ def test_same_image_prototype_never_promotes_unknown_or_empty():
 
     assert refined[20] == "x"
     assert details == []
+
+
+def test_king_anchor_colours_refine_non_king_camp_without_changing_identity():
+    import cv2
+
+    warped = np.full((500, 450, 3), (210, 180, 130), dtype=np.uint8)
+    symbols = ["."] * 90
+    visible = [True] * 90
+
+    def mark(index: int, symbol: str, colour: tuple[int, int, int]):
+        rank, file = divmod(index, 9)
+        center = (round(50 + file * 43.75), round(50 + rank * (400 / 9)))
+        cv2.circle(warped, center, 17, colour, -1)
+        symbols[index] = symbol
+
+    mark(4, "k", (25, 25, 25))
+    mark(85, "K", (220, 25, 25))
+    mark(27, "R", (25, 25, 25))
+    mark(54, "r", (220, 25, 25))
+
+    refined, details = OnnxRecognitionProvider._king_anchor_color_refinement(
+        warped, symbols, visible
+    )
+
+    assert refined[4] == "k"
+    assert refined[85] == "K"
+    assert refined[27] == "r"
+    assert refined[54] == "R"
+    assert {(detail["from"], detail["to"]) for detail in details} == {
+        ("R", "r"),
+        ("r", "R"),
+    }
+
+
+def test_king_anchor_colours_do_nothing_when_anchor_colours_are_indistinguishable():
+    import cv2
+
+    warped = np.full((500, 450, 3), (210, 180, 130), dtype=np.uint8)
+    symbols = ["."] * 90
+    visible = [True] * 90
+    for index, symbol in ((4, "k"), (85, "K"), (27, "R")):
+        rank, file = divmod(index, 9)
+        center = (round(50 + file * 43.75), round(50 + rank * (400 / 9)))
+        cv2.circle(warped, center, 17, (80, 80, 80), -1)
+        symbols[index] = symbol
+
+    refined, details = OnnxRecognitionProvider._king_anchor_color_refinement(
+        warped, symbols, visible
+    )
+
+    assert refined == symbols
+    assert details == []

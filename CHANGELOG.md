@@ -4,6 +4,20 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.4.4-alpha.2] - 2026-09-26
+
+### 中文
+
+- 修复 v0.4.4-alpha.1 的错误假设：帅、将字形身份不可互换；当帅在上、将在下且旋转后局面严格更合法时，执行180°坐标旋转而不是全盘交换红黑。
+- 新增以帅、将棋子图像为本图红黑颜色锚点的保守阵营复核；只有锚点可分且目标棋子明显更接近其中一方时才修改其他已知棋子的大小写。
+- 颜色传播永不改变帅、将、空位或未知格；原始类别、纠正步骤、颜色距离和方向决策全部保留用于审计。
+
+### English
+
+- Fixed the v0.4.4-alpha.1 assumption: the recognized identities of 帅 and 将 are immutable. When 帅 is above and 将 below and rotation strictly improves legality, coordinates rotate 180 degrees instead of swapping every camp.
+- Added conservative image-local camp refinement using the 帅 and 将 patches as red/black colour anchors; another known piece changes case only when the anchors are separable and its colour is a decisive match.
+- Colour propagation never changes either king, an empty cell, or an unknown cell, while raw classes, refinement steps, colour distances, and orientation decisions remain auditable.
+
 ## [0.4.4-alpha.1] - 2026-09-25
 
 ### 中文

@@ -98,7 +98,7 @@ else:
 - `prediction.cells[].refinement` 与 `raw_confidence`：披露同图视觉原型纠正及纠正前置信度。
 - `warnings` 包含非阻断警告 `UNSEEN_CELLS_ASSUMED_EMPTY`。
 
-已经进入画面但模型原始类别为未知 `x` 的格子，按产品规则补空，原因记录为 `visually_uncertain`，并增加非阻断警告 `UNCERTAIN_CELLS_ASSUMED_EMPTY`。低置信度的明确棋种不再自动补空：provider 会尝试用同图中高置信、同色棋子作为视觉原型进行保守纠正，成功时增加 `SAME_IMAGE_PROTOTYPE_REFINEMENT`，并在 `prediction.metadata.prototype_refinements` 中保存原类别、纠正类别、相似度、次优相似度及原型坐标；无法纠正时保留候选并返回 `review_required`。部分棋盘中低置信空位采用单独的放宽门槛，触发时增加 `PARTIAL_EMPTY_CONFIDENCE_RELAXED`。棋盘延伸到画面外时，竖屏快速路径会自动恢复双尺度定位。
+已经进入画面但模型原始类别为未知 `x` 的格子，按产品规则补空，原因记录为 `visually_uncertain`，并增加非阻断警告 `UNCERTAIN_CELLS_ASSUMED_EMPTY`。低置信度的明确棋种不再自动补空：provider 会尝试用同图中高置信、同色棋子作为视觉原型进行保守纠正，成功时增加 `SAME_IMAGE_PROTOTYPE_REFINEMENT`，并在 `prediction.metadata.prototype_refinements` 中保存原类别、纠正类别、相似度、次优相似度及原型坐标；无法纠正时保留候选并返回 `review_required`。若帅、将棋子区域的颜色可可靠区分，provider 还会把二者作为本图红黑锚点，保守复核其他已知棋子的阵营，成功时增加 `KING_ANCHOR_COLOR_REFINEMENT`，证据记录在 `prediction.metadata.camp_color_refinements`。帅、将身份永不互换；当唯一帅在上方九宫、唯一将在下方九宫且旋转严格改善合法性时，服务旋转整盘坐标并增加 `SEMANTIC_ORIENTATION_ROTATED`，方向依据保存在 `prediction.metadata.semantic_orientations`。部分棋盘中低置信空位采用单独的放宽门槛，触发时增加 `PARTIAL_EMPTY_CONFIDENCE_RELAXED`。棋盘延伸到画面外时，竖屏快速路径会自动恢复双尺度定位。
 
 ## `POST /v1/fen` 兼容接口
 

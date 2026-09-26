@@ -3,15 +3,16 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from .domain import Orientation
 from .validation import validate_position
 
 RED_PALACE = {(rank, file) for rank in range(7, 10) for file in range(3, 6)}
 BLACK_PALACE = {(rank, file) for rank in range(0, 3) for file in range(3, 6)}
-PIECE_SYMBOLS = frozenset("KABNRCPkabnrcp")
 
 
 @dataclass(frozen=True, slots=True)
-class SemanticCorrection:
+class SemanticOrientation:
+    orientation: Orientation
     kind: str
     reason: str
     before_blocking: tuple[str, ...]
@@ -29,36 +30,33 @@ def _find(
     ]
 
 
-def swap_piece_camps(grid: Sequence[Sequence[str]]) -> list[list[str]]:
-    """Swap red/black piece classes without moving any board coordinate."""
-    return [
-        [value.swapcase() if value in PIECE_SYMBOLS else value for value in row]
-        for row in grid
-    ]
+def rotate_grid_180(grid: Sequence[Sequence[str]]) -> list[list[str]]:
+    """Rotate coordinates while preserving every recognized piece identity."""
+    return [list(reversed(row)) for row in reversed(grid)]
 
 
-def correct_crossed_king_camps(
+def infer_orientation_from_kings(
     grid: Sequence[Sequence[str]],
-) -> tuple[list[list[str]], SemanticCorrection | None]:
-    """Correct a decisive whole-board camp inversion.
+) -> SemanticOrientation | None:
+    """Infer a black-bottom photograph from the immutable 帅/将 identities.
 
-    The layout model encodes both piece type and camp in one class.  On an
-    unfamiliar visual skin it can invert the camp of every otherwise-correct
-    class.  Xiangqi supplies a hard semantic signature for that failure: the
-    sole red king is in Black's palace while the sole black king is in Red's.
+    Uppercase ``K`` means the model recognized 帅 and lowercase ``k`` means it
+    recognized 将. Their identities must never be exchanged merely to satisfy
+    palace rules. When both are cross-placed in the opposite canonical palaces,
+    the safe competing hypothesis is a 180-degree coordinate rotation.
 
-    We intentionally require both kings and a strict validation improvement.
-    A single misplaced/missing king is not enough evidence for a global swap.
+    Both kings and a strict legality improvement are required. A missing king,
+    one displaced king, or an equally invalid rotated position remains unchanged.
     """
     original = [list(row) for row in grid]
     red_kings = _find(original, "K")
     black_kings = _find(original, "k")
     if len(red_kings) != 1 or len(black_kings) != 1:
-        return original, None
+        return None
     if red_kings[0] not in BLACK_PALACE or black_kings[0] not in RED_PALACE:
-        return original, None
+        return None
 
-    candidate = swap_piece_camps(original)
+    candidate = rotate_grid_180(original)
     before = tuple(
         warning.code for warning in validate_position(original) if warning.blocking
     )
@@ -70,13 +68,14 @@ def correct_crossed_king_camps(
         "BLACK_KING_OUTSIDE_PALACE",
     }
     if not king_failures.issubset(before) or king_failures.intersection(after):
-        return original, None
+        return None
     if len(after) >= len(before):
-        return original, None
+        return None
 
-    return candidate, SemanticCorrection(
-        kind="global_camp_swap",
-        reason="crossed_kings_after_orientation_normalization",
+    return SemanticOrientation(
+        orientation=Orientation.BLACK_BOTTOM,
+        kind="rotate_180",
+        reason="red_king_top_black_king_bottom_after_board_warp",
         before_blocking=before,
         after_blocking=after,
     )

@@ -12,7 +12,7 @@ from .domain import (
 )
 from .fen import FenError, normalize_orientation, to_fen, to_full_fen, to_piece_placement
 from .providers.base import RecognitionProvider
-from .semantic import correct_crossed_king_camps
+from .semantic import infer_orientation_from_kings
 from .validation import validate_position
 
 
@@ -78,21 +78,27 @@ class RecognitionService:
                 )
                 assumed_coordinates.add(coordinate)
 
-        grid = normalize_orientation(resolved_grid, effective_orientation)
-        grid, semantic_correction = correct_crossed_king_camps(grid)
-        if semantic_correction is not None:
-            semantic_corrections = cast(
+        semantic_orientation = (
+            infer_orientation_from_kings(resolved_grid)
+            if orientation == Orientation.AUTO
+            else None
+        )
+        if semantic_orientation is not None:
+            effective_orientation = semantic_orientation.orientation
+            semantic_orientations = cast(
                 list[dict[str, object]],
-                prediction.metadata.setdefault("semantic_corrections", []),
+                prediction.metadata.setdefault("semantic_orientations", []),
             )
-            semantic_corrections.append(
+            semantic_orientations.append(
                 {
-                    "kind": semantic_correction.kind,
-                    "reason": semantic_correction.reason,
-                    "before_blocking": list(semantic_correction.before_blocking),
-                    "after_blocking": list(semantic_correction.after_blocking),
+                    "orientation": semantic_orientation.orientation.value,
+                    "kind": semantic_orientation.kind,
+                    "reason": semantic_orientation.reason,
+                    "before_blocking": list(semantic_orientation.before_blocking),
+                    "after_blocking": list(semantic_orientation.after_blocking),
                 }
             )
+        grid = normalize_orientation(resolved_grid, effective_orientation)
         position_warnings = validate_position(grid)
         warnings = [warning.code for warning in position_warnings]
 
@@ -136,10 +142,20 @@ class RecognitionService:
             warnings.append("UNSEEN_CELLS_ASSUMED_EMPTY")
         if "visually_uncertain" in reasons:
             warnings.append("UNCERTAIN_CELLS_ASSUMED_EMPTY")
-        if any(cell.refinement is not None for cell in prediction.cells):
+        if any(
+            cell.refinement is not None
+            and "same_image_prototype" in cell.refinement
+            for cell in prediction.cells
+        ):
             warnings.append("SAME_IMAGE_PROTOTYPE_REFINEMENT")
-        if semantic_correction is not None:
-            warnings.append("SEMANTIC_CAMP_INVERSION_CORRECTED")
+        if any(
+            cell.refinement is not None
+            and "king_anchor_color" in cell.refinement
+            for cell in prediction.cells
+        ):
+            warnings.append("KING_ANCHOR_COLOR_REFINEMENT")
+        if semantic_orientation is not None:
+            warnings.append("SEMANTIC_ORIENTATION_ROTATED")
         if (
             partial_board
             and empty_threshold <= minimum_empty < self.minimum_cell_confidence

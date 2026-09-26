@@ -159,21 +159,14 @@ class RefinedPieceProvider(FixedProvider):
         return prediction
 
 
-class CampReversedProvider(FixedProvider):
+class BlackBottomProvider(FixedProvider):
     def recognize(self, image, orientation):
         prediction = super().recognize(image, orientation)
-        prediction.grid = [
-            [symbol.swapcase() if symbol.isalpha() else symbol for symbol in row]
-            for row in prediction.grid
-        ]
+        prediction.grid = [list(reversed(row)) for row in reversed(prediction.grid)]
         prediction.cells = [
-            CellPrediction(
-                cell.rank,
-                cell.file,
-                cell.symbol.swapcase() if cell.symbol.isalpha() else cell.symbol,
-                cell.confidence,
-            )
-            for cell in prediction.cells
+            CellPrediction(rank, file, symbol, self.confidence)
+            for rank, row in enumerate(prediction.grid)
+            for file, symbol in enumerate(row)
         ]
         return prediction
 
@@ -294,36 +287,37 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(result.status, RecognitionStatus.ACCEPTED)
         self.assertIn("SAME_IMAGE_PROTOTYPE_REFINEMENT", result.warnings)
 
-    def test_decisive_whole_board_camp_inversion_is_corrected(self):
-        result = RecognitionService(CampReversedProvider()).recognize(
+    def test_decisive_black_bottom_board_is_rotated_without_changing_camps(self):
+        result = RecognitionService(BlackBottomProvider()).recognize(
             b"image", SideToMove.RED, Orientation.AUTO
         )
 
         self.assertEqual(result.status, RecognitionStatus.ACCEPTED)
         self.assertEqual(result.grid, START_GRID)
         self.assertNotEqual(result.prediction.grid, result.grid)
-        self.assertIn("SEMANTIC_CAMP_INVERSION_CORRECTED", result.warnings)
+        self.assertEqual(result.orientation, Orientation.BLACK_BOTTOM)
+        self.assertIn("SEMANTIC_ORIENTATION_ROTATED", result.warnings)
         self.assertEqual(
-            result.prediction.metadata["semantic_corrections"][0]["kind"],
-            "global_camp_swap",
+            result.prediction.metadata["semantic_orientations"][0]["kind"],
+            "rotate_180",
         )
         self.assertIn(
             "RED_KING_OUTSIDE_PALACE",
-            result.prediction.metadata["semantic_corrections"][0]["before_blocking"],
+            result.prediction.metadata["semantic_orientations"][0]["before_blocking"],
         )
         self.assertEqual(
-            result.prediction.metadata["semantic_corrections"][0]["after_blocking"],
+            result.prediction.metadata["semantic_orientations"][0]["after_blocking"],
             [],
         )
 
-    def test_single_outside_king_does_not_trigger_global_camp_swap(self):
+    def test_single_outside_king_does_not_trigger_orientation_rotation(self):
         result = RecognitionService(OneKingOutsideProvider()).recognize(
             b"image", SideToMove.RED, Orientation.AUTO
         )
 
         self.assertEqual(result.status, RecognitionStatus.REVIEW_REQUIRED)
-        self.assertNotIn("SEMANTIC_CAMP_INVERSION_CORRECTED", result.warnings)
-        self.assertNotIn("semantic_corrections", result.prediction.metadata)
+        self.assertNotIn("SEMANTIC_ORIENTATION_ROTATED", result.warnings)
+        self.assertNotIn("semantic_orientations", result.prediction.metadata)
 
 
 if __name__ == "__main__":
