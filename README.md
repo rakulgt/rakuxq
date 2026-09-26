@@ -20,7 +20,7 @@ RakuXQ 是由 **rakulgt / Raku Intelligence（罗酷智能）** 发起的开源�
 真实棋盘照片、斜拍、裁剪、背景噪声和部分遮挡；`v0.3` 已增加可替换 UCI 引擎边界，开始
 返回最佳着法和候选变化，后续继续完成中文着法与终端推送。
 
-> 当前源码版本：`v0.4.4-alpha.2`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
+> 当前源码版本：`v0.4.4-alpha.3`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
 > Pikafish UCI 适配器进入本地非商业技术验证。官方托管服务暂不部署受限 NNUE 权重。
 
 ### 从 lgtXQ 到 RakuXQ
@@ -229,7 +229,7 @@ screenshots, web boards, physical-board photos, perspective distortion, cropping
 noise, and partial occlusion. Version `0.3` adds a replaceable UCI engine boundary for best moves
 and principal variations; Chinese notation and terminal notifications remain on the roadmap.
 
-> Current source release: `v0.4.4-alpha.2`. The vision pipeline works on a growing set of real
+> Current source release: `v0.4.4-alpha.3`. The vision pipeline works on a growing set of real
 > screenshots and physical-board photos. The Pikafish UCI adapter is undergoing local,
 > non-commercial interoperability validation; restricted NNUE weights are not deployed by the
 > official hosted service.

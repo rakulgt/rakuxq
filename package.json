@@ -1,7 +1,7 @@
 {
   "name": "rakuxq-web-assets",
   "private": true,
-  "version": "0.4.4-alpha.2",
+  "version": "0.4.4-alpha.3",
   "type": "module",
   "description": "Pinned browser dependencies and tests for the RakuXQ interactive board",
   "scripts": {

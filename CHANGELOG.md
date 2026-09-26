@@ -4,6 +4,20 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.4.4-alpha.3] - 2026-09-26
+
+### 中文
+
+- 新增 `xq-fast.rakubank.com` 免费 Cloudflare 橙云入口，为手机 VPN 和境外出口提供与国内直连入口独立的上传路线。
+- 将单层子域名纳入 Nginx、源站证书和匿名分段计时；两个入口共享 API、鉴权、限流和短期审计规则。
+- 停止把多层域名 `vpn.xq.rakubank.com` 作为免费代理入口，避免 Cloudflare Universal SSL 默认不覆盖导致的 TLS 握手失败。
+
+### English
+
+- Added `xq-fast.rakubank.com` as a free Cloudflare-proxied ingress for mobile VPN and overseas-exit upload paths, independent of the direct mainland-China ingress.
+- Added the single-level hostname to Nginx, the origin certificate, and anonymous segmented timing while preserving the same API, authentication, rate limits, and short-lived audit policy.
+- Retired multi-level `vpn.xq.rakubank.com` as a free proxy ingress to avoid TLS failures caused by the default Universal SSL hostname-depth limit.
+
 ## [0.4.4-alpha.2] - 2026-09-26
 
 ### 中文

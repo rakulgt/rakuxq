@@ -1,11 +1,11 @@
 ---
 document_type: living-project-cognitive-baseline
 project_id: rakuxq
-baseline_revision: "17"
-parent_revision: "16"
+baseline_revision: "18"
+parent_revision: "17"
 change_operation: UPDATE
 status: active
-updated_at: "2026-09-26T12:20:00+08:00"
+updated_at: "2026-09-26T14:02:39+08:00"
 ---
 
 # RakuXQ
@@ -44,6 +44,7 @@ RakuXQ 是面向开发者、自动化用户和中国象棋应用的开源智能�
 - 对画面内未知格补空，响应必须包含 `UNCERTAIN_CELLS_ASSUMED_EMPTY`，并将对应坐标原因标记为 `visually_uncertain`；`prediction` 保留模型原始 `x`，顶层 `grid` 表示应用产品规则后的最终局面。
 - 对同图视觉原型自动纠正，响应必须包含 `SAME_IMAGE_PROTOTYPE_REFINEMENT`；完整响应保留原类别、原置信度、纠正方法和相似度证据。
 - 官方托管 API 为每位客户签发独立密钥并记录独立到期时间；密钥只保存不可逆哈希，过期响应必须披露微信 `lgtqcn`、`39 元人民币/年`和一年续期周期。
+- 官方托管保留 `xq.rakubank.com` 国内直连入口，并以 `xq-fast.rakubank.com` 提供 Cloudflare 免费橙云加速入口；两者必须共享同一接口、鉴权、限流、审计规则和匿名分段计时。
 - 官方托管短期审计不得记录明文 API Key；只记录 Key ID，并设置 12 小时保留上限和磁盘容量上限。无有效 Key 的请求不得触发图片留存，避免形成匿名存储入口。
 - MIT 开源源码与官方托管服务必须明确区分：源码继续免费开放，年费只对应维护者提供的服务器推理、带宽、密钥和运维服务。
 - 公开单条交互只保留 72 小时，允许展示时间、状态、简化 FEN、置信度和推理耗时；历史累计仅永久保存汇总计数和首末时间，不永久保存逐条交互。
@@ -84,6 +85,7 @@ RakuXQ 是面向开发者、自动化用户和中国象棋应用的开源智能�
 - 已确认：优先复用开源模型和通用推理框架，不从零重复建设基础算子；差异化投入数据、拒识、整盘评测和工程接口。
 - 已确认：局部棋盘图片中未进入画面的交叉点默认无子，风险由主动上传该图片的调用者承担；产品通过显式警告和坐标清单提供可审计性，而不是阻止生成结果。
 - 已确认：官方托管入口使用 `https://xq.rakubank.com/v1/recognitions`，部署到 `raku-cn-prod-01`；客户以带有效期的独立 API Key 调用，标准托管价格为 `39 元人民币/年`，续费联系微信 `lgtqcn`。
+- 已确认：手机 VPN 或境外出口场景使用免费单层加速域名 `https://xq-fast.rakubank.com`；多层域名 `vpn.xq.rakubank.com` 因 Cloudflare 免费 Universal SSL 覆盖限制退出客户端入口。
 - 已确认：为支持早期准确率、稳定性和失败模式分析，官方托管服务保存已鉴权交互的原图与完整结果，最长 12 小时后自动清除；它不是永久数据集或训练授权。
 - 已确认：`xq.rakubank.com` 不是空白 API 根路径，而是包含实时匿名交互流、累计数据、项目动机、技术来历、路线图与 Apple 快捷指令入口的公开官网。
 - 已确认：公共开发者页面允许匿名领取只生效 6 分钟的随机测试 Key，并明确披露一次性显示、短期审计和年度生产 Key 的边界。
