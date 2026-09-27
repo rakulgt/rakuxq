@@ -4,6 +4,22 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.4.4-alpha.5] - 2026-09-26
+
+### 中文
+
+- 修复风格化视频棋盘中“四个物理角点正确、A0/A8/J0/J8 语义顺序错置”导致整盘旋转并大量错子的问题。
+- 只在初始布局出现主帅数量、九宫位置、棋子上限等阻断异常，或角点与棋子置信度同时偏低时，才尝试有限的几何旋转候选；不尝试镜像，正常图仍保持单次布局推理。
+- 只有唯一无阻断警告候选同时通过角点、最低棋子和平均棋子置信门槛时才自动接受；候选、选择理由和额外布局推理次数全部写入响应诊断。
+- 两张相邻视频帧的本地回归稳定输出同一简化 FEN：`2b2a1r1/3na2C1/b2k4R/9/6pC1/6pp1/6pp1/r2cK4/2c6/6n2 b`。
+
+### English
+
+- Fixed a stylized-video-board failure where all four physical corners were found but the A0/A8/J0/J8 semantic order was permuted, rotating the board before classification and producing many wrong pieces.
+- Added bounded geometric rotation recovery only for blocking position anomalies or jointly weak corner and piece confidence. Mirrors are never attempted, and normal images retain the one-layout fast path.
+- Auto-accepts a recovered result only when exactly one candidate is free of blocking warnings and passes audited corner, minimum-piece, and mean-piece confidence gates; all candidates and extra layout runs remain visible in diagnostics.
+- Two adjacent real video frames now converge to the same simplified FEN: `2b2a1r1/3na2C1/b2k4R/9/6pC1/6pp1/6pp1/r2cK4/2c6/6n2 b`.
+
 ## [0.4.4-alpha.4] - 2026-09-26
 
 ### 中文

@@ -39,6 +39,15 @@ class Settings:
     partial_acceptance_confidence: float = float(
         os.getenv("RAKUXQ_PARTIAL_ACCEPTANCE_CONFIDENCE", "0.35")
     )
+    minimum_recovered_board_confidence: float = float(
+        os.getenv("RAKUXQ_MIN_RECOVERED_BOARD_CONFIDENCE", "0.30")
+    )
+    minimum_recovered_piece_confidence: float = float(
+        os.getenv("RAKUXQ_MIN_RECOVERED_PIECE_CONFIDENCE", "0.45")
+    )
+    recovered_acceptance_confidence: float = float(
+        os.getenv("RAKUXQ_RECOVERED_ACCEPTANCE_CONFIDENCE", "0.30")
+    )
     require_api_key: bool = _boolean("RAKUXQ_REQUIRE_API_KEY")
     api_keys_db: str = os.getenv("RAKUXQ_API_KEYS_DB", "")
     renewal_wechat: str = os.getenv("RAKUXQ_RENEWAL_WECHAT", "lgtqcn")

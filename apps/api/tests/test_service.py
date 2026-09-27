@@ -181,6 +181,29 @@ class OneKingOutsideProvider(FixedProvider):
         return prediction
 
 
+class CornerRecoveredProvider(PartialProvider):
+    def __init__(self, trusted: bool):
+        super().__init__()
+        self.trusted = trusted
+
+    def recognize(self, image, orientation):
+        prediction = super().recognize(image, orientation)
+        prediction.board_confidence = 0.34
+        prediction.cells[0] = CellPrediction(
+            rank=0,
+            file=0,
+            symbol="r",
+            confidence=0.5,
+            raw_symbol="r",
+        )
+        prediction.metadata["corner_order_recovery"] = {
+            "triggered": True,
+            "applied": True,
+            "trusted": self.trusted,
+        }
+        return prediction
+
+
 class ServiceTests(unittest.TestCase):
     def test_high_confidence_complete_position_is_accepted(self):
         result = RecognitionService(FixedProvider()).recognize(
@@ -318,6 +341,27 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(result.status, RecognitionStatus.REVIEW_REQUIRED)
         self.assertNotIn("SEMANTIC_ORIENTATION_ROTATED", result.warnings)
         self.assertNotIn("semantic_orientations", result.prediction.metadata)
+
+    def test_unique_corner_recovery_uses_audited_relaxed_thresholds(self):
+        result = RecognitionService(CornerRecoveredProvider(trusted=True)).recognize(
+            b"image", SideToMove.RED, Orientation.AUTO
+        )
+
+        self.assertEqual(result.status, RecognitionStatus.ACCEPTED)
+        self.assertIn("CORNER_ORDER_RECOVERY", result.warnings)
+        self.assertIn("CORNER_ORDER_CONFIDENCE_RELAXED", result.warnings)
+        self.assertNotIn("LOW_BOARD_CONFIDENCE", result.warnings)
+        self.assertNotIn("LOW_CELL_CONFIDENCE", result.warnings)
+
+    def test_untrusted_corner_candidate_keeps_standard_thresholds(self):
+        result = RecognitionService(CornerRecoveredProvider(trusted=False)).recognize(
+            b"image", SideToMove.RED, Orientation.AUTO
+        )
+
+        self.assertEqual(result.status, RecognitionStatus.REVIEW_REQUIRED)
+        self.assertNotIn("CORNER_ORDER_RECOVERY", result.warnings)
+        self.assertIn("LOW_BOARD_CONFIDENCE", result.warnings)
+        self.assertIn("LOW_CELL_CONFIDENCE", result.warnings)
 
 
 if __name__ == "__main__":

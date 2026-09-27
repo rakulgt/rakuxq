@@ -26,6 +26,9 @@ class RecognitionService:
         minimum_partial_board_confidence: float = 0.35,
         minimum_partial_empty_confidence: float = 0.35,
         partial_acceptance_confidence: float = 0.35,
+        minimum_recovered_board_confidence: float = 0.30,
+        minimum_recovered_piece_confidence: float = 0.45,
+        recovered_acceptance_confidence: float = 0.30,
     ):
         self.provider = provider
         self.minimum_board_confidence = minimum_board_confidence
@@ -34,6 +37,9 @@ class RecognitionService:
         self.minimum_partial_board_confidence = minimum_partial_board_confidence
         self.minimum_partial_empty_confidence = minimum_partial_empty_confidence
         self.partial_acceptance_confidence = partial_acceptance_confidence
+        self.minimum_recovered_board_confidence = minimum_recovered_board_confidence
+        self.minimum_recovered_piece_confidence = minimum_recovered_piece_confidence
+        self.recovered_acceptance_confidence = recovered_acceptance_confidence
 
     @staticmethod
     def _normalize_cell(cell: BoardCell, orientation: Orientation) -> BoardCell:
@@ -107,6 +113,10 @@ class RecognitionService:
             for cell in raw_assumed_empty_cells
         ]
         partial_board = bool(assumed_empty_cells)
+        recovery = prediction.metadata.get("corner_order_recovery")
+        trusted_corner_recovery = bool(
+            isinstance(recovery, dict) and recovery.get("trusted") is True
+        )
         visible_cells = [
             cell
             for cell in prediction.cells
@@ -119,20 +129,26 @@ class RecognitionService:
         )
         minimum_empty = min((cell.confidence for cell in empty_cells), default=1.0)
 
-        board_threshold = (
-            self.minimum_partial_board_confidence
-            if partial_board
-            else self.minimum_board_confidence
-        )
+        if trusted_corner_recovery:
+            board_threshold = self.minimum_recovered_board_confidence
+            occupied_threshold = self.minimum_recovered_piece_confidence
+            acceptance_threshold = self.recovered_acceptance_confidence
+        else:
+            board_threshold = (
+                self.minimum_partial_board_confidence
+                if partial_board
+                else self.minimum_board_confidence
+            )
+            occupied_threshold = self.minimum_cell_confidence
+            acceptance_threshold = (
+                self.partial_acceptance_confidence
+                if partial_board
+                else self.acceptance_confidence
+            )
         empty_threshold = (
             self.minimum_partial_empty_confidence
             if partial_board
             else self.minimum_cell_confidence
-        )
-        acceptance_threshold = (
-            self.partial_acceptance_confidence
-            if partial_board
-            else self.acceptance_confidence
         )
         minimum_cell = min(minimum_occupied, minimum_empty)
         confidence = min(prediction.board_confidence, minimum_cell)
@@ -150,6 +166,8 @@ class RecognitionService:
             warnings.append("SAME_IMAGE_PROTOTYPE_REFINEMENT")
         if semantic_orientation is not None:
             warnings.append("SEMANTIC_ORIENTATION_ROTATED")
+        if trusted_corner_recovery:
+            warnings.append("CORNER_ORDER_RECOVERY")
         if (
             partial_board
             and empty_threshold <= minimum_empty < self.minimum_cell_confidence
@@ -157,11 +175,13 @@ class RecognitionService:
             warnings.append("PARTIAL_EMPTY_CONFIDENCE_RELAXED")
         if prediction.board_confidence < board_threshold:
             warnings.append("LOW_BOARD_CONFIDENCE")
-        if (
-            minimum_occupied < self.minimum_cell_confidence
-            or minimum_empty < empty_threshold
-        ):
+        if minimum_occupied < occupied_threshold or minimum_empty < empty_threshold:
             warnings.append("LOW_CELL_CONFIDENCE")
+        if (
+            trusted_corner_recovery
+            and minimum_occupied < self.minimum_cell_confidence
+        ):
+            warnings.append("CORNER_ORDER_CONFIDENCE_RELAXED")
         if confidence < acceptance_threshold:
             warnings.append("BELOW_AUTO_ACCEPT_THRESHOLD")
 
@@ -183,7 +203,7 @@ class RecognitionService:
             not blocking
             and fen is not None
             and prediction.board_confidence >= board_threshold
-            and minimum_occupied >= self.minimum_cell_confidence
+            and minimum_occupied >= occupied_threshold
             and minimum_empty >= empty_threshold
             and confidence >= acceptance_threshold
         )

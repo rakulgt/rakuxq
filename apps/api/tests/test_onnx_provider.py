@@ -37,11 +37,50 @@ def test_grid_visibility_marks_only_centers_outside_the_photo():
 
 
 def test_corners_outside_photo_trigger_pose_fallback():
-    corners = np.array(
-        [[0, 0], [100, 0], [0, 99], [99, 99]], dtype=np.float32
-    )
+    corners = np.array([[0, 0], [100, 0], [0, 99], [99, 99]], dtype=np.float32)
 
     assert OnnxRecognitionProvider._corners_extend_outside(corners, 100, 100)
+
+
+def test_geometric_corner_recovery_rotates_without_ever_mirroring():
+    tl = np.array([100.0, 100.0], dtype=np.float32)
+    tr = np.array([900.0, 110.0], dtype=np.float32)
+    bl = np.array([90.0, 1010.0], dtype=np.float32)
+    br = np.array([910.0, 1000.0], dtype=np.float32)
+    pose_permuted = np.array([bl, tl, br, tr], dtype=np.float32)
+
+    candidates = dict(
+        OnnxRecognitionProvider._geometric_rotation_candidates(pose_permuted)
+    )
+
+    assert np.allclose(candidates["rotation_0"], [tl, tr, bl, br])
+    assert np.allclose(candidates["rotation_180"], [br, bl, tr, tl])
+    assert np.allclose(candidates["rotation_90"], [tr, br, tl, bl])
+    assert np.allclose(candidates["rotation_270"], [bl, tl, br, tr])
+    assert not any(
+        np.allclose(candidate, [tr, tl, br, bl])
+        for candidate in candidates.values()
+    )
+
+
+def test_geometric_corner_recovery_tries_sideways_rotations_first():
+    corners = np.array(
+        [[100, 100], [1100, 100], [100, 850], [1100, 850]],
+        dtype=np.float32,
+    )
+
+    candidates = OnnxRecognitionProvider._geometric_rotation_candidates(corners)
+
+    assert [name for name, _ in candidates[:2]] == ["rotation_90", "rotation_270"]
+
+
+def test_corner_recovery_penalizes_king_failures_more_than_piece_overflow():
+    king_failure = OnnxRecognitionProvider._blocking_warning_penalty(
+        ("RED_KING_COUNT",)
+    )
+    piece_overflow = OnnxRecognitionProvider._blocking_warning_penalty(("TOO_MANY_C",))
+
+    assert king_failure > piece_overflow
 
 
 def test_same_image_prototype_refines_only_weak_known_piece():

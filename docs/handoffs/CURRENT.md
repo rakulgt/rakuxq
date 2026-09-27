@@ -1,11 +1,14 @@
 # RakuXQ 当前交接状态
 
-基线时间：`2026-09-26T14:55:00+08:00`
+基线时间：`2026-09-26T15:41:03+08:00`
 当前生产稳定版本：`v0.4.4-alpha.4`
-当前源码开发版本：`v0.4.4-alpha.4`
+当前源码开发版本：`v0.4.4-alpha.5`
 
 ## 最近完成
 
+- 定位最新错识与网络无关：`xq-fast` 已在约 0.43–0.62 秒内完成图片接收和应用处理，但四角模型在相邻视频帧中对 A0/A8/J0/J8 语义标签产生了不同排列，导致同一局面进入不同透视旋转。
+- 新增受限的角点语义恢复：仅异常输入试算旋转候选，禁止镜像，且只有唯一无阻断候选通过三重置信门槛才自动接受；正常快速路径不增加额外布局推理。
+- 两张相邻真实视频帧本地回归均为 `accepted`，方向均为 `black_bottom`，并稳定输出 `2b2a1r1/3na2C1/b2k4R/9/6pC1/6pp1/6pp1/r2cK4/2c6/6n2 b`。
 - 修复颜色锚点误传播缺陷：最新真实请求中原始模型以 91%–92% 置信度正确输出红马 `N`、黑卒 `p`、红士 `A`，旧后处理却错误改成 `n/P/a`。新版取消颜色对阵营的自动改写，只保留带 `applied=false` 的诊断候选；新增该三连误改的永久回归测试。
 - v0.4.4-alpha.4 已发布：用本次故障对应的 12 小时留存原图在生产程序内复测，结果从 `review_required` 修正为 `accepted`，FEN 为 `4c4/5k3/9/9/9/3RR4/3NPp3/3AK4/3CC4/3AN4 w`；红马、黑卒、红士全部保留原始高置信类别，颜色冲突仅记录为 `applied=false`。两个公网入口均返回 `0.4.4a4`，服务 `active`、`NRestarts=0`。完整记录见 `docs/deployments/20260926-145500-v0.4.4-alpha.4.md`。
 - 增加免费单层加速入口 `xq-fast.rakubank.com`：使用 Cloudflare 橙云，为手机 VPN 或境外出口上传提供独立路线，同时保留 `xq.rakubank.com` 国内直连入口及统一鉴权、限流、审计和匿名计时。
@@ -66,7 +69,7 @@
 
 ## 当前验证
 
-- `python -m pytest -q`：62 项 FEN、局面校验、服务门控、鉴权、审计、视觉与引擎 HTTP 契约、UCI 解析、评分视角及官网测试通过；另有 2 条来自测试客户端依赖的弃用提示，不影响运行时接口。
+- `python -m pytest -q`：77 项 FEN、局面校验、服务门控、鉴权、审计、视觉与引擎 HTTP 契约、UCI 解析、评分视角及官网测试通过；另有 1 条来自测试客户端依赖的弃用提示，不影响运行时接口。
 - `npm run test:web`：9 项固定残局、FEN 地址解析与规范化、合法走子、FEN 更新、悔棋、非破坏变化树和局面编辑转 FEN 测试通过。
 - `ruff check .`：通过。
 - `mypy src`：18 个源文件通过。
@@ -79,7 +82,7 @@
 - `python -m pip wheel . --no-deps --no-build-isolation`：成功构建 `rakuxq_api-0.4.2a1-py3-none-any.whl`，SHA-256 为 `ba4c3f8b23f0739be64adbd2afcddb59bd93da325d99546b3a7f40f84e1d86c6`。
 - `python -m pip wheel . --no-deps --no-build-isolation`：成功构建 `rakuxq_api-0.4.3a1-py3-none-any.whl`，SHA-256 为 `f2d8dba3dbd2e17ea49bf2ce7f620dea487d3b7a5ca14b270f775695f8db7075`。
 - `python -m pip wheel . --no-deps`：成功构建 `rakuxq_api-0.4.3a2-py3-none-any.whl`，SHA-256 为 `0a8a354f0a02d5bf85060809f864b387cedef7b69cf4b43ff334b6a8d33eb8af`。
-- `python -m pip wheel . --no-deps`：成功构建 `rakuxq_api-0.4.4a4-py3-none-any.whl`，SHA-256 为 `3aa91c63ec4b0cee086001a4c9db594c8bb7a5993538e7e3bae1c5a05d934b2f`。
+- `python -m pip wheel . --no-deps`：成功构建 `rakuxq_api-0.4.4a5-py3-none-any.whl`，SHA-256 为 `43a324cac45441fe95354e2e69d5dee42d48bc909f16029be7b6908dd435ea67`。
 - RakuXQ Lab 浏览器验收：用户提供的长 FEN 地址直接还原；本地 Pikafish 返回评分/最佳着法/PV；走棋、悔棋、双分支保留和 FEN 导入通过；390×844 移动视口无横向溢出。
 - RakuXQ Lab 紧凑版浏览器验收：`1280×720` 首屏完整显示整张棋盘；标准新局恢复正确三十二子 FEN；自由摆子完成清空、逐格放置、缺少将帅拒绝和有效局面应用；控制台无错误。
 - RakuXQ Lab v0.4.2 浏览器验收：`1280×720` 下棋盘、引擎面板与主线招法轨同时可见；从已走一步的本地研究点击“新局”后不弹窗并立即恢复标准开局 FEN；侧边菜单可正常打开并由 Esc 关闭。

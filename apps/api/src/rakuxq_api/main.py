@@ -50,6 +50,13 @@ service = RecognitionService(
     minimum_partial_board_confidence=settings.minimum_partial_board_confidence,
     minimum_partial_empty_confidence=settings.minimum_partial_empty_confidence,
     partial_acceptance_confidence=settings.partial_acceptance_confidence,
+    minimum_recovered_board_confidence=(
+        settings.minimum_recovered_board_confidence
+    ),
+    minimum_recovered_piece_confidence=(
+        settings.minimum_recovered_piece_confidence
+    ),
+    recovered_acceptance_confidence=settings.recovered_acceptance_confidence,
 )
 api_key_store = APIKeyStore(settings.api_keys_db) if settings.api_keys_db else None
 audit_store = (

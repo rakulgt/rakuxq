@@ -1,13 +1,52 @@
 from __future__ import annotations
 
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
+from typing import Any
 
 from ..domain import BoardPrediction, CellPrediction, Orientation
+from ..fen import normalize_orientation
+from ..semantic import infer_orientation_from_kings
+from ..validation import validate_position
 from .base import ProviderNotReady, RecognitionFailed, RecognitionProvider
 
 LABELS = [".", "x", "K", "A", "B", "N", "R", "C", "P", "k", "a", "b", "n", "r", "c", "p"]
+
+
+@dataclass(slots=True)
+class _LayoutCandidate:
+    name: str
+    corners: Any
+    warped: Any
+    raw_symbols: list[str]
+    refined_symbols: list[str]
+    confidences: Any
+    effective_confidences: Any
+    refinements: list[dict[str, object]]
+    camp_diagnostics: list[dict[str, object]]
+    projected_points: Any
+    visible: list[bool]
+    grid: list[list[str]]
+    blocking_warnings: tuple[str, ...]
+    warning_penalty: int
+    minimum_occupied_confidence: float
+    mean_occupied_confidence: float
+    unknown_count: int
+    warp_ms: int
+    layout_ms: int
+    postprocess_ms: int
+
+    @property
+    def score(self) -> tuple[float, ...]:
+        return (
+            -float(self.warning_penalty),
+            -float(len(self.blocking_warnings)),
+            self.minimum_occupied_confidence,
+            self.mean_occupied_confidence,
+            -float(self.unknown_count),
+        )
 
 
 class OnnxRecognitionProvider(RecognitionProvider):
@@ -322,6 +361,158 @@ class OnnxRecognitionProvider(RecognitionProvider):
         return refined, effective_confidences, details
 
     @staticmethod
+    def _blocking_warning_penalty(warnings: tuple[str, ...]) -> int:
+        """Rank impossible layouts without pretending legality proves correctness."""
+        penalty = 0
+        for warning in warnings:
+            if warning in {"RED_KING_COUNT", "BLACK_KING_COUNT"}:
+                penalty += 100
+            elif warning in {"TOO_MANY_K", "TOO_MANY_k"}:
+                penalty += 100
+            elif "KING_OUTSIDE_PALACE" in warning:
+                penalty += 40
+            elif warning.startswith("TOO_MANY_"):
+                penalty += 20
+            elif "ADVISOR_OUTSIDE_PALACE" in warning:
+                penalty += 10
+            elif "ELEPHANT_ILLEGAL_SQUARE" in warning:
+                penalty += 10
+            elif warning == "KINGS_FACE_EACH_OTHER":
+                penalty += 5
+            else:
+                penalty += 1
+        return penalty
+
+    @staticmethod
+    def _geometric_rotation_candidates(corners):
+        """Return the four rotations of a quadrilateral, never a mirror.
+
+        The pose model labels its points as A0/A8/J0/J8.  Highly stylized video
+        frames can locate all four physical corners while permuting those semantic
+        labels.  Sorting the physical polygon and rotating it covers that failure
+        without introducing an unresolvable left/right reflection.
+        """
+        import numpy as np
+
+        points = np.asarray(corners, dtype=np.float32)
+        center = points.mean(axis=0)
+        angles = np.arctan2(points[:, 1] - center[1], points[:, 0] - center[0])
+        cyclic = points[np.argsort(angles)]
+        start = int(np.argmin(cyclic.sum(axis=1)))
+        cyclic = np.roll(cyclic, -start, axis=0)
+        tl, tr, br, bl = cyclic
+        portrait = [
+            ("rotation_0", np.array([tl, tr, bl, br], dtype=np.float32)),
+            ("rotation_180", np.array([br, bl, tr, tl], dtype=np.float32)),
+        ]
+        landscape = [
+            ("rotation_90", np.array([tr, br, tl, bl], dtype=np.float32)),
+            ("rotation_270", np.array([bl, tl, br, tr], dtype=np.float32)),
+        ]
+        horizontal = (np.linalg.norm(tr - tl) + np.linalg.norm(br - bl)) / 2.0
+        vertical = (np.linalg.norm(bl - tl) + np.linalg.norm(br - tr)) / 2.0
+        ratio = horizontal / max(vertical, 1e-6)
+        portrait_error = abs(np.log(ratio / (8.0 / 9.0)))
+        landscape_error = abs(np.log(ratio / (9.0 / 8.0)))
+        return portrait + landscape if portrait_error <= landscape_error else landscape + portrait
+
+    @staticmethod
+    def _candidate_grid_for_validation(grid: list[list[str]]) -> list[list[str]]:
+        resolved = [["." if symbol == "x" else symbol for symbol in row] for row in grid]
+        semantic_orientation = infer_orientation_from_kings(resolved)
+        if semantic_orientation is not None:
+            return normalize_orientation(resolved, semantic_orientation.orientation)
+        return resolved
+
+    def _classify_layout_candidate(
+        self,
+        *,
+        board_rgb,
+        corners,
+        layout,
+        width: int,
+        height: int,
+        name: str,
+    ) -> _LayoutCandidate:
+        import cv2
+        import numpy as np
+
+        warp_started = time.perf_counter()
+        destination = np.array([[50, 50], [400, 50], [50, 450], [400, 450]], dtype=np.float32)
+        matrix = cv2.getPerspectiveTransform(np.asarray(corners, dtype=np.float32), destination)
+        warped = cv2.warpPerspective(board_rgb, matrix, (450, 500))
+        cropped = warped[25:475, 25:425]
+        layout_image = cv2.resize(cropped, (280, 315)).astype(np.float32)
+        layout_input = (
+            layout_image - np.array([123.675, 116.28, 103.53], dtype=np.float32)
+        ) / np.array([58.395, 57.12, 57.375], dtype=np.float32)
+        layout_input = np.transpose(layout_input, (2, 0, 1))[None, ...].astype(np.float32)
+        warp_finished = time.perf_counter()
+
+        outputs = layout.run(None, {layout.get_inputs()[0].name: layout_input})
+        layout_finished = time.perf_counter()
+        if len(outputs) != 1 or outputs[0].shape[1:] != (90, 16):
+            raise RecognitionFailed(f"unexpected layout output shape: {outputs[0].shape}")
+        probabilities = self._softmax_if_needed(outputs[0][0])
+        indexes = probabilities.argmax(axis=1)
+        confidences = probabilities[np.arange(90), indexes]
+        raw_symbols = [LABELS[int(index)] for index in indexes]
+        projected_points, visible = self._visible_grid_mask(corners, width, height)
+        camp_diagnostics = self._king_anchor_color_diagnostics(
+            warped,
+            raw_symbols,
+            confidences,
+            visible,
+        )
+        refined_symbols, effective_confidences, refinements = self._same_image_prototype_refinement(
+            warped,
+            raw_symbols,
+            confidences,
+            visible,
+        )
+        symbols = [
+            refined_symbol if visible[index] else "."
+            for index, refined_symbol in enumerate(refined_symbols)
+        ]
+        grid = [symbols[index : index + 9] for index in range(0, 90, 9)]
+        validation_grid = self._candidate_grid_for_validation(grid)
+        blocking_warnings = tuple(
+            warning.code for warning in validate_position(validation_grid) if warning.blocking
+        )
+        occupied_confidences = [
+            float(effective_confidences[index])
+            for index, symbol in enumerate(refined_symbols)
+            if visible[index] and symbol not in {".", "x"}
+        ]
+        postprocess_finished = time.perf_counter()
+        return _LayoutCandidate(
+            name=name,
+            corners=np.asarray(corners, dtype=np.float32),
+            warped=warped,
+            raw_symbols=raw_symbols,
+            refined_symbols=refined_symbols,
+            confidences=confidences,
+            effective_confidences=effective_confidences,
+            refinements=refinements,
+            camp_diagnostics=camp_diagnostics,
+            projected_points=projected_points,
+            visible=visible,
+            grid=grid,
+            blocking_warnings=blocking_warnings,
+            warning_penalty=self._blocking_warning_penalty(blocking_warnings),
+            minimum_occupied_confidence=min(occupied_confidences, default=1.0),
+            mean_occupied_confidence=(
+                sum(occupied_confidences) / len(occupied_confidences)
+                if occupied_confidences
+                else 1.0
+            ),
+            unknown_count=sum(symbol == "x" for symbol in symbols),
+            warp_ms=round((warp_finished - warp_started) * 1000),
+            layout_ms=round((layout_finished - warp_finished) * 1000),
+            postprocess_ms=round((postprocess_finished - layout_finished) * 1000),
+        )
+
+    @staticmethod
     def _affine_for_full_image(
         width: int,
         height: int,
@@ -432,45 +623,69 @@ class OnnxRecognitionProvider(RecognitionProvider):
             key=lambda candidate: float(candidate[1].min()),
         )
 
-        destination = np.array([[50, 50], [400, 50], [50, 450], [400, 450]], dtype=np.float32)
-        matrix = cv2.getPerspectiveTransform(corners.astype(np.float32), destination)
         board_rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-        warped = cv2.warpPerspective(board_rgb, matrix, (450, 500))
-        cropped = warped[25:475, 25:425]
-        layout_image = cv2.resize(cropped, (280, 315)).astype(np.float32)
-        layout_input = (
-            layout_image - np.array([123.675, 116.28, 103.53], dtype=np.float32)
-        ) / np.array([58.395, 57.12, 57.375], dtype=np.float32)
-        layout_input = np.transpose(layout_input, (2, 0, 1))[None, ...].astype(np.float32)
-        warped_finished = time.perf_counter()
-        outputs = layout.run(None, {layout.get_inputs()[0].name: layout_input})
-        layout_finished = time.perf_counter()
-        if len(outputs) != 1 or outputs[0].shape[1:] != (90, 16):
-            raise RecognitionFailed(f"unexpected layout output shape: {outputs[0].shape}")
-        probabilities = self._softmax_if_needed(outputs[0][0])
-        indexes = probabilities.argmax(axis=1)
-        confidences = probabilities[np.arange(90), indexes]
-        raw_symbols = [LABELS[int(index)] for index in indexes]
-        projected_points, visible = self._visible_grid_mask(corners, width, height)
-        camp_diagnostics = self._king_anchor_color_diagnostics(
-            warped,
-            raw_symbols,
-            confidences,
-            visible,
+        initial = self._classify_layout_candidate(
+            board_rgb=board_rgb,
+            corners=corners,
+            layout=layout,
+            width=width,
+            height=height,
+            name="pose",
         )
-        refined_symbols, effective_confidences, refinements = (
-            self._same_image_prototype_refinement(
-                warped,
-                raw_symbols,
-                confidences,
-                visible,
-            )
-        )
-        symbols = [
-            refined_symbol if visible[index] else "."
-            for index, refined_symbol in enumerate(refined_symbols)
+        board_confidence = float(np.clip(keypoint_scores.min(), 0, 1))
+        fallback_reasons = []
+        if initial.blocking_warnings:
+            fallback_reasons.append("blocking_position_warnings")
+        if board_confidence < 0.40 and initial.minimum_occupied_confidence < 0.75:
+            fallback_reasons.append("low_corner_and_piece_confidence")
+
+        layout_candidates = [initial]
+        if fallback_reasons:
+            for index, (name, candidate_corners) in enumerate(
+                self._geometric_rotation_candidates(corners)
+            ):
+                if not any(
+                    np.allclose(candidate_corners, existing.corners, atol=1.0)
+                    for existing in layout_candidates
+                ):
+                    layout_candidates.append(
+                        self._classify_layout_candidate(
+                            board_rgb=board_rgb,
+                            corners=candidate_corners,
+                            layout=layout,
+                            width=width,
+                            height=height,
+                            name=name,
+                        )
+                    )
+                if index == 1 and any(
+                    candidate.warning_penalty == 0 for candidate in layout_candidates
+                ):
+                    break
+
+        selected = max(layout_candidates, key=lambda candidate: candidate.score)
+        zero_warning_candidates = [
+            candidate for candidate in layout_candidates if candidate.warning_penalty == 0
         ]
-        grid = [symbols[index : index + 9] for index in range(0, 90, 9)]
+        recovery_trusted = (
+            bool(fallback_reasons)
+            and len(zero_warning_candidates) == 1
+            and zero_warning_candidates[0] is selected
+            and board_confidence >= 0.30
+            and selected.minimum_occupied_confidence >= 0.45
+            and selected.mean_occupied_confidence >= 0.85
+        )
+        recovery_applied = selected is not initial
+
+        corners = selected.corners
+        raw_symbols = selected.raw_symbols
+        refined_symbols = selected.refined_symbols
+        confidences = selected.confidences
+        effective_confidences = selected.effective_confidences
+        visible = selected.visible
+        projected_points = selected.projected_points
+        grid = selected.grid
+        symbols = [symbol for row in grid for symbol in row]
         cells = [
             CellPrediction(
                 rank=index // 9,
@@ -511,7 +726,7 @@ class OnnxRecognitionProvider(RecognitionProvider):
             grid=grid,
             cells=cells,
             orientation=Orientation.RED_BOTTOM,
-            board_confidence=float(np.clip(keypoint_scores.min(), 0, 1)),
+            board_confidence=board_confidence,
             provider=self.name,
             model_version=self.model_version,
             corners=corners.astype(float).tolist(),
@@ -528,16 +743,36 @@ class OnnxRecognitionProvider(RecognitionProvider):
                     for index, is_visible in enumerate(visible)
                     if not is_visible
                 ],
-                "prototype_refinements": refinements,
+                "prototype_refinements": selected.refinements,
                 "camp_color_refinements": [],
-                "camp_color_diagnostics": camp_diagnostics,
+                "camp_color_diagnostics": selected.camp_diagnostics,
+                "corner_order_recovery": {
+                    "triggered": bool(fallback_reasons),
+                    "reasons": fallback_reasons,
+                    "applied": recovery_applied,
+                    "trusted": recovery_trusted,
+                    "selected": selected.name,
+                    "layout_runs": len(layout_candidates),
+                    "candidates": [
+                        {
+                            "name": candidate.name,
+                            "blocking_warnings": list(candidate.blocking_warnings),
+                            "warning_penalty": candidate.warning_penalty,
+                            "minimum_occupied_confidence": (candidate.minimum_occupied_confidence),
+                            "mean_occupied_confidence": (candidate.mean_occupied_confidence),
+                            "unknown_count": candidate.unknown_count,
+                            "selected": candidate is selected,
+                        }
+                        for candidate in layout_candidates
+                    ],
+                },
                 "timings_ms": {
                     "load": round((loaded - started) * 1000),
                     "decode": round((decoded - loaded) * 1000),
                     "pose": round((pose_finished - decoded) * 1000),
-                    "warp": round((warped_finished - pose_finished) * 1000),
-                    "layout": round((layout_finished - warped_finished) * 1000),
-                    "postprocess": round((completed - layout_finished) * 1000),
+                    "warp": sum(candidate.warp_ms for candidate in layout_candidates),
+                    "layout": sum(candidate.layout_ms for candidate in layout_candidates),
+                    "postprocess": sum(candidate.postprocess_ms for candidate in layout_candidates),
                 },
             },
         )
