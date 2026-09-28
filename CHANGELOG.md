@@ -4,7 +4,7 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
-## [0.4.4-alpha.5] - 2026-09-26
+## [0.4.4-alpha.5] - 2026-09-27
 
 ### 中文
 
