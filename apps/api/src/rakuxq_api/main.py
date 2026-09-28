@@ -89,6 +89,11 @@ class AnalysisRequest(BaseModel):
     movetime_ms: int | None = None
 
 
+class SolutionRequest(BaseModel):
+    fen: str
+    time_ms: int | None = None
+
+
 def _renewal_detail() -> dict[str, object]:
     return {
         "wechat": settings.renewal_wechat,
@@ -241,6 +246,22 @@ def _analysis_time(requested: int | None) -> int:
             ),
         )
     return value
+
+
+def _solution_payload(result, requested_time_ms: int | None) -> dict[str, object]:
+    payload = analysis_to_dict(result)
+    full_fen = result.fen
+    payload["status"] = "accepted"
+    payload["fen"] = " ".join(full_fen.split()[:2])
+    payload["full_fen"] = full_fen
+    payload["side_to_move"] = "red" if full_fen.split()[1] == "w" else "black"
+    payload["search"] = {
+        "requested_time_ms": requested_time_ms,
+        "effective_time_ms": _analysis_time(requested_time_ms),
+        "default_applied": requested_time_ms is None,
+        "actual_time_ms": result.time_ms,
+    }
+    return payload
 
 
 def _run_analysis(fen_value: str, movetime_ms: int | None):
@@ -406,6 +427,15 @@ def analyze_position(
     _api_key: Annotated[None, Depends(require_api_key)],
 ):
     return analysis_to_dict(_run_analysis(payload.fen, payload.movetime_ms))
+
+
+@app.post("/v1/solutions")
+def solve_position(
+    payload: SolutionRequest,
+    _api_key: Annotated[None, Depends(require_api_key)],
+):
+    result = _run_analysis(payload.fen, payload.time_ms)
+    return _solution_payload(result, payload.time_ms)
 
 
 @app.post("/v1/solve")

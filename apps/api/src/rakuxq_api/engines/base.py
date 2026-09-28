@@ -27,6 +27,7 @@ class EngineMove:
     iccs: str
     from_square: str
     to_square: str
+    notation: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,6 +60,7 @@ class AnalysisResult:
     time_ms: int
     nps: int | None
     pv: list[str] = field(default_factory=list)
+    pv_notation: list[str] = field(default_factory=list)
     engine: EngineIdentity | None = None
 
 
@@ -83,6 +85,14 @@ def analysis_to_dict(result: AnalysisResult) -> dict[str, object]:
     if isinstance(move, dict):
         move["from"] = move.pop("from_square")
         move["to"] = move.pop("to_square")
+        if move.get("notation") is None:
+            move.pop("notation")
+    score = payload.get("score")
+    notation = move.get("notation") if isinstance(move, dict) else None
+    score_display = score.get("display") if isinstance(score, dict) else None
+    payload["display_text"] = " ".join(
+        value for value in (notation, score_display) if isinstance(value, str) and value
+    )
     return payload
 
 

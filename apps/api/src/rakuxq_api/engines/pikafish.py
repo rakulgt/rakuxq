@@ -20,6 +20,7 @@ from .base import (
     normalize_engine_fen,
     score_from_side_to_move,
 )
+from .notation import chinese_move_notation, chinese_principal_variation
 
 
 @dataclass(slots=True)
@@ -312,7 +313,9 @@ class PikafishEngine:
                     iccs=best_move_value,
                     from_square=best_move_value[:2],
                     to_square=best_move_value[2:4],
+                    notation=chinese_move_notation(normalized_fen, best_move_value),
                 )
+            pv = latest.pv or []
             elapsed_ms = max(latest.time_ms, round((time.monotonic() - started) * 1000))
             return AnalysisResult(
                 status="completed",
@@ -325,6 +328,7 @@ class PikafishEngine:
                 nodes=latest.nodes,
                 time_ms=elapsed_ms,
                 nps=latest.nps,
-                pv=latest.pv or [],
+                pv=pv,
+                pv_notation=chinese_principal_variation(normalized_fen, pv),
                 engine=self._identity,
             )

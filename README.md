@@ -17,11 +17,11 @@
 
 RakuXQ 是由 **rakulgt / Raku Intelligence（罗酷智能）** 发起的开源中国象棋视觉与
 解题基础设施。第一阶段提供“棋盘图片 → FEN”的通用 HTTP API，面向手机截图、网页棋盘、
-真实棋盘照片、斜拍、裁剪、背景噪声和部分遮挡；`v0.3` 已增加可替换 UCI 引擎边界，开始
-返回最佳着法和候选变化，后续继续完成中文着法与终端推送。
+真实棋盘照片、斜拍、裁剪、背景噪声和部分遮挡；`v0.5` 已增加 `FEN → solution` 接口，
+通过可替换 UCI 引擎返回中文最佳着法、固定红方视角评分和候选变化。
 
-> 当前源码版本：`v0.4.4-alpha.8`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
-> Pikafish UCI 适配器进入本地非商业技术验证。官方托管服务暂不部署受限 NNUE 权重。
+> 当前源码版本：`v0.5.0-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
+> Pikafish UCI 适配器与中文着法进入本地非商业技术验证。官方托管服务暂不加载受限 NNUE 权重。
 
 ### 从 lgtXQ 到 RakuXQ
 
@@ -56,7 +56,7 @@ RakuXQ 的发起人是 **李国泰（rakulgt，<lgt@rakubank.com>）**。这个�
 - **快捷指令友好**：推荐解析 `POST /v1/recognitions` JSON，仅在 `accepted` 时取得 `fen`。
 - **可运营托管**：官方服务支持每客户独立 API Key、到期、续费和吊销。
 - **视觉与解题解耦**：引擎只消费稳定 FEN 契约，可替换而不影响识别 provider。
-- **双路径接口**：`/v1/analyses` 分析已有 FEN，`/v1/solve` 仅对自动通过的图片局面给出着法。
+- **三条解题路径**：`/v1/solutions` 提供稳定的 FEN 解题契约，`/v1/analyses` 保留底层分析兼容，`/v1/solve` 串联自动通过的图片局面。
 - **公开运行面板**：官网匿名展示最近 72 小时交互与历史累计统计，不公开原图或客户标识。
 - **即领即试**：公开开发文档可领取明文只显示一次、6 分钟失效的临时测试 Key。
 - **交互局面研究器**：首页经典残局支持合法落点、走子、吃子、悔棋、重置、实时 FEN 与外部深入研究。
@@ -173,6 +173,17 @@ curl -X POST http://127.0.0.1:8000/v1/fen \
 互操作验证；生产商用前必须取得权重授权。安装、环境变量和调用示例见
 [`docs/engine.md`](docs/engine.md)。
 
+推荐的新接口直接接收 FEN；`time_ms` 可省略，默认搜索预算为 3000 毫秒：
+
+```bash
+curl -X POST http://127.0.0.1:8000/v1/solutions \
+  -H "Content-Type: application/json" \
+  -d '{"fen":"3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w"}'
+```
+
+响应中的 `display_text` 可直接用于快捷指令，例如 `前炮进二 KO(+2)`；结构化字段同时保留
+ICCS、中文着法、固定红方视角评分、PV、搜索时间和引擎/权重身份。
+
 ### 验证
 
 ```powershell
@@ -214,7 +225,8 @@ npm run test:web
 - [x] 标准 FEN 直达的 RakuXQ Lab、标准新局、自由摆子、变化树、双方独立 AI 辅导与本地棋谱导入导出
 - [ ] 可主动创建的永久棋谱分享链接与自动化引擎竞技场
 - [ ] 获得可用于托管服务的 NNUE 权重授权或训练 RakuXQ 自有权重
-- [ ] 中文着法转换、候选多变化和终端推送
+- [x] FEN 解题接口、规范中文着法、红方视角评分与 `KO(±N)`
+- [ ] 候选多变化、结果缓存和终端推送
 
 欢迎阅读 [`CONTRIBUTING.md`](CONTRIBUTING.md) 参与贡献。项目采用
 [MIT License](LICENSE)。
@@ -226,10 +238,10 @@ npm run test:web
 RakuXQ is an open-source Xiangqi vision and solving infrastructure project initiated by
 **rakulgt / Raku Intelligence**. Phase one exposes a general image-to-FEN HTTP API for mobile
 screenshots, web boards, physical-board photos, perspective distortion, cropping, background
-noise, and partial occlusion. Version `0.3` adds a replaceable UCI engine boundary for best moves
-and principal variations; Chinese notation and terminal notifications remain on the roadmap.
+noise, and partial occlusion. Version `0.5` adds a product-level FEN-to-solution endpoint with
+Chinese best-move notation, fixed-red-perspective scores, and principal variations.
 
-> Current source release: `v0.4.4-alpha.8`. The vision pipeline works on a growing set of real
+> Current source release: `v0.5.0-alpha.1`. The vision pipeline works on a growing set of real
 > screenshots and physical-board photos. The Pikafish UCI adapter is undergoing local,
 > non-commercial interoperability validation; restricted NNUE weights are not deployed by the
 > official hosted service.
@@ -280,7 +292,8 @@ code into the first release. See [`docs/history.md`](docs/history.md) for the fu
   and revocation.
 - **Decoupled solving**: engines consume a stable FEN contract and remain replaceable without
   changing the vision provider.
-- **Two analysis paths**: `/v1/analyses` consumes confirmed FEN, while `/v1/solve` analyzes only
+- **Three solving paths**: `/v1/solutions` is the stable FEN-to-solution contract,
+  `/v1/analyses` remains the low-level compatibility endpoint, and `/v1/solve` analyzes only
   auto-accepted image recognition results.
 - **Public operating pulse**: the homepage shows anonymous 72-hour activity and lifetime totals
   without exposing images or customer identifiers.
@@ -409,7 +422,8 @@ after 72 hours; only aggregate lifetime counters persist.
   assistance for both sides, and local game import/export
 - [ ] Explicit permanent game-share links and an automated engine arena
 - [ ] Obtain hosted-use NNUE authorization or train a first-party RakuXQ network
-- [ ] Chinese move notation, multiple candidate lines, and terminal delivery
+- [x] FEN-to-solution API, Chinese move notation, fixed-red scores, and `KO(±N)`
+- [ ] Multiple candidate lines, result caching, and terminal delivery
 
 Contributions are welcome; see [`CONTRIBUTING.md`](CONTRIBUTING.md). RakuXQ is released under
 the [MIT License](LICENSE).

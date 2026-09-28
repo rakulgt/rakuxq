@@ -37,24 +37,37 @@ $env:RAKUXQ_ENGINE_NETWORK = "D:\path\to\pikafish.nnue"
 $env:RAKUXQ_ENGINE_VERSION = "Pikafish-2026-09-06"
 $env:RAKUXQ_ENGINE_THREADS = "1"
 $env:RAKUXQ_ENGINE_HASH_MB = "64"
-$env:RAKUXQ_ENGINE_DEFAULT_MOVETIME_MS = "500"
+$env:RAKUXQ_ENGINE_DEFAULT_MOVETIME_MS = "3000"
 ```
 
 The service starts one persistent process and serializes searches through it. The conservative
 one-thread/64-MiB defaults protect the vision process on a small host. Supported limits are:
 
-- `RAKUXQ_ENGINE_DEFAULT_MOVETIME_MS`: default search budget, initially `500`.
-- `RAKUXQ_ENGINE_MAX_MOVETIME_MS`: public request ceiling, initially `3000`.
+- `RAKUXQ_ENGINE_DEFAULT_MOVETIME_MS`: default search budget, initially `3000`.
+- `RAKUXQ_ENGINE_MAX_MOVETIME_MS`: public request ceiling, initially `10000`.
 - `RAKUXQ_ENGINE_COMMAND_TIMEOUT_MS`: protocol/startup timeout, initially `5000`.
 
 ## HTTP flow
+
+The product-level FEN-to-solution endpoint uses `time_ms`, which is optional and defaults to three
+seconds:
+
+```bash
+curl -X POST http://127.0.0.1:8000/v1/solutions \
+  -H "Content-Type: application/json" \
+  -d '{"fen":"3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w","time_ms":3000}'
+```
+
+It returns `best_move.notation` using red Chinese numerals and black Arabic numerals,
+`display_text` for direct UI or notification use, a fixed-red-perspective score, `pv_notation`,
+and explicit requested/effective/actual timing metadata.
 
 Analyze an existing FEN:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/v1/analyses \
   -H "Content-Type: application/json" \
-  -d '{"fen":"3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w","movetime_ms":500}'
+  -d '{"fen":"3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w","movetime_ms":3000}'
 ```
 
 Recognize an image and analyze only an accepted result:
@@ -63,7 +76,7 @@ Recognize an image and analyze only an accepted result:
 curl -X POST http://127.0.0.1:8000/v1/solve \
   -F "image=@board.jpg" \
   -F "side_to_move=red" \
-  -F "movetime_ms=500"
+  -F "movetime_ms=3000"
 ```
 
 The engine is never invoked when recognition returns `review_required` or `rejected`.
@@ -92,7 +105,8 @@ All scores use a fixed **red perspective**, independent of the side to move:
 - `KO(-N)`: engine reports a forced black mate at distance `N`.
 
 The JSON retains structured `type`, `value`, and `perspective` fields. Clients that only need text
-can display `score.display`. `best_move.iccs` and every entry in `pv` use ICCS coordinates.
+can display `score.display`. `best_move.notation` and `pv_notation` use standard Chinese notation;
+`best_move.iccs` and every entry in `pv` retain ICCS coordinates for software clients.
 
 Engine output is a bounded-compute recommendation, not a proof of an absolute best move unless the
 reported line is a forced mate or independently solved position. Responses include the engine

@@ -233,8 +233,8 @@ function renderAnalysis() {
   byId("analysis-score").textContent = analysis.score?.display || "—";
   byId("analysis-state").textContent = "评分始终采用红方固定视角";
   const mode = currentAssistMode();
-  byId("analysis-best").textContent = mode === "score" ? "仅评分模式" : (analysis.best_move?.iccs || "无合法着法");
-  byId("analysis-pv").textContent = analysis.pv?.length ? analysis.pv.join("  ") : "引擎未返回主要变化";
+  byId("analysis-best").textContent = mode === "score" ? "仅评分模式" : (analysis.best_move?.notation || analysis.best_move?.iccs || "无合法着法");
+  byId("analysis-pv").textContent = analysis.pv_notation?.length ? analysis.pv_notation.join("  ") : (analysis.pv?.length ? analysis.pv.join("  ") : "引擎未返回主要变化");
   byId("analysis-depth").textContent = analysis.depth ?? "—";
   byId("analysis-nodes").textContent = analysis.nodes == null ? "—" : new Intl.NumberFormat("zh-CN").format(analysis.nodes);
   byId("analysis-time").textContent = `${analysis.time_ms ?? 0} ms`;

@@ -4,6 +4,24 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.5.0-alpha.1] - 2026-09-28
+
+### 中文
+
+- 新增面向客户端的 `POST /v1/solutions`，接收两字段或六字段中国象棋 FEN，返回最佳着法、固定红方视角评分、PV、引擎身份和搜索计时。
+- `time_ms` 变为可选搜索预算，默认 3000 毫秒、允许 50–10000 毫秒；响应区分请求值、生效值、是否采用默认值和实际耗时。
+- 新增 ICCS 到规范中文着法转换：红方使用中文数字、黑方使用阿拉伯数字，并处理前/中/后同路棋子消歧；PV 同时返回中文版本。
+- 新增可直接展示或推送的 `display_text`，普通评分如 `炮二平五 +186`，杀棋如 `前炮进二 KO(+2)`。
+- 使用真实 Pikafish 2026-09-06 与校验过的 NNUE 运行经典残局，真实接口返回 `前炮进二 KO(+2)`；引擎和权重继续不进入 Git，收费托管服务仍不加载受限权重。
+
+### English
+
+- Added the client-facing `POST /v1/solutions` endpoint for two- or six-field Xiangqi FEN, returning a best move, fixed-red-perspective score, PV, engine identity, and search timing.
+- Made `time_ms` optional with a 3000-ms default and a 50–10000-ms range; responses distinguish requested, effective, defaulted, and actual timing.
+- Added ICCS-to-Chinese notation with Chinese numerals for Red, Arabic numerals for Black, front/middle/rear disambiguation, and a notation form of the PV.
+- Added `display_text` for direct UI and notification use, such as `炮二平五 +186` or `前炮进二 KO(+2)`.
+- Verified the classic puzzle through the real Pikafish 2026-09-06 process and checked NNUE network; restricted binaries and weights remain outside Git and disabled on the paid hosted service.
+
 ## [0.4.4-alpha.8] - 2026-09-28
 
 ### 中文

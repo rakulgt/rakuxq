@@ -70,10 +70,10 @@ class Settings:
     engine_threads: int = int(os.getenv("RAKUXQ_ENGINE_THREADS", "1"))
     engine_hash_mb: int = int(os.getenv("RAKUXQ_ENGINE_HASH_MB", "64"))
     engine_default_movetime_ms: int = int(
-        os.getenv("RAKUXQ_ENGINE_DEFAULT_MOVETIME_MS", "500")
+        os.getenv("RAKUXQ_ENGINE_DEFAULT_MOVETIME_MS", "3000")
     )
     engine_max_movetime_ms: int = int(
-        os.getenv("RAKUXQ_ENGINE_MAX_MOVETIME_MS", "3000")
+        os.getenv("RAKUXQ_ENGINE_MAX_MOVETIME_MS", "10000")
     )
     engine_command_timeout_ms: int = int(
         os.getenv("RAKUXQ_ENGINE_COMMAND_TIMEOUT_MS", "5000")

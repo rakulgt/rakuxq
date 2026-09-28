@@ -138,17 +138,65 @@ else:
 ```json
 {
   "fen": "3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w",
-  "movetime_ms": 500
+  "movetime_ms": 3000
 }
 ```
 
 `fen` 可以使用 RakuXQ 两字段简化形式或六字段形式；服务端发送给引擎前统一转换为六字段。
-`movetime_ms` 默认 500，当前允许 50–3000 毫秒。接口返回 ICCS 最佳着法、ponder、主要变化、
+`movetime_ms` 默认 3000，当前允许 50–10000 毫秒。接口返回 ICCS 最佳着法、ponder、主要变化、
 深度、节点、耗时和引擎/权重身份。
 
 评分始终以红方为固定视角，与当前行棋方无关：正整数表示红优，负整数表示黑优，`0` 表示近似
 均衡。`score.display` 直接使用 `+186`、`-243`、`0`；强制杀棋使用 `KO(+N)` 表示红方绝杀，
 `KO(-N)` 表示黑方绝杀。`value` 始终保留带正负号语义的整数，便于程序比较。
+
+## `POST /v1/solutions`
+
+这是面向 Apple 快捷指令和第三方程序的正式 `FEN → solution` 契约。请求使用 JSON：
+
+```json
+{
+  "fen": "3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w",
+  "time_ms": 3000
+}
+```
+
+`time_ms` 是可选变量；不传时默认 3000 毫秒，允许 50–10000 毫秒。正常响应示例：
+
+```json
+{
+  "status": "accepted",
+  "fen": "3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w",
+  "full_fen": "3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w - - 0 1",
+  "side_to_move": "red",
+  "best_move": {
+    "iccs": "e6e8",
+    "from": "e6",
+    "to": "e8",
+    "notation": "前炮进二"
+  },
+  "score": {
+    "type": "mate",
+    "value": 2,
+    "perspective": "red",
+    "display": "KO(+2)",
+    "bound": null
+  },
+  "display_text": "前炮进二 KO(+2)",
+  "pv": ["e6e8", "f9e8", "e0f0"],
+  "pv_notation": ["前炮进二", "士6进5", "帅五平四"],
+  "search": {
+    "requested_time_ms": null,
+    "effective_time_ms": 3000,
+    "default_applied": true,
+    "actual_time_ms": 82
+  }
+}
+```
+
+红方中文着法使用中文数字，例如 `炮八平五`；黑方使用阿拉伯数字，例如 `马8进7`。同一路
+同类棋子自动使用“前、后、中”等消歧。引擎提前确认绝杀或无合法变化时可以早于时间预算返回，
+因此 `actual_time_ms` 不一定等于 `effective_time_ms`。
 
 ## `POST /v1/solve`
 

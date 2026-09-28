@@ -25,6 +25,7 @@ START_GRID = [
     list("........."),
     list("RNBAKABNR"),
 ]
+START_FEN = "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w"
 
 
 class FixedProvider(RecognitionProvider):
@@ -79,10 +80,11 @@ class FixedAnalysisEngine:
     identity = EngineIdentity("Pikafish test", "test", "test", "abc123")
 
     def analyze(self, fen, movetime_ms):
+        normalized_fen = fen if len(fen.split()) == 6 else f"{fen} - - 0 1"
         return AnalysisResult(
             status="completed",
-            fen=fen,
-            best_move=EngineMove("h2e2", "h2", "e2"),
+            fen=normalized_fen,
+            best_move=EngineMove("h2e2", "h2", "e2", "炮二平五"),
             ponder="h9g7",
             score=EngineScore("cp", 186, "red", "+186"),
             depth=18,
@@ -91,6 +93,7 @@ class FixedAnalysisEngine:
             time_ms=movetime_ms,
             nps=987654,
             pv=["h2e2", "h9g7"],
+            pv_notation=["炮二平五", "马8进7"],
             engine=self.identity,
         )
 
@@ -151,6 +154,8 @@ def test_public_developer_guide_is_available_without_api_key():
     assert response.status_code == 200
     assert "6 分钟临时 Key" in response.text
     assert "/v1/recognitions" in response.text
+    assert "/v1/solutions" in response.text
+    assert "前炮进二 KO(+2)" in response.text
 
 
 def test_health_reports_not_ready_provider_as_degraded():
@@ -317,10 +322,66 @@ def test_analysis_endpoint_returns_red_perspective_integer_score():
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["best_move"] == {"iccs": "h2e2", "from": "h2", "to": "e2"}
+    assert payload["best_move"] == {
+        "iccs": "h2e2",
+        "from": "h2",
+        "to": "e2",
+        "notation": "炮二平五",
+    }
     assert payload["score"]["value"] == 186
     assert payload["score"]["display"] == "+186"
     assert payload["time_ms"] == 250
+
+
+def test_solution_endpoint_defaults_to_three_seconds_and_returns_display_text():
+    fake_engine = FixedAnalysisEngine()
+    with patch("rakuxq_api.main.analysis_engine", fake_engine):
+        response = client.post(
+            "/v1/solutions",
+            json={"fen": START_FEN},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "accepted"
+    assert payload["fen"] == START_FEN
+    assert payload["full_fen"] == f"{START_FEN} - - 0 1"
+    assert payload["side_to_move"] == "red"
+    assert payload["best_move"]["notation"] == "炮二平五"
+    assert payload["score"]["value"] == 186
+    assert payload["display_text"] == "炮二平五 +186"
+    assert payload["search"] == {
+        "requested_time_ms": None,
+        "effective_time_ms": 3000,
+        "default_applied": True,
+        "actual_time_ms": 3000,
+    }
+
+
+def test_solution_endpoint_accepts_custom_search_time():
+    fake_engine = FixedAnalysisEngine()
+    with patch("rakuxq_api.main.analysis_engine", fake_engine):
+        response = client.post(
+            "/v1/solutions",
+            json={"fen": START_FEN.replace(" w", " b"), "time_ms": 5000},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["side_to_move"] == "black"
+    assert payload["search"]["effective_time_ms"] == 5000
+    assert payload["search"]["default_applied"] is False
+
+
+def test_solution_endpoint_rejects_search_time_over_limit():
+    fake_engine = FixedAnalysisEngine()
+    with patch("rakuxq_api.main.analysis_engine", fake_engine):
+        response = client.post(
+            "/v1/solutions",
+            json={"fen": START_FEN, "time_ms": 10001},
+        )
+
+    assert response.status_code == 422
 
 
 def test_solve_endpoint_combines_recognition_and_engine_analysis():

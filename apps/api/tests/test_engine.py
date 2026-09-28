@@ -8,6 +8,10 @@ from rakuxq_api.engines.base import (
     normalize_engine_fen,
     score_from_side_to_move,
 )
+from rakuxq_api.engines.notation import (
+    chinese_move_notation,
+    chinese_principal_variation,
+)
 from rakuxq_api.engines.pikafish import parse_uci_info
 
 START_FEN = "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w"
@@ -98,3 +102,23 @@ def test_public_move_fields_use_from_and_to_names():
     )
 
     assert payload["best_move"] == {"iccs": "h2e2", "from": "h2", "to": "e2"}
+
+
+def test_chinese_notation_uses_red_chinese_and_black_arabic_numerals():
+    assert chinese_move_notation(START_FEN, "h2e2") == "炮二平五"
+    after_red = (
+        "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/"
+        "P1P1P1P1P/1C2C4/9/RNBAKABNR b"
+    )
+    assert chinese_move_notation(after_red, "h9g7") == "马8进7"
+    assert chinese_principal_variation(START_FEN, ["h2e2", "h9g7"]) == [
+        "炮二平五",
+        "马8进7",
+    ]
+
+
+def test_chinese_notation_disambiguates_front_and_rear_pieces():
+    fen = "4k4/9/9/9/9/9/9/R8/9/R3K4 w"
+
+    assert chinese_move_notation(fen, "a2a3") == "前车进一"
+    assert chinese_move_notation(fen, "a0a1") == "后车进一"

@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="RakuXQ 中国象棋图片转 FEN API 开发者教程与 6 分钟临时测试 Key。" />
+    <meta name="description" content="RakuXQ 中国象棋图片转 FEN 与 FEN 解题 API 开发者教程。" />
     <meta name="theme-color" content="#08111f" />
-    <title>RakuXQ 开发者文档 · 图片转 FEN API</title>
+    <title>RakuXQ 开发者文档 · 识图与解题 API</title>
     <link rel="icon" href="/static/favicon.svg?v=0.4.0a1" type="image/svg+xml" />
     <link rel="stylesheet" href="/static/styles.css?v=0.4.0a1" />
     <script src="/static/developers.js?v=0.4.0a1" defer></script>
@@ -106,6 +106,35 @@ console.log(result.status === "accepted" ? result.fen : null);</code></pre></art
             <li>未拍到、被手遮挡或无法确认的格点按空位处理，并通过警告字段说明。</li>
             <li>临时 Key 仅用于测试；长期使用请联系微信 <strong>lgtqcn</strong>，39 元/年。</li>
           </ul>
+        </article>
+      </section>
+
+      <section class="docs-grid response-section">
+        <article class="panel endpoint-panel">
+          <span class="kicker">ENGINE PREVIEW</span>
+          <h2><span class="method">POST</span> /v1/solutions</h2>
+          <p>把已经确认的两字段或六字段中国象棋 FEN 转换成最佳着法和局面评分。<code>time_ms</code> 可省略，默认搜索 3000 毫秒。</p>
+          <pre><code>curl -X POST https://xq.rakubank.com/v1/solutions \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"fen":"3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w"}'</code></pre>
+        </article>
+        <article class="panel">
+          <span class="kicker">SOLUTION</span><h2>适合直接展示的结果</h2>
+          <pre><code>{
+  "status": "accepted",
+  "best_move": {
+    "iccs": "e6e8",
+    "notation": "前炮进二"
+  },
+  "score": {
+    "value": 2,
+    "perspective": "red",
+    "display": "KO(+2)"
+  },
+  "display_text": "前炮进二 KO(+2)"
+}</code></pre>
+          <p class="docs-note">本接口代码已开放；官方托管 NNUE 尚未启用。当前可在自托管非商业技术验证环境使用。</p>
         </article>
       </section>
     </main>
