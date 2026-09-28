@@ -4,6 +4,20 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.4.4-alpha.7] - 2026-09-28
+
+### 中文
+
+- `side_to_move` 改为容错式自动判断：只有明确的 `red/w/%20w` 或 `black/b/%20b` 固定行棋方；参数缺失、空字符串、`unknown`、`auto`、拼写错误及其他任意值全部进入 `auto`。
+- 这项兼容规则覆盖 `/v1/recognitions`、`/v1/fen` 和 `/v1/solve`，用于避免 Apple 快捷指令菜单分支没有产生文本时退回未知行棋方。
+- 自动模式仍遵守证据门槛；看不清唯一帅、将或无法比较上下时返回 `review_required`，不会为了容错而伪造行棋方。
+
+### English
+
+- Made `side_to_move` fault-tolerant: only explicit `red/w/%20w` or `black/b/%20b` values pin a camp. Missing, empty, `unknown`, `auto`, misspelled, and all other values now opt into automatic inference.
+- The compatibility rule applies to `/v1/recognitions`, `/v1/fen`, and `/v1/solve`, preventing an empty Apple Shortcuts menu branch from falling back to an unknown mover.
+- Automatic inference still requires unique king evidence and returns `review_required` rather than inventing a mover when the image is ambiguous.
+
 ## [0.4.4-alpha.6] - 2026-09-28
 
 ### 中文

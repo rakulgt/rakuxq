@@ -393,7 +393,7 @@ def issue_trial_key(request: Request) -> JSONResponse:
 async def recognize(
     image: Annotated[UploadFile, File()],
     _api_key: Annotated[None, Depends(require_api_key)],
-    side_to_move: Annotated[str, Form()] = SideToMove.UNKNOWN.value,
+    side_to_move: Annotated[str, Form()] = SideToMove.AUTO.value,
     orientation: Annotated[Orientation, Form()] = Orientation.AUTO,
 ):
     data = await _read_image(image)
@@ -412,7 +412,7 @@ def analyze_position(
 async def solve(
     image: Annotated[UploadFile, File()],
     _api_key: Annotated[None, Depends(require_api_key)],
-    side_to_move: Annotated[str, Form()] = SideToMove.UNKNOWN.value,
+    side_to_move: Annotated[str, Form()] = SideToMove.AUTO.value,
     orientation: Annotated[Orientation, Form()] = Orientation.AUTO,
     movetime_ms: Annotated[int | None, Form()] = None,
 ):
@@ -443,7 +443,7 @@ async def solve(
 async def fen(
     image: Annotated[UploadFile, File()],
     _api_key: Annotated[None, Depends(require_api_key)],
-    side_to_move: Annotated[str, Form()] = SideToMove.UNKNOWN.value,
+    side_to_move: Annotated[str, Form()] = SideToMove.AUTO.value,
     orientation: Annotated[Orientation, Form()] = Orientation.AUTO,
 ):
     data = await _read_image(image)

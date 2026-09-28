@@ -241,7 +241,7 @@ def test_shortcuts_endpoint_discloses_assumed_empty_cells():
     assert response.headers["x-rakuxq-assumed-empty-details"] == "1,0:out_of_frame"
 
 
-def test_shortcuts_endpoint_requires_side_to_move_for_fen():
+def test_shortcuts_endpoint_defaults_missing_side_to_auto():
     fake_service = RecognitionService(FixedProvider())
     with patch("rakuxq_api.main.service", fake_service):
         response = client.post(
@@ -249,9 +249,40 @@ def test_shortcuts_endpoint_requires_side_to_move_for_fen():
             files={"image": ("board.png", b"image", "image/png")},
         )
 
-    assert response.status_code == 422
-    assert response.json()["detail"]["status"] == "review_required"
-    assert "SIDE_TO_MOVE_UNKNOWN" in response.json()["detail"]["warnings"]
+    assert response.status_code == 200
+    assert response.text.endswith(" w")
+    assert "SIDE_TO_MOVE_INFERRED_FROM_BOTTOM_KING" in response.headers[
+        "x-rakuxq-warnings"
+    ]
+
+
+def test_json_endpoint_treats_empty_side_as_auto():
+    fake_service = RecognitionService(FixedProvider())
+    with patch("rakuxq_api.main.service", fake_service):
+        response = client.post(
+            "/v1/recognitions",
+            files={"image": ("board.png", b"image", "image/png")},
+            data={"side_to_move": ""},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["side_to_move"] == "red"
+    assert response.json()["fen"].endswith(" w")
+
+
+def test_json_endpoint_treats_unknown_or_unrecognized_side_as_auto():
+    fake_service = RecognitionService(FixedProvider())
+    for supplied in ("unknown", "anything", "红方还是黑方"):
+        with patch("rakuxq_api.main.service", fake_service):
+            response = client.post(
+                "/v1/recognitions",
+                files={"image": ("board.png", b"image", "image/png")},
+                data={"side_to_move": supplied},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["side_to_move"] == "red"
+        assert response.json()["fen"].endswith(" w")
 
 
 def test_upload_rejects_non_image_content_type():

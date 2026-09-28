@@ -60,10 +60,10 @@ IP、文件名、请求 ID 或设备信息。单条事件 72 小时后删除，�
 请求为 `multipart/form-data`：
 
 - `image`：必填，当前支持 JPEG、PNG、WebP；Apple 快捷指令建议先转换为 JPEG。
-- `side_to_move`：接受 `auto`、`red|w|%20w`、`black|b|%20b` 或 `unknown`，默认
-  `unknown`。`auto` 显式启用“原图下方是正在求助的我方”规则：红帅在下推断红方走，
-  黑将在下推断黑方走。`%20w/%20b` 专门兼容需要把同一菜单值直接拼入棋谱 URL 的
-  Apple 快捷指令。
+- `side_to_move`：只有 `red|w|%20w` 与 `black|b|%20b` 会明确固定行棋方；参数缺失、
+  空字符串、`unknown`、`auto`、拼写错误或其他任意值全部进入自动判断。自动判断采用
+  “原图下方是正在求助的我方”规则：红帅在下推断红方走，黑将在下推断黑方走。
+  `%20w/%20b` 专门兼容需要把同一菜单值直接拼入棋谱 URL 的 Apple 快捷指令。
 - `orientation`：`auto|red_bottom|black_bottom`，默认 `auto`。
 
 响应状态：

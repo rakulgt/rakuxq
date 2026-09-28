@@ -13,24 +13,17 @@ class SideToMove(StrEnum):
 
 
 def parse_side_to_move(value: str | SideToMove) -> SideToMove:
-    """Normalize API-friendly and URL-ready side-to-move aliases."""
+    """Normalize explicit camps; every other API value opts into auto."""
     if isinstance(value, SideToMove):
-        return value
+        return SideToMove.AUTO if value == SideToMove.UNKNOWN else value
     normalized = unquote_plus(value).strip().lower()
     aliases = {
-        "auto": SideToMove.AUTO,
         "red": SideToMove.RED,
         "w": SideToMove.RED,
         "black": SideToMove.BLACK,
         "b": SideToMove.BLACK,
-        "unknown": SideToMove.UNKNOWN,
     }
-    try:
-        return aliases[normalized]
-    except KeyError as exc:
-        raise ValueError(
-            "side_to_move must be auto, red/w/%20w, black/b/%20b, or unknown"
-        ) from exc
+    return aliases.get(normalized, SideToMove.AUTO)
 
 
 class Orientation(StrEnum):

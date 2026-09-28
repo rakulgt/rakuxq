@@ -45,10 +45,10 @@
           <dl class="parameter-list">
             <div><dt>Authorization</dt><dd><code>Bearer YOUR_API_KEY</code></dd></div>
             <div><dt>image</dt><dd>必填，JPEG / PNG / WebP，最大 12 MB</dd></div>
-            <div><dt>side_to_move</dt><dd><code>auto</code> / <code>red</code> / <code>black</code> / <code>unknown</code></dd></div>
+            <div><dt>side_to_move</dt><dd><code>red</code> / <code>black</code>；缺失、空值或其他内容均按 <code>auto</code></dd></div>
             <div><dt>orientation</dt><dd>通常使用 <code>auto</code></dd></div>
           </dl>
-          <p><code>side_to_move=auto</code> 表示你确认“原图下方是正在求助的我方”：帅在下返回红方走，将在下返回黑方走；主帅证据不唯一时要求复核。</p>
+          <p>除明确的红方或黑方值以外，<code>side_to_move</code> 均按自动模式处理，表示你确认“原图下方是正在求助的我方”：帅在下返回红方走，将在下返回黑方走；主帅证据不唯一时要求复核。</p>
           <p>取得 <code>fen</code> 后可直接拼接到 <code>https://xq.rakubank.com/fen/</code>，打开原生棋局实验室；只需让浏览器把空格编码为 <code>%20</code>。</p>
         </article>
       </section>

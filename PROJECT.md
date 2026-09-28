@@ -1,11 +1,11 @@
 ---
 document_type: living-project-cognitive-baseline
 project_id: rakuxq
-baseline_revision: "21"
-parent_revision: "20"
+baseline_revision: "22"
+parent_revision: "21"
 change_operation: UPDATE
 status: active
-updated_at: "2026-09-28T10:15:00+08:00"
+updated_at: "2026-09-28T13:20:00+08:00"
 ---
 
 # RakuXQ
@@ -37,7 +37,7 @@ RakuXQ 是面向开发者、自动化用户和中国象棋应用的开源智能�
 ## 核心产品规则
 
 - 成功响应必须区分 `accepted`、`review_required` 和 `rejected`，不能只返回看似有效的字符串。
-- 实体棋盘静态照片本身通常不包含行棋方信息；默认 `unknown` 时不能伪造完整引擎 FEN。调用者显式传入 `side_to_move=auto` 即表示采纳“原图下方是正在求助的我方”这一业务上下文；只有唯一帅、将的原图纵向坐标能明确区分上下时才推断行棋方。
+- 实体棋盘静态照片本身通常不包含行棋方信息。托管 API 只有收到明确的红方或黑方别名时才固定行棋方；参数缺失、空值、`unknown`、`auto` 或其他任意值均表示采纳“原图下方是正在求助的我方”这一业务上下文。只有唯一帅、将的原图纵向坐标能明确区分上下时才推断行棋方。
 - 自托管版本默认不持久化图片。官方托管服务在用户明确授权下，将已鉴权调用的原图、请求参数、完整响应和诊断元数据保存于服务器短期审计池，最长 12 小时后自动删除；短期记录不等同于训练授权，不得自动进入长期样本集或训练集。
 - 模型与数据集必须附带来源、许可证、版本和校验信息，确保开源发布可复现。
 - 对部分棋盘重建，响应必须包含 `UNSEEN_CELLS_ASSUMED_EMPTY` 警告和按行列列出的 `assumed_empty_cells`；这类结果可以生成 FEN，但调用者能够区分实拍空位与规则补空。
