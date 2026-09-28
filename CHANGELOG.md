@@ -4,6 +4,18 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.5.0-alpha.5] - 2026-09-28
+
+### 中文
+
+- 面向人的普通局面评分由 `+N/-N/0` 改为 `红优 N/黑优 N/均势 0`，快捷指令与 Lab 无需再解释正负号。
+- 强制杀棋显示由 `KO(+N)/KO(-N)` 改为 `红方 KO(N)/黑方 KO(N)`；结构化 `score.value` 继续保留红方固定视角的有符号整数，程序兼容性不变。
+
+### English
+
+- Replaced human-facing `+N/-N/0` scores with explicit `红优 N/黑优 N/均势 0` labels.
+- Replaced signed mate labels with `红方 KO(N)/黑方 KO(N)`, while preserving the signed fixed-red `score.value` integer for programmatic use.
+
 ## [0.5.0-alpha.4] - 2026-09-28
 
 ### 中文

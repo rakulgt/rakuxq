@@ -20,7 +20,7 @@ RakuXQ 是由 **rakulgt / Raku Intelligence（罗酷智能）** 发起的开源�
 真实棋盘照片、斜拍、裁剪、背景噪声和部分遮挡；`v0.5` 已增加 `FEN → solution` 接口，
 通过可替换 UCI 引擎返回中文最佳着法、固定红方视角评分和候选变化。
 
-> 当前源码版本：`v0.5.0-alpha.4`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
+> 当前源码版本：`v0.5.0-alpha.5`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
 > Pikafish UCI 适配器与中文着法进入非商业技术验证。官方托管仅向维护者个人 Key 开放引擎，
 > 不向临时 Key 或普通客户 Key 提供受限 NNUE 能力。
 
@@ -169,8 +169,8 @@ curl -X POST http://127.0.0.1:8000/v1/fen \
 ### 本地引擎分析（实验性）
 
 `v0.3` 可以通过 UCI 控制用户另行安装的 Pikafish，返回 ICCS 最佳着法、PV、搜索信息以及
-固定红方视角的整数评分。普通局面显示 `+186`、`-243` 或 `0`；杀棋显示 `KO(+N)` 或
-`KO(-N)`。Pikafish 程序和官方 NNUE 权重均不随本仓库分发，当前路线仅用于本地非商业
+固定红方视角的整数评分。普通局面显示 `红优 186`、`黑优 243` 或 `均势 0`；杀棋显示
+`红方 KO(N)` 或 `黑方 KO(N)`。Pikafish 程序和官方 NNUE 权重均不随本仓库分发，当前路线仅用于本地非商业
 互操作验证；生产商用前必须取得权重授权。安装、环境变量和调用示例见
 [`docs/engine.md`](docs/engine.md)。
 
@@ -182,7 +182,7 @@ curl -X POST http://127.0.0.1:8000/v1/solutions \
   -d '{"fen":"3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w"}'
 ```
 
-响应中的 `display_text` 可直接用于快捷指令，例如 `前炮进二 KO(+2)`；结构化字段同时保留
+响应中的 `display_text` 可直接用于快捷指令，例如 `前炮进二 红方 KO(2)`；结构化字段同时保留
 ICCS、中文着法、固定红方视角评分、PV、搜索时间和引擎/权重身份。
 
 ### 验证
@@ -226,7 +226,7 @@ npm run test:web
 - [x] 标准 FEN 直达的 RakuXQ Lab、标准新局、自由摆子、变化树、双方独立 AI 辅导与本地棋谱导入导出
 - [ ] 可主动创建的永久棋谱分享链接与自动化引擎竞技场
 - [ ] 获得可用于托管服务的 NNUE 权重授权或训练 RakuXQ 自有权重
-- [x] FEN 解题接口、规范中文着法、红方视角评分与 `KO(±N)`
+- [x] FEN 解题接口、规范中文着法、红方视角整数与“红优/黑优/均势”显示
 - [ ] 候选多变化、结果缓存和终端推送
 
 欢迎阅读 [`CONTRIBUTING.md`](CONTRIBUTING.md) 参与贡献。项目采用
@@ -242,7 +242,7 @@ screenshots, web boards, physical-board photos, perspective distortion, cropping
 noise, and partial occlusion. Version `0.5` adds a product-level FEN-to-solution endpoint with
 Chinese best-move notation, fixed-red-perspective scores, and principal variations.
 
-> Current source release: `v0.5.0-alpha.4`. The vision pipeline works on a growing set of real
+> Current source release: `v0.5.0-alpha.5`. The vision pipeline works on a growing set of real
 > screenshots and physical-board photos. The Pikafish UCI adapter is undergoing non-commercial
 > interoperability validation. The hosted engine is restricted to the maintainer's personal key;
 > trial and ordinary customer keys cannot use the restricted NNUE network.
@@ -390,7 +390,7 @@ convention that the lower side is asking for its move. See [`docs/api.md`](docs/
 
 RakuXQ `v0.3` can control a separately installed Pikafish process through UCI and return an ICCS
 best move, PV, search metadata, and an integer score with a fixed red perspective. Ordinary scores
-are displayed as `+186`, `-243`, or `0`; forced mates use `KO(+N)` or `KO(-N)`. Neither Pikafish nor
+are displayed as `红优 186`, `黑优 243`, or `均势 0`; forced mates use `红方 KO(N)` or `黑方 KO(N)`. Neither Pikafish nor
 its official NNUE weights are distributed by this repository. The current path is limited to local,
 non-commercial interoperability validation until hosted-use authorization is obtained. See
 [`docs/engine.md`](docs/engine.md) for setup, environment variables, licensing boundaries, and API
@@ -423,7 +423,7 @@ after 72 hours; only aggregate lifetime counters persist.
   assistance for both sides, and local game import/export
 - [ ] Explicit permanent game-share links and an automated engine arena
 - [ ] Obtain hosted-use NNUE authorization or train a first-party RakuXQ network
-- [x] FEN-to-solution API, Chinese move notation, fixed-red scores, and `KO(±N)`
+- [x] FEN-to-solution API, Chinese move notation, fixed-red integer scores, and explicit red/black labels
 - [ ] Multiple candidate lines, result caching, and terminal delivery
 
 Contributions are welcome; see [`CONTRIBUTING.md`](CONTRIBUTING.md). RakuXQ is released under

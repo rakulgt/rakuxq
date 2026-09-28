@@ -86,7 +86,7 @@ class FixedAnalysisEngine:
             fen=normalized_fen,
             best_move=EngineMove("h2e2", "h2", "e2", "炮二平五"),
             ponder="h9g7",
-            score=EngineScore("cp", 186, "red", "+186"),
+            score=EngineScore("cp", 186, "red", "红优 186"),
             depth=18,
             seldepth=27,
             nodes=123456,
@@ -155,7 +155,7 @@ def test_public_developer_guide_is_available_without_api_key():
     assert "6 分钟临时 Key" in response.text
     assert "/v1/recognitions" in response.text
     assert "/v1/solutions" in response.text
-    assert "前炮进二 KO(+2)" in response.text
+    assert "前炮进二 红方 KO(2)" in response.text
 
 
 def test_health_reports_not_ready_provider_as_degraded():
@@ -329,7 +329,7 @@ def test_analysis_endpoint_returns_red_perspective_integer_score():
         "notation": "炮二平五",
     }
     assert payload["score"]["value"] == 186
-    assert payload["score"]["display"] == "+186"
+    assert payload["score"]["display"] == "红优 186"
     assert payload["time_ms"] == 250
 
 
@@ -349,7 +349,7 @@ def test_solution_endpoint_defaults_to_three_seconds_and_returns_display_text():
     assert payload["side_to_move"] == "red"
     assert payload["best_move"]["notation"] == "炮二平五"
     assert payload["score"]["value"] == 186
-    assert payload["display_text"] == "炮二平五 +186"
+    assert payload["display_text"] == "炮二平五 红优 186"
     assert payload["search"] == {
         "requested_time_ms": None,
         "effective_time_ms": 3000,
@@ -403,8 +403,8 @@ def test_solve_endpoint_combines_recognition_and_engine_analysis():
     assert payload["fen"].endswith(" w")
     assert payload["recognition"]["status"] == "accepted"
     assert payload["analysis"]["best_move"]["iccs"] == "h2e2"
-    assert payload["analysis"]["score"]["display"] == "+186"
-    assert payload["display_text"] == "炮二平五 +186"
+    assert payload["analysis"]["score"]["display"] == "红优 186"
+    assert payload["display_text"] == "炮二平五 红优 186"
 
 
 def test_solve_endpoint_always_returns_display_text_when_review_is_required():

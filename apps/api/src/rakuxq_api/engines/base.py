@@ -175,12 +175,18 @@ def score_from_side_to_move(
         raise EngineAnalysisError(f"unsupported engine score type: {score_type}")
     value = raw_value if active_color == "w" else -raw_value
     if score_type == "mate":
-        sign = "+" if value > 0 else ""
-        display = f"KO({sign}{value})"
+        if value > 0:
+            display = f"红方 KO({value})"
+        elif value < 0:
+            display = f"黑方 KO({abs(value)})"
+        else:
+            display = "已绝杀 KO(0)"
     elif value > 0:
-        display = f"+{value}"
+        display = f"红优 {value}"
+    elif value < 0:
+        display = f"黑优 {abs(value)}"
     else:
-        display = str(value)
+        display = "均势 0"
     return EngineScore(
         type=score_type,
         value=value,

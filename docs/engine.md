@@ -107,8 +107,12 @@ All scores use a fixed **red perspective**, independent of the side to move:
 - positive integer: red advantage, for example `+186`;
 - negative integer: black advantage, for example `-243`;
 - zero: approximately balanced;
-- `KO(+N)`: engine reports a forced red mate at distance `N`;
-- `KO(-N)`: engine reports a forced black mate at distance `N`.
+- `红方 KO(N)`: engine reports a forced red mate at distance `N`;
+- `黑方 KO(N)`: engine reports a forced black mate at distance `N`.
+
+For non-mate scores the human-facing display is `红优 N`, `黑优 N`, or `均势 0`.
+The structured `score.value` remains a signed integer from Red's fixed perspective for sorting,
+thresholds, and backward-compatible program logic.
 
 The JSON retains structured `type`, `value`, and `perspective` fields. Clients that only need text
 can display `score.display`. `best_move.notation` and `pv_notation` use standard Chinese notation;

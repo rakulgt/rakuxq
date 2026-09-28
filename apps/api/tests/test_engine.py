@@ -45,11 +45,11 @@ def test_score_is_always_normalized_to_red_perspective():
         "type": "cp",
         "value": 186,
         "perspective": "red",
-        "display": "+186",
+        "display": "红优 186",
         "bound": None,
     }
     assert black_advantage.value == -243
-    assert black_advantage.display == "-243"
+    assert black_advantage.display == "黑优 243"
 
 
 def test_mate_score_uses_ko_contract_and_red_perspective():
@@ -57,9 +57,16 @@ def test_mate_score_uses_ko_contract_and_red_perspective():
     black_mates = score_from_side_to_move("mate", 3, "b")
 
     assert red_mates.value == 5
-    assert red_mates.display == "KO(+5)"
+    assert red_mates.display == "红方 KO(5)"
     assert black_mates.value == -3
-    assert black_mates.display == "KO(-3)"
+    assert black_mates.display == "黑方 KO(3)"
+
+
+def test_equal_score_uses_an_explicit_balanced_label():
+    equal = score_from_side_to_move("cp", 0, "w")
+
+    assert equal.value == 0
+    assert equal.display == "均势 0"
 
 
 def test_parse_pikafish_principal_variation_info():
