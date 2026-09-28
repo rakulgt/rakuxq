@@ -4,6 +4,20 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.5.0-alpha.4] - 2026-09-28
+
+### 中文
+
+- 将完整棋盘常规定位与自动放行门槛由 `0.50` 调整为 `0.45`，修复正常视频帧因关键点模型轻微低估而被机械拒绝的问题。
+- 增加可审计的强内容证据门控：完整棋盘定位置信度处于 `0.30–0.45` 时，只有明确棋子最低置信度达到 `0.90`、空位最低置信度达到 `0.80` 且现有合法性门控全部通过，才自动放行。
+- 每次响应在 `prediction.metadata.acceptance_gate` 中记录门控档位、实测置信度和实际阈值；采用强证据放宽时增加 `STRONG_CELL_EVIDENCE_RELAXED_BOARD_CONFIDENCE` 警告。
+
+### English
+
+- Lowered the standard full-board pose and combined acceptance thresholds from `0.50` to `0.45` to avoid mechanically rejecting otherwise reliable video frames.
+- Added an auditable strong-content gate for full-board pose scores in the `0.30–0.45` range. It requires at least `0.90` confidence for every occupied cell, `0.80` for every empty cell, and all existing blocking legality checks to pass.
+- Added `prediction.metadata.acceptance_gate` with the selected profile, observed evidence, and effective thresholds; relaxed cases emit `STRONG_CELL_EVIDENCE_RELAXED_BOARD_CONFIDENCE`.
+
 ## [0.5.0-alpha.3] - 2026-09-28
 
 ### 中文

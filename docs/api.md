@@ -107,7 +107,9 @@ else:
 
 已经进入画面但模型原始类别为未知 `x` 的格子，按产品规则补空，原因记录为 `visually_uncertain`，并增加非阻断警告 `UNCERTAIN_CELLS_ASSUMED_EMPTY`。低置信度的明确棋种不再自动补空：provider 会尝试用同图中高置信、同色棋子作为视觉原型进行保守纠正，成功时增加 `SAME_IMAGE_PROTOTYPE_REFINEMENT`，并在 `prediction.metadata.prototype_refinements` 中保存原类别、纠正类别、相似度、次优相似度及原型坐标；无法纠正时保留候选并返回 `review_required`。帅、将棋子区域的颜色键点只用于审计诊断，`camp_color_diagnostics` 保留候选和距离但固定 `applied=false`，不会改写任何棋子阵营。帅、将身份永不互换；当唯一帅在上方九宫、唯一将在下方九宫且旋转严格改善合法性时，服务旋转整盘坐标并增加 `SEMANTIC_ORIENTATION_ROTATED`，方向依据保存在 `prediction.metadata.semantic_orientations`。如果四角物理定位合法但 A0/A8/J0/J8 语义顺序导致阻断性局面异常，provider 仅尝试无镜像的有限旋转候选；唯一合法且置信度达标时增加 `CORNER_ORDER_RECOVERY`，并在 `prediction.metadata.corner_order_recovery` 中记录触发原因、候选警告、选中方向和额外推理次数。候选不唯一或置信度不足时仍返回 `review_required`。部分棋盘中低置信空位采用单独的放宽门槛，触发时增加 `PARTIAL_EMPTY_CONFIDENCE_RELAXED`。棋盘延伸到画面外时，竖屏快速路径会自动恢复双尺度定位。
 
-完整棋盘的默认棋盘定位与联合自动放行门槛均为 `0.50`；部分棋盘、画外补空或画面内未知格补空的对应门槛为 `0.30`。明确识别出的棋子仍须达到 `0.75`，不会因为允许遮挡格默认为空而降低棋种可靠性。`/v1/solve` 无论成功或需要复核都提供顶层 `display_text`，便于快捷指令始终给用户反馈。
+完整棋盘的常规棋盘定位与联合自动放行门槛均为 `0.45`；部分棋盘、画外补空或画面内未知格补空的对应门槛为 `0.30`。明确识别出的棋子仍须达到 `0.75`，不会因为允许遮挡格默认为空而降低棋种可靠性。
+
+对于没有补空的完整棋盘，如果定位模型的最低角点分数处于 `0.30–0.45`，服务不再仅凭这一项机械拒绝：只有所有明确棋子的最低置信度不低于 `0.90`、所有空位的最低置信度不低于 `0.80`、帅将和行棋方可确定且局面没有阻断性违法时，才以强内容证据自动放行，并增加 `STRONG_CELL_EVIDENCE_RELAXED_BOARD_CONFIDENCE`。实际使用的 `standard`、`partial_board`、`strong_cell_evidence` 或 `corner_order_recovery` 档位，以及实测值和生效阈值，记录在 `prediction.metadata.acceptance_gate`。`/v1/solve` 无论成功或需要复核都提供顶层 `display_text`，便于快捷指令始终给用户反馈。
 
 ## `POST /v1/fen` 兼容接口
 

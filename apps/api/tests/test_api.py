@@ -412,6 +412,7 @@ def test_solve_endpoint_always_returns_display_text_when_review_is_required():
         FixedProvider(),
         minimum_board_confidence=1.0,
         acceptance_confidence=1.0,
+        minimum_strong_evidence_board_confidence=1.0,
     )
     fake_engine = FixedAnalysisEngine()
     with (

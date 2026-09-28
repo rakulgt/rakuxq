@@ -62,6 +62,43 @@ class MarginalBoardProvider(FixedProvider):
         return prediction
 
 
+class RealFalseRejectProvider(FixedProvider):
+    def recognize(self, image, orientation):
+        prediction = super().recognize(image, orientation)
+        prediction.board_confidence = 0.4906761646270752
+        prediction.cells = [
+            CellPrediction(
+                cell.rank,
+                cell.file,
+                cell.symbol,
+                0.8055936694145203 if cell.symbol == "." else 0.9084899425506592,
+            )
+            for cell in prediction.cells
+        ]
+        return prediction
+
+
+class StrongCellsUnderestimatedBoardProvider(FixedProvider):
+    def __init__(self, board_confidence=0.35, piece_confidence=0.92):
+        super().__init__(confidence=0.82)
+        self.board_confidence = board_confidence
+        self.piece_confidence = piece_confidence
+
+    def recognize(self, image, orientation):
+        prediction = super().recognize(image, orientation)
+        prediction.board_confidence = self.board_confidence
+        prediction.cells = [
+            CellPrediction(
+                cell.rank,
+                cell.file,
+                cell.symbol,
+                0.82 if cell.symbol == "." else self.piece_confidence,
+            )
+            for cell in prediction.cells
+        ]
+        return prediction
+
+
 class PartialProvider(RecognitionProvider):
     name = "partial-test"
 
@@ -284,6 +321,59 @@ class ServiceTests(unittest.TestCase):
 
         self.assertEqual(result.status, RecognitionStatus.ACCEPTED)
         self.assertNotIn("LOW_BOARD_CONFIDENCE", result.warnings)
+
+    def test_real_false_reject_regression_is_accepted(self):
+        result = RecognitionService(RealFalseRejectProvider()).recognize(
+            b"image", SideToMove.AUTO, Orientation.AUTO
+        )
+
+        self.assertEqual(result.status, RecognitionStatus.ACCEPTED)
+        self.assertNotIn("LOW_BOARD_CONFIDENCE", result.warnings)
+        self.assertNotIn("BELOW_AUTO_ACCEPT_THRESHOLD", result.warnings)
+
+    def test_strong_cells_relax_underestimated_board_confidence(self):
+        result = RecognitionService(
+            StrongCellsUnderestimatedBoardProvider()
+        ).recognize(b"image", SideToMove.AUTO, Orientation.AUTO)
+
+        self.assertEqual(result.status, RecognitionStatus.ACCEPTED)
+        self.assertIn(
+            "STRONG_CELL_EVIDENCE_RELAXED_BOARD_CONFIDENCE",
+            result.warnings,
+        )
+        self.assertNotIn("LOW_BOARD_CONFIDENCE", result.warnings)
+        self.assertEqual(
+            result.prediction.metadata["acceptance_gate"]["profile"],
+            "strong_cell_evidence",
+        )
+        self.assertEqual(
+            result.prediction.metadata["acceptance_gate"]["required"],
+            {
+                "board_confidence": 0.30,
+                "occupied_confidence": 0.90,
+                "empty_confidence": 0.80,
+                "combined_confidence": 0.30,
+            },
+        )
+
+    def test_strong_cell_relaxation_has_board_and_piece_floors(self):
+        weak_board = RecognitionService(
+            StrongCellsUnderestimatedBoardProvider(board_confidence=0.29)
+        ).recognize(b"image", SideToMove.AUTO, Orientation.AUTO)
+        weak_piece = RecognitionService(
+            StrongCellsUnderestimatedBoardProvider(piece_confidence=0.89)
+        ).recognize(b"image", SideToMove.AUTO, Orientation.AUTO)
+
+        self.assertEqual(weak_board.status, RecognitionStatus.REVIEW_REQUIRED)
+        self.assertEqual(weak_piece.status, RecognitionStatus.REVIEW_REQUIRED)
+        self.assertNotIn(
+            "STRONG_CELL_EVIDENCE_RELAXED_BOARD_CONFIDENCE",
+            weak_board.warnings,
+        )
+        self.assertNotIn(
+            "STRONG_CELL_EVIDENCE_RELAXED_BOARD_CONFIDENCE",
+            weak_piece.warnings,
+        )
 
     def test_unknown_side_requires_review(self):
         result = RecognitionService(FixedProvider()).recognize(

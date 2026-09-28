@@ -26,13 +26,22 @@ class Settings:
     model_version: str = os.getenv("RAKUXQ_MODEL_VERSION", "cchess-baseline-2025-03-19")
     max_upload_bytes: int = int(os.getenv("RAKUXQ_MAX_UPLOAD_BYTES", str(12 * 1024 * 1024)))
     minimum_board_confidence: float = float(
-        os.getenv("RAKUXQ_MIN_BOARD_CONFIDENCE", "0.50")
+        os.getenv("RAKUXQ_MIN_BOARD_CONFIDENCE", "0.45")
     )
     minimum_cell_confidence: float = float(
         os.getenv("RAKUXQ_MIN_CELL_CONFIDENCE", "0.75")
     )
     acceptance_confidence: float = float(
-        os.getenv("RAKUXQ_ACCEPTANCE_CONFIDENCE", "0.50")
+        os.getenv("RAKUXQ_ACCEPTANCE_CONFIDENCE", "0.45")
+    )
+    minimum_strong_evidence_board_confidence: float = float(
+        os.getenv("RAKUXQ_MIN_STRONG_EVIDENCE_BOARD_CONFIDENCE", "0.30")
+    )
+    strong_evidence_occupied_confidence: float = float(
+        os.getenv("RAKUXQ_STRONG_EVIDENCE_OCCUPIED_CONFIDENCE", "0.90")
+    )
+    strong_evidence_empty_confidence: float = float(
+        os.getenv("RAKUXQ_STRONG_EVIDENCE_EMPTY_CONFIDENCE", "0.80")
     )
     ort_intra_op_threads: int = int(os.getenv("RAKUXQ_ORT_INTRA_OP_THREADS", "2"))
     portrait_fast_path_ratio: float = float(

@@ -21,9 +21,12 @@ class RecognitionService:
     def __init__(
         self,
         provider: RecognitionProvider,
-        minimum_board_confidence: float = 0.50,
+        minimum_board_confidence: float = 0.45,
         minimum_cell_confidence: float = 0.75,
-        acceptance_confidence: float = 0.50,
+        acceptance_confidence: float = 0.45,
+        minimum_strong_evidence_board_confidence: float = 0.30,
+        strong_evidence_occupied_confidence: float = 0.90,
+        strong_evidence_empty_confidence: float = 0.80,
         minimum_partial_board_confidence: float = 0.30,
         minimum_partial_empty_confidence: float = 0.30,
         partial_acceptance_confidence: float = 0.30,
@@ -35,6 +38,13 @@ class RecognitionService:
         self.minimum_board_confidence = minimum_board_confidence
         self.minimum_cell_confidence = minimum_cell_confidence
         self.acceptance_confidence = acceptance_confidence
+        self.minimum_strong_evidence_board_confidence = (
+            minimum_strong_evidence_board_confidence
+        )
+        self.strong_evidence_occupied_confidence = (
+            strong_evidence_occupied_confidence
+        )
+        self.strong_evidence_empty_confidence = strong_evidence_empty_confidence
         self.minimum_partial_board_confidence = minimum_partial_board_confidence
         self.minimum_partial_empty_confidence = minimum_partial_empty_confidence
         self.partial_acceptance_confidence = partial_acceptance_confidence
@@ -236,10 +246,37 @@ class RecognitionService:
         )
         minimum_empty = min((cell.confidence for cell in empty_cells), default=1.0)
 
+        strong_cell_evidence_relaxation = (
+            not partial_board
+            and not trusted_corner_recovery
+            and bool(occupied_cells)
+            and bool(empty_cells)
+            and self.minimum_strong_evidence_board_confidence
+            <= prediction.board_confidence
+            < self.minimum_board_confidence
+            and minimum_occupied
+            >= max(
+                self.minimum_cell_confidence,
+                self.strong_evidence_occupied_confidence,
+            )
+            and minimum_empty
+            >= max(
+                self.minimum_cell_confidence,
+                self.strong_evidence_empty_confidence,
+            )
+        )
+
         if trusted_corner_recovery:
             board_threshold = self.minimum_recovered_board_confidence
             occupied_threshold = self.minimum_recovered_piece_confidence
             acceptance_threshold = self.recovered_acceptance_confidence
+        elif strong_cell_evidence_relaxation:
+            board_threshold = self.minimum_strong_evidence_board_confidence
+            occupied_threshold = max(
+                self.minimum_cell_confidence,
+                self.strong_evidence_occupied_confidence,
+            )
+            acceptance_threshold = self.minimum_strong_evidence_board_confidence
         else:
             board_threshold = (
                 self.minimum_partial_board_confidence
@@ -257,6 +294,34 @@ class RecognitionService:
             if partial_board
             else self.minimum_cell_confidence
         )
+        if strong_cell_evidence_relaxation:
+            empty_threshold = max(
+                self.minimum_cell_confidence,
+                self.strong_evidence_empty_confidence,
+            )
+        gate_profile = (
+            "corner_order_recovery"
+            if trusted_corner_recovery
+            else (
+                "strong_cell_evidence"
+                if strong_cell_evidence_relaxation
+                else ("partial_board" if partial_board else "standard")
+            )
+        )
+        prediction.metadata["acceptance_gate"] = {
+            "profile": gate_profile,
+            "observed": {
+                "board_confidence": prediction.board_confidence,
+                "minimum_occupied_confidence": minimum_occupied,
+                "minimum_empty_confidence": minimum_empty,
+            },
+            "required": {
+                "board_confidence": board_threshold,
+                "occupied_confidence": occupied_threshold,
+                "empty_confidence": empty_threshold,
+                "combined_confidence": acceptance_threshold,
+            },
+        }
         minimum_cell = min(minimum_occupied, minimum_empty)
         confidence = min(prediction.board_confidence, minimum_cell)
 
@@ -275,6 +340,8 @@ class RecognitionService:
             warnings.append("SEMANTIC_ORIENTATION_ROTATED")
         if trusted_corner_recovery:
             warnings.append("CORNER_ORDER_RECOVERY")
+        if strong_cell_evidence_relaxation:
+            warnings.append("STRONG_CELL_EVIDENCE_RELAXED_BOARD_CONFIDENCE")
         if (
             partial_board
             and empty_threshold <= minimum_empty < self.minimum_cell_confidence

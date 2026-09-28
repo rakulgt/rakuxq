@@ -47,6 +47,13 @@ service = RecognitionService(
     minimum_board_confidence=settings.minimum_board_confidence,
     minimum_cell_confidence=settings.minimum_cell_confidence,
     acceptance_confidence=settings.acceptance_confidence,
+    minimum_strong_evidence_board_confidence=(
+        settings.minimum_strong_evidence_board_confidence
+    ),
+    strong_evidence_occupied_confidence=(
+        settings.strong_evidence_occupied_confidence
+    ),
+    strong_evidence_empty_confidence=settings.strong_evidence_empty_confidence,
     minimum_partial_board_confidence=settings.minimum_partial_board_confidence,
     minimum_partial_empty_confidence=settings.minimum_partial_empty_confidence,
     partial_acceptance_confidence=settings.partial_acceptance_confidence,
