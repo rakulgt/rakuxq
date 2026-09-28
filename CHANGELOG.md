@@ -4,6 +4,20 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.5.0-alpha.3] - 2026-09-28
+
+### 中文
+
+- 完整棋盘的定位与联合自动放行门槛从 `0.55` 调整为 `0.50`，使四角略模糊但棋子分类稳定的视频帧能够进入引擎。
+- 部分棋盘、画外补空和未知遮挡格补空的对应门槛从 `0.35` 调整为 `0.30`；明确棋子的最低置信度继续保持 `0.75`，不因补空规则而放宽棋种判断。
+- `/v1/solve` 新增顶层 `display_text`：成功时直接给出着法与评分，需要复核时返回“局面需要复核，请重新拍照。”，避免快捷指令显示空结果。
+
+### English
+
+- Lowered the full-board pose and combined acceptance thresholds from `0.55` to `0.50` so video frames with slightly soft corners but strong piece classification can reach the engine.
+- Lowered partial-board, out-of-frame, and unknown-occlusion thresholds from `0.35` to `0.30`, while retaining the `0.75` minimum for explicitly recognized pieces.
+- Added a top-level `display_text` to `/v1/solve`, containing either the solution or a clear retake prompt so Shortcuts never receives an empty display value.
+
 ## [0.5.0-alpha.2] - 2026-09-28
 
 ### 中文

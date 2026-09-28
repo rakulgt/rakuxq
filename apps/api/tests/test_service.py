@@ -55,6 +55,13 @@ class FixedProvider(RecognitionProvider):
         )
 
 
+class MarginalBoardProvider(FixedProvider):
+    def recognize(self, image, orientation):
+        prediction = super().recognize(image, orientation)
+        prediction.board_confidence = 0.533
+        return prediction
+
+
 class PartialProvider(RecognitionProvider):
     name = "partial-test"
 
@@ -270,6 +277,14 @@ class ServiceTests(unittest.TestCase):
         self.assertTrue(result.fen.endswith(" w"))
         self.assertTrue(result.full_fen.endswith(" w - - 0 1"))
 
+    def test_complete_board_with_marginal_pose_and_strong_cells_is_accepted(self):
+        result = RecognitionService(MarginalBoardProvider()).recognize(
+            b"image", SideToMove.RED, Orientation.AUTO
+        )
+
+        self.assertEqual(result.status, RecognitionStatus.ACCEPTED)
+        self.assertNotIn("LOW_BOARD_CONFIDENCE", result.warnings)
+
     def test_unknown_side_requires_review(self):
         result = RecognitionService(FixedProvider()).recognize(
             b"image", SideToMove.UNKNOWN, Orientation.AUTO
@@ -479,14 +494,14 @@ class ServiceTests(unittest.TestCase):
         self.assertNotIn("LOW_BOARD_CONFIDENCE", result.warnings)
         self.assertNotIn("LOW_CELL_CONFIDENCE", result.warnings)
 
-    def test_untrusted_corner_candidate_keeps_standard_thresholds(self):
+    def test_untrusted_corner_candidate_keeps_standard_piece_thresholds(self):
         result = RecognitionService(CornerRecoveredProvider(trusted=False)).recognize(
             b"image", SideToMove.RED, Orientation.AUTO
         )
 
         self.assertEqual(result.status, RecognitionStatus.REVIEW_REQUIRED)
         self.assertNotIn("CORNER_ORDER_RECOVERY", result.warnings)
-        self.assertIn("LOW_BOARD_CONFIDENCE", result.warnings)
+        self.assertNotIn("LOW_BOARD_CONFIDENCE", result.warnings)
         self.assertIn("LOW_CELL_CONFIDENCE", result.warnings)
 
 

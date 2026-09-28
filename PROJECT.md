@@ -1,8 +1,8 @@
 ---
 document_type: living-project-cognitive-baseline
 project_id: rakuxq
-baseline_revision: "25"
-parent_revision: "24"
+baseline_revision: "26"
+parent_revision: "25"
 change_operation: UPDATE
 status: active
 updated_at: "2026-09-28T13:40:00+08:00"
@@ -69,6 +69,7 @@ RakuXQ 是面向开发者、自动化用户和中国象棋应用的开源智能�
 - 引擎作为独立常驻进程通过 UCI/UCCI 适配层接入；API 不与 Pikafish 或任一权重永久绑定，图像识别未自动通过时不得启动局面分析。
 - 引擎评分对外统一为红方固定视角整数：正数红优、负数黑优、零近似均衡，杀棋显示为 `KO(+N)` 或 `KO(-N)`；响应保留引擎版本、权重 SHA-256、搜索预算、深度、节点和 PV。
 - FEN 解题接口的搜索时间是可选变量 `time_ms`，默认 3000 毫秒；中文招法红方使用中文数字、黑方使用阿拉伯数字，同时保留 ICCS 供程序执行。
+- 视觉门控采用分层阈值：完整棋盘的定位与联合放行门槛为 `0.50`，部分棋盘、画外格和画面内未知遮挡格的对应门槛为 `0.30`；明确棋子的最低门槛仍为 `0.75`。融合接口始终返回顶层 `display_text`，拒识时明确提示重拍而不是让客户端得到空值。
 - 匿名公开统计使用独立持久化存储，与 12 小时原图审计池和 API Key 数据库解耦；原图审计清除不影响累计数字，公开面板也不能读取原图。
 - 临时 Key 防滥用通过服务端 HMAC 来源指纹、单来源有效期锁、全局活跃上限和入口限流共同实现，不把原始来源地址写入 Key 数据库。
 - 首页棋盘视觉由 RakuXQ 自有 SVG/DOM 组件维护；合法走子、将军与终局规则复用固定提交且保留许可证的 `xiangqi.js`，通过 `w→r` 适配层连接 RakuXQ 简化 FEN，不依赖第三方运行时页面或 CDN。

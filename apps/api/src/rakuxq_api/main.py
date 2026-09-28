@@ -469,6 +469,7 @@ async def solve(
         return {
             "status": recognition.status,
             "fen": recognition.fen,
+            "display_text": "局面需要复核，请重新拍照。",
             "recognition": recognition_payload,
             "analysis": None,
         }
@@ -477,11 +478,13 @@ async def solve(
         recognition.full_fen,
         movetime_ms,
     )
+    analysis_payload = analysis_to_dict(analysis)
     return {
         "status": recognition.status,
         "fen": recognition.fen,
+        "display_text": analysis_payload["display_text"],
         "recognition": recognition_payload,
-        "analysis": analysis_to_dict(analysis),
+        "analysis": analysis_payload,
     }
 
 

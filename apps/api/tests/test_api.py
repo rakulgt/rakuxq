@@ -404,3 +404,28 @@ def test_solve_endpoint_combines_recognition_and_engine_analysis():
     assert payload["recognition"]["status"] == "accepted"
     assert payload["analysis"]["best_move"]["iccs"] == "h2e2"
     assert payload["analysis"]["score"]["display"] == "+186"
+    assert payload["display_text"] == "炮二平五 +186"
+
+
+def test_solve_endpoint_always_returns_display_text_when_review_is_required():
+    fake_service = RecognitionService(
+        FixedProvider(),
+        minimum_board_confidence=1.0,
+        acceptance_confidence=1.0,
+    )
+    fake_engine = FixedAnalysisEngine()
+    with (
+        patch("rakuxq_api.main.service", fake_service),
+        patch("rakuxq_api.main.analysis_engine", fake_engine),
+    ):
+        response = client.post(
+            "/v1/solve",
+            files={"image": ("board.png", b"image", "image/png")},
+            data={"side_to_move": "red", "movetime_ms": "300"},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "review_required"
+    assert payload["analysis"] is None
+    assert payload["display_text"] == "局面需要复核，请重新拍照。"
