@@ -51,6 +51,58 @@ class RecognitionService:
             )
         return cell
 
+    @staticmethod
+    def _infer_side_to_move_from_bottom_king(
+        grid: list[list[str]],
+    ) -> tuple[SideToMove, dict[str, object]]:
+        red_kings = [
+            (rank, file)
+            for rank, row in enumerate(grid)
+            for file, symbol in enumerate(row)
+            if symbol == "K"
+        ]
+        black_kings = [
+            (rank, file)
+            for rank, row in enumerate(grid)
+            for file, symbol in enumerate(row)
+            if symbol == "k"
+        ]
+        evidence: dict[str, object] = {
+            "method": "bottom_king_is_side_to_move",
+            "red_king_positions": [list(position) for position in red_kings],
+            "black_king_positions": [list(position) for position in black_kings],
+        }
+        if len(red_kings) != 1 or len(black_kings) != 1:
+            evidence.update(
+                {
+                    "resolved": False,
+                    "reason": "requires_exactly_one_red_and_one_black_king",
+                }
+            )
+            return SideToMove.UNKNOWN, evidence
+
+        red_rank = red_kings[0][0]
+        black_rank = black_kings[0][0]
+        if red_rank == black_rank:
+            evidence.update(
+                {
+                    "resolved": False,
+                    "reason": "kings_are_on_the_same_image_rank",
+                }
+            )
+            return SideToMove.UNKNOWN, evidence
+
+        inferred = SideToMove.RED if red_rank > black_rank else SideToMove.BLACK
+        evidence.update(
+            {
+                "resolved": True,
+                "side_to_move": inferred.value,
+                "lower_king": "red_king" if inferred == SideToMove.RED else "black_king",
+                "reason": "lower_side_is_the_requesting_player",
+            }
+        )
+        return inferred, evidence
+
     def recognize(
         self,
         image: bytes,
@@ -84,6 +136,14 @@ class RecognitionService:
                 )
                 assumed_coordinates.add(coordinate)
 
+        resolved_side_to_move = side_to_move
+        side_to_move_inference: dict[str, object] | None = None
+        if side_to_move == SideToMove.AUTO:
+            resolved_side_to_move, side_to_move_inference = (
+                self._infer_side_to_move_from_bottom_king(resolved_grid)
+            )
+            prediction.metadata["side_to_move_inference"] = side_to_move_inference
+
         semantic_orientation = (
             infer_orientation_from_kings(resolved_grid)
             if orientation == Orientation.AUTO
@@ -107,6 +167,11 @@ class RecognitionService:
         grid = normalize_orientation(resolved_grid, effective_orientation)
         position_warnings = validate_position(grid)
         warnings = [warning.code for warning in position_warnings]
+        if side_to_move_inference is not None:
+            if resolved_side_to_move in {SideToMove.RED, SideToMove.BLACK}:
+                warnings.append("SIDE_TO_MOVE_INFERRED_FROM_BOTTOM_KING")
+            else:
+                warnings.append("SIDE_TO_MOVE_AUTO_UNRESOLVED")
 
         assumed_empty_cells = [
             self._normalize_cell(cell, effective_orientation)
@@ -190,11 +255,12 @@ class RecognitionService:
         full_fen: str | None = None
         try:
             placement = to_piece_placement(grid)
-            if side_to_move != SideToMove.UNKNOWN:
-                fen = to_fen(placement, side_to_move)
-                full_fen = to_full_fen(placement, side_to_move)
+            if resolved_side_to_move != SideToMove.UNKNOWN:
+                fen = to_fen(placement, resolved_side_to_move)
+                full_fen = to_full_fen(placement, resolved_side_to_move)
             else:
-                warnings.append("SIDE_TO_MOVE_UNKNOWN")
+                if side_to_move != SideToMove.AUTO:
+                    warnings.append("SIDE_TO_MOVE_UNKNOWN")
         except FenError as exc:
             warnings.append(f"FEN_UNAVAILABLE:{exc}")
 
@@ -215,7 +281,7 @@ class RecognitionService:
             piece_placement=placement,
             fen=fen,
             full_fen=full_fen,
-            side_to_move=side_to_move,
+            side_to_move=resolved_side_to_move,
             orientation=effective_orientation,
             confidence=confidence,
             warnings=list(dict.fromkeys(warnings)),

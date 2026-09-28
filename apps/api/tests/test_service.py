@@ -181,6 +181,24 @@ class OneKingOutsideProvider(FixedProvider):
         return prediction
 
 
+class MissingRedKingProvider(FixedProvider):
+    def recognize(self, image, orientation):
+        prediction = super().recognize(image, orientation)
+        prediction.grid[9][4] = "."
+        prediction.cells[85] = CellPrediction(9, 4, ".", self.confidence)
+        return prediction
+
+
+class SameRankKingsProvider(FixedProvider):
+    def recognize(self, image, orientation):
+        prediction = super().recognize(image, orientation)
+        prediction.grid[9][4] = "."
+        prediction.grid[0][3] = "K"
+        prediction.cells[85] = CellPrediction(9, 4, ".", self.confidence)
+        prediction.cells[3] = CellPrediction(0, 3, "K", self.confidence)
+        return prediction
+
+
 class CornerRecoveredProvider(PartialProvider):
     def __init__(self, trusted: bool):
         super().__init__()
@@ -220,6 +238,59 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(result.status, RecognitionStatus.REVIEW_REQUIRED)
         self.assertIsNone(result.fen)
         self.assertIn("SIDE_TO_MOVE_UNKNOWN", result.warnings)
+
+    def test_auto_side_uses_red_when_red_king_is_lower_in_image(self):
+        result = RecognitionService(FixedProvider()).recognize(
+            b"image", SideToMove.AUTO, Orientation.AUTO
+        )
+
+        self.assertEqual(result.status, RecognitionStatus.ACCEPTED)
+        self.assertEqual(result.side_to_move, SideToMove.RED)
+        self.assertTrue(result.fen.endswith(" w"))
+        self.assertIn("SIDE_TO_MOVE_INFERRED_FROM_BOTTOM_KING", result.warnings)
+        self.assertEqual(
+            result.prediction.metadata["side_to_move_inference"]["lower_king"],
+            "red_king",
+        )
+
+    def test_auto_side_uses_black_when_black_king_is_lower_in_image(self):
+        result = RecognitionService(BlackBottomProvider()).recognize(
+            b"image", SideToMove.AUTO, Orientation.AUTO
+        )
+
+        self.assertEqual(result.status, RecognitionStatus.ACCEPTED)
+        self.assertEqual(result.side_to_move, SideToMove.BLACK)
+        self.assertTrue(result.fen.endswith(" b"))
+        self.assertEqual(result.grid, START_GRID)
+        self.assertIn("SIDE_TO_MOVE_INFERRED_FROM_BOTTOM_KING", result.warnings)
+        self.assertEqual(
+            result.prediction.metadata["side_to_move_inference"]["lower_king"],
+            "black_king",
+        )
+
+    def test_auto_side_requires_review_when_a_king_is_missing(self):
+        result = RecognitionService(MissingRedKingProvider()).recognize(
+            b"image", SideToMove.AUTO, Orientation.AUTO
+        )
+
+        self.assertEqual(result.status, RecognitionStatus.REVIEW_REQUIRED)
+        self.assertEqual(result.side_to_move, SideToMove.UNKNOWN)
+        self.assertIsNone(result.fen)
+        self.assertIn("SIDE_TO_MOVE_AUTO_UNRESOLVED", result.warnings)
+
+    def test_auto_side_requires_review_when_kings_share_image_rank(self):
+        result = RecognitionService(SameRankKingsProvider()).recognize(
+            b"image", SideToMove.AUTO, Orientation.AUTO
+        )
+
+        self.assertEqual(result.status, RecognitionStatus.REVIEW_REQUIRED)
+        self.assertEqual(result.side_to_move, SideToMove.UNKNOWN)
+        self.assertIsNone(result.fen)
+        self.assertIn("SIDE_TO_MOVE_AUTO_UNRESOLVED", result.warnings)
+        self.assertEqual(
+            result.prediction.metadata["side_to_move_inference"]["reason"],
+            "kings_are_on_the_same_image_rank",
+        )
 
     def test_low_confidence_is_not_auto_accepted(self):
         result = RecognitionService(

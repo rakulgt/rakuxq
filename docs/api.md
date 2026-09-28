@@ -60,9 +60,10 @@ IP、文件名、请求 ID 或设备信息。单条事件 72 小时后删除，�
 请求为 `multipart/form-data`：
 
 - `image`：必填，当前支持 JPEG、PNG、WebP；Apple 快捷指令建议先转换为 JPEG。
-- `side_to_move`：接受 `red|w|%20w`、`black|b|%20b` 或 `unknown`，默认
-  `unknown`。`%20w/%20b` 专门兼容需要把同一菜单值直接拼入棋谱 URL 的 Apple 快捷指令；
-  服务端会将其规范化为红方或黑方。
+- `side_to_move`：接受 `auto`、`red|w|%20w`、`black|b|%20b` 或 `unknown`，默认
+  `unknown`。`auto` 显式启用“原图下方是正在求助的我方”规则：红帅在下推断红方走，
+  黑将在下推断黑方走。`%20w/%20b` 专门兼容需要把同一菜单值直接拼入棋谱 URL 的
+  Apple 快捷指令。
 - `orientation`：`auto|red_bottom|black_bottom`，默认 `auto`。
 
 响应状态：
@@ -76,6 +77,11 @@ IP、文件名、请求 ID 或设备信息。单条事件 72 小时后删除，�
 - `fen`：面向快捷指令与棋谱网站的简化值，严格为
   `piece_placement + 一个真实空格 + w/b`，例如 `4k4/9/.../5K3 w`。
 - `full_fen`：为后续引擎保留的完整六字段形式，例如 `4k4/9/.../5K3 w - - 0 1`。
+
+`side_to_move=auto` 只比较棋盘方向规范化前、原图坐标系中唯一帅和唯一将的纵向位置。
+成功时响应 `side_to_move` 直接为 `red` 或 `black`，增加 `SIDE_TO_MOVE_INFERRED_FROM_BOTTOM_KING`，
+并在 `prediction.metadata.side_to_move_inference` 保留两枚主帅坐标和推断理由。主帅缺失、重复或位于同一图像行时，
+响应为 `review_required`，`side_to_move=unknown`，警告为 `SIDE_TO_MOVE_AUTO_UNRESOLVED`。
 
 调用方应当使用以下等价逻辑：
 

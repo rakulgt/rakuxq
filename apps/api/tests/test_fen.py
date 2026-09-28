@@ -54,6 +54,8 @@ class FenTests(unittest.TestCase):
     def test_side_is_required_for_complete_fen(self):
         with self.assertRaises(FenError):
             to_fen(to_piece_placement(START_GRID), SideToMove.UNKNOWN)
+        with self.assertRaises(FenError):
+            to_fen(to_piece_placement(START_GRID), SideToMove.AUTO)
 
 
 if __name__ == "__main__":

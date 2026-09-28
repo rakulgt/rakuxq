@@ -6,6 +6,7 @@ from urllib.parse import unquote_plus
 
 
 class SideToMove(StrEnum):
+    AUTO = "auto"
     RED = "red"
     BLACK = "black"
     UNKNOWN = "unknown"
@@ -17,6 +18,7 @@ def parse_side_to_move(value: str | SideToMove) -> SideToMove:
         return value
     normalized = unquote_plus(value).strip().lower()
     aliases = {
+        "auto": SideToMove.AUTO,
         "red": SideToMove.RED,
         "w": SideToMove.RED,
         "black": SideToMove.BLACK,
@@ -27,7 +29,7 @@ def parse_side_to_move(value: str | SideToMove) -> SideToMove:
         return aliases[normalized]
     except KeyError as exc:
         raise ValueError(
-            "side_to_move must be red/w/%20w, black/b/%20b, or unknown"
+            "side_to_move must be auto, red/w/%20w, black/b/%20b, or unknown"
         ) from exc
 
 

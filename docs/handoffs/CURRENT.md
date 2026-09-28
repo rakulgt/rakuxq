@@ -2,10 +2,11 @@
 
 基线时间：`2026-09-28T09:56:41+08:00`
 当前生产稳定版本：`v0.4.4-alpha.5`
-当前源码开发版本：`v0.4.4-alpha.5`
+当前源码开发版本：`v0.4.4-alpha.6`
 
 ## 最近完成
 
+- `side_to_move` 新增 `auto`：显式选择后，程序在棋盘方向规范化前比较原图中唯一帅、将的行坐标，帅在下推断红方走，将在下推断黑方走；证据不唯一时返回 `review_required`，不输出伪造的完整 FEN。
 - 定位最新错识与网络无关：`xq-fast` 已在约 0.43–0.62 秒内完成图片接收和应用处理，但四角模型在相邻视频帧中对 A0/A8/J0/J8 语义标签产生了不同排列，导致同一局面进入不同透视旋转。
 - 新增受限的角点语义恢复：仅异常输入试算旋转候选，禁止镜像，且只有唯一无阻断候选通过三重置信门槛才自动接受；正常快速路径不增加额外布局推理。
 - 两张相邻真实视频帧本地回归均为 `accepted`，方向均为 `black_bottom`，并稳定输出 `2b2a1r1/3na2C1/b2k4R/9/6pC1/6pp1/6pp1/r2cK4/2c6/6n2 b`。
@@ -70,7 +71,7 @@
 
 ## 当前验证
 
-- `python -m pytest -q`：77 项 FEN、局面校验、服务门控、鉴权、审计、视觉与引擎 HTTP 契约、UCI 解析、评分视角及官网测试通过；另有 1 条来自测试客户端依赖的弃用提示，不影响运行时接口。
+- `python -m pytest -q`：82 项 FEN、局面校验、自动行棋方推断、服务门控、鉴权、审计、视觉与引擎 HTTP 契约、UCI 解析、评分视角及官网测试通过；另有 1 条来自测试客户端依赖的弃用提示，不影响运行时接口。
 - `npm run test:web`：9 项固定残局、FEN 地址解析与规范化、合法走子、FEN 更新、悔棋、非破坏变化树和局面编辑转 FEN 测试通过。
 - `ruff check .`：通过。
 - `mypy src`：18 个源文件通过。
@@ -84,6 +85,7 @@
 - `python -m pip wheel . --no-deps --no-build-isolation`：成功构建 `rakuxq_api-0.4.3a1-py3-none-any.whl`，SHA-256 为 `f2d8dba3dbd2e17ea49bf2ce7f620dea487d3b7a5ca14b270f775695f8db7075`。
 - `python -m pip wheel . --no-deps`：成功构建 `rakuxq_api-0.4.3a2-py3-none-any.whl`，SHA-256 为 `0a8a354f0a02d5bf85060809f864b387cedef7b69cf4b43ff334b6a8d33eb8af`。
 - `python -m pip wheel . --no-deps`：成功构建 `rakuxq_api-0.4.4a5-py3-none-any.whl`，SHA-256 为 `43a324cac45441fe95354e2e69d5dee42d48bc909f16029be7b6908dd435ea67`。
+- `python -m pip wheel . --no-deps`：成功构建 `rakuxq_api-0.4.4a6-py3-none-any.whl`，SHA-256 为 `42e3a27e3b59fd8e45ee44d68520e63eb5db881958555b6a1efaa83c3c32a4e5`。
 - RakuXQ Lab 浏览器验收：用户提供的长 FEN 地址直接还原；本地 Pikafish 返回评分/最佳着法/PV；走棋、悔棋、双分支保留和 FEN 导入通过；390×844 移动视口无横向溢出。
 - RakuXQ Lab 紧凑版浏览器验收：`1280×720` 首屏完整显示整张棋盘；标准新局恢复正确三十二子 FEN；自由摆子完成清空、逐格放置、缺少将帅拒绝和有效局面应用；控制台无错误。
 - RakuXQ Lab v0.4.2 浏览器验收：`1280×720` 下棋盘、引擎面板与主线招法轨同时可见；从已走一步的本地研究点击“新局”后不弹窗并立即恢复标准开局 FEN；侧边菜单可正常打开并由 Esc 关闭。

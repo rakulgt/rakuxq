@@ -4,6 +4,22 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.4.4-alpha.6] - 2026-09-28
+
+### 中文
+
+- `side_to_move` 新增显式 `auto` 选项：按用户确认的业务规则，原图下方一侧视为正在求助的我方；红帅更靠下时返回 `w`，黑将更靠下时返回 `b`。
+- 推断仅使用棋子识别程序的原图坐标与帅/将字形身份，不调用多模态大模型，也不依赖棋盘规范化后的上下方向。
+- 缺少任一主帅、主帅数量异常或两者处在同一图像行时不猜测，返回 `review_required` 和 `SIDE_TO_MOVE_AUTO_UNRESOLVED`。
+- 成功推断时响应中的 `side_to_move` 直接规范化为 `red` 或 `black`，证据保存在 `prediction.metadata.side_to_move_inference`。
+
+### English
+
+- Added an explicit `side_to_move=auto` option. Under the caller-selected product convention, the lower side of the original image is the requesting player: a lower red king resolves to `w`, while a lower black king resolves to `b`.
+- The inference uses only the vision program's original-image king coordinates and immutable king identities; it does not call a multimodal model or infer from the already-normalized board.
+- Missing, duplicated, or same-rank kings remain unresolved and return `review_required` with `SIDE_TO_MOVE_AUTO_UNRESOLVED` instead of guessing.
+- Successful responses normalize `side_to_move` to `red` or `black` and preserve inference evidence in `prediction.metadata.side_to_move_inference`.
+
 ## [0.4.4-alpha.5] - 2026-09-27
 
 ### 中文
