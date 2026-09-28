@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from .domain import (
     BoardCell,
+    BoardPrediction,
     Orientation,
     RecognitionResult,
     RecognitionStatus,
@@ -54,6 +55,7 @@ class RecognitionService:
     @staticmethod
     def _infer_side_to_move_from_bottom_king(
         grid: list[list[str]],
+        prediction: BoardPrediction,
     ) -> tuple[SideToMove, dict[str, object]]:
         red_kings = [
             (rank, file)
@@ -68,7 +70,7 @@ class RecognitionService:
             if symbol == "k"
         ]
         evidence: dict[str, object] = {
-            "method": "bottom_king_is_side_to_move",
+            "method": "lower_king_original_image_center_is_side_to_move",
             "red_king_positions": [list(position) for position in red_kings],
             "black_king_positions": [list(position) for position in black_kings],
         }
@@ -81,18 +83,58 @@ class RecognitionService:
             )
             return SideToMove.UNKNOWN, evidence
 
-        red_rank = red_kings[0][0]
-        black_rank = black_kings[0][0]
-        if red_rank == black_rank:
+        projected_centers = prediction.metadata.get("projected_king_centers")
+        centers = projected_centers if isinstance(projected_centers, list) else []
+
+        def find_center(symbol: str, position: tuple[int, int]):
+            rank, file = position
+            matches = [
+                center
+                for center in centers
+                if isinstance(center, dict)
+                and center.get("symbol") == symbol
+                and center.get("rank") == rank
+                and center.get("file") == file
+                and isinstance(center.get("y"), (int, float))
+            ]
+            return matches[0] if len(matches) == 1 else None
+
+        red_center = find_center("K", red_kings[0])
+        black_center = find_center("k", black_kings[0])
+        if red_center is None or black_center is None:
             evidence.update(
                 {
                     "resolved": False,
-                    "reason": "kings_are_on_the_same_image_rank",
+                    "reason": "king_original_image_centers_unavailable",
                 }
             )
             return SideToMove.UNKNOWN, evidence
 
-        inferred = SideToMove.RED if red_rank > black_rank else SideToMove.BLACK
+        red_image_center = [red_center.get("x"), red_center["y"]]
+        black_image_center = [black_center.get("x"), black_center["y"]]
+        evidence.update(
+            {
+                "coordinate_space": "original_image_pixels",
+                "red_king_image_center": red_image_center,
+                "black_king_image_center": black_image_center,
+            }
+        )
+        red_image_y = float(red_center["y"])
+        black_image_y = float(black_center["y"])
+        if abs(red_image_y - black_image_y) < 1e-6:
+            evidence.update(
+                {
+                    "resolved": False,
+                    "reason": "kings_have_the_same_original_image_height",
+                }
+            )
+            return SideToMove.UNKNOWN, evidence
+
+        inferred = (
+            SideToMove.RED
+            if red_image_y > black_image_y
+            else SideToMove.BLACK
+        )
         evidence.update(
             {
                 "resolved": True,
@@ -140,7 +182,7 @@ class RecognitionService:
         side_to_move_inference: dict[str, object] | None = None
         if side_to_move == SideToMove.AUTO:
             resolved_side_to_move, side_to_move_inference = (
-                self._infer_side_to_move_from_bottom_king(resolved_grid)
+                self._infer_side_to_move_from_bottom_king(resolved_grid, prediction)
             )
             prediction.metadata["side_to_move_inference"] = side_to_move_inference
 

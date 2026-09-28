@@ -4,6 +4,22 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.4.4-alpha.8] - 2026-09-28
+
+### 中文
+
+- 修复 `auto` 在角点恢复或棋盘坐标旋转后反转行棋方的问题：不再比较棋盘内部行号，改为直接比较帅、将在原始上传图片中的像素中心 Y 坐标。
+- 帅的原图 Y 更大时固定返回红方走与 FEN `w`；将的原图 Y 更大时固定返回黑方走与 FEN `b`。后续透视校正、180 度旋转和标准化不会改写该结论。
+- 新增角点恢复回归：即使内部网格将帅行号完全颠倒，只要原图帅在下方，仍返回红方走。
+- 使用导致故障的两张相邻真实画面回归；两张均稳定推断红方 `w`，其中触发 `black_bottom` 与角点恢复的画面也不再反转行棋方。
+
+### English
+
+- Fixed automatic mover inference after corner recovery or board rotation. The service now compares the kings' center Y coordinates in the original uploaded image instead of internal grid ranks.
+- A lower red king always resolves to red/`w`; a lower black king resolves to black/`b`. Perspective correction, 180-degree rotation, and canonical normalization cannot change that decision.
+- Added a regression where recovered grid ranks are inverted while original-image pixels still place the red king below.
+- Replayed both adjacent real failure frames; both now resolve consistently to red/`w`, including the frame that triggers `black_bottom` and corner recovery.
+
 ## [0.4.4-alpha.7] - 2026-09-28
 
 ### 中文

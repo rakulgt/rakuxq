@@ -46,6 +46,12 @@ class FixedProvider(RecognitionProvider):
             board_confidence=0.999,
             provider=self.name,
             model_version="test",
+            metadata={
+                "projected_king_centers": [
+                    {"symbol": "k", "rank": 0, "file": 4, "x": 4.0, "y": 0.0},
+                    {"symbol": "K", "rank": 9, "file": 4, "x": 4.0, "y": 9.0},
+                ]
+            },
         )
 
 

@@ -46,6 +46,12 @@ class FixedProvider(RecognitionProvider):
             board_confidence=self.confidence,
             provider=self.name,
             model_version="test",
+            metadata={
+                "projected_king_centers": [
+                    {"symbol": "k", "rank": 0, "file": 4, "x": 4.0, "y": 0.0},
+                    {"symbol": "K", "rank": 9, "file": 4, "x": 4.0, "y": 9.0},
+                ]
+            },
         )
 
 
@@ -168,6 +174,35 @@ class BlackBottomProvider(FixedProvider):
             for rank, row in enumerate(prediction.grid)
             for file, symbol in enumerate(row)
         ]
+        prediction.metadata["projected_king_centers"] = [
+            {
+                "symbol": symbol,
+                "rank": rank,
+                "file": file,
+                "x": float(file),
+                "y": float(rank),
+            }
+            for rank, row in enumerate(prediction.grid)
+            for file, symbol in enumerate(row)
+            if symbol in {"K", "k"}
+        ]
+        return prediction
+
+
+class RecoveredCoordinatesProvider(BlackBottomProvider):
+    """Grid ranks are rotated, while original-image pixels still show red below."""
+
+    def recognize(self, image, orientation):
+        prediction = super().recognize(image, orientation)
+        prediction.metadata["projected_king_centers"] = [
+            {"symbol": "K", "rank": 0, "file": 4, "x": 400.0, "y": 900.0},
+            {"symbol": "k", "rank": 9, "file": 4, "x": 400.0, "y": 100.0},
+        ]
+        prediction.metadata["corner_order_recovery"] = {
+            "triggered": True,
+            "applied": True,
+            "trusted": True,
+        }
         return prediction
 
 
@@ -196,6 +231,10 @@ class SameRankKingsProvider(FixedProvider):
         prediction.grid[0][3] = "K"
         prediction.cells[85] = CellPrediction(9, 4, ".", self.confidence)
         prediction.cells[3] = CellPrediction(0, 3, "K", self.confidence)
+        prediction.metadata["projected_king_centers"] = [
+            {"symbol": "K", "rank": 0, "file": 3, "x": 3.0, "y": 0.0},
+            {"symbol": "k", "rank": 0, "file": 4, "x": 4.0, "y": 0.0},
+        ]
         return prediction
 
 
@@ -268,6 +307,22 @@ class ServiceTests(unittest.TestCase):
             "black_king",
         )
 
+    def test_auto_side_uses_original_pixels_after_corner_order_recovery(self):
+        result = RecognitionService(RecoveredCoordinatesProvider()).recognize(
+            b"image", SideToMove.AUTO, Orientation.AUTO
+        )
+
+        self.assertEqual(result.status, RecognitionStatus.ACCEPTED)
+        self.assertEqual(result.side_to_move, SideToMove.RED)
+        self.assertTrue(result.fen.endswith(" w"))
+        evidence = result.prediction.metadata["side_to_move_inference"]
+        self.assertEqual(evidence["coordinate_space"], "original_image_pixels")
+        self.assertEqual(evidence["lower_king"], "red_king")
+        self.assertGreater(
+            evidence["red_king_image_center"][1],
+            evidence["black_king_image_center"][1],
+        )
+
     def test_auto_side_requires_review_when_a_king_is_missing(self):
         result = RecognitionService(MissingRedKingProvider()).recognize(
             b"image", SideToMove.AUTO, Orientation.AUTO
@@ -289,7 +344,7 @@ class ServiceTests(unittest.TestCase):
         self.assertIn("SIDE_TO_MOVE_AUTO_UNRESOLVED", result.warnings)
         self.assertEqual(
             result.prediction.metadata["side_to_move_inference"]["reason"],
-            "kings_are_on_the_same_image_rank",
+            "kings_have_the_same_original_image_height",
         )
 
     def test_low_confidence_is_not_auto_accepted(self):

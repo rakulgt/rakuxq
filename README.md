@@ -20,7 +20,7 @@ RakuXQ 是由 **rakulgt / Raku Intelligence（罗酷智能）** 发起的开源�
 真实棋盘照片、斜拍、裁剪、背景噪声和部分遮挡；`v0.3` 已增加可替换 UCI 引擎边界，开始
 返回最佳着法和候选变化，后续继续完成中文着法与终端推送。
 
-> 当前源码版本：`v0.4.4-alpha.7`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
+> 当前源码版本：`v0.4.4-alpha.8`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
 > Pikafish UCI 适配器进入本地非商业技术验证。官方托管服务暂不部署受限 NNUE 权重。
 
 ### 从 lgtXQ 到 RakuXQ
@@ -161,7 +161,7 @@ curl -X POST http://127.0.0.1:8000/v1/fen \
   -F "side_to_move=red"
 ```
 
-实体棋盘静态图片通常不能客观证明轮到哪方走，因此需要固定行棋方的客户端应明确传入 `red` 或 `black`；参数缺失、空值或其他任何内容都会按“图片下方是我方，正在请教我该怎么走”自动判断。程序根据原图中帅或将谁更靠下推断 `w/b`，无法唯一判断时要求复核。接口契约见
+实体棋盘静态图片通常不能客观证明轮到哪方走，因此需要固定行棋方的客户端应明确传入 `red` 或 `black`；参数缺失、空值或其他任何内容都会按“图片下方是我方，正在请教我该怎么走”自动判断。程序直接比较帅、将在原始上传图片中的像素中心 Y 坐标来推断 `w/b`，不受棋盘透视校正、旋转或标准化影响；无法唯一判断时要求复核。接口契约见
 [`docs/api.md`](docs/api.md)，Apple 快捷指令配置见
 [`docs/apple-shortcuts.md`](docs/apple-shortcuts.md)。
 
@@ -229,7 +229,7 @@ screenshots, web boards, physical-board photos, perspective distortion, cropping
 noise, and partial occlusion. Version `0.3` adds a replaceable UCI engine boundary for best moves
 and principal variations; Chinese notation and terminal notifications remain on the roadmap.
 
-> Current source release: `v0.4.4-alpha.7`. The vision pipeline works on a growing set of real
+> Current source release: `v0.4.4-alpha.8`. The vision pipeline works on a growing set of real
 > screenshots and physical-board photos. The Pikafish UCI adapter is undergoing local,
 > non-commercial interoperability validation; restricted NNUE weights are not deployed by the
 > official hosted service.
@@ -346,8 +346,9 @@ six-field `- - 0 1` form should read `full_fen`.
 
 Only explicit `red/w/%20w` and `black/b/%20b` values pin `side_to_move`; missing, empty,
 `unknown`, `auto`, misspelled, and all other values opt into the caller convention that the lower
-side in the original image is the requesting player. The service returns `w` for a lower red king
-and `b` for a lower black king, or requires review when the two kings do not provide unique evidence. The URL-ready aliases let Apple
+side in the original image is the requesting player. The service compares the kings' original-image
+pixel-center Y coordinates and returns `w` for a lower red king or `b` for a lower black king,
+independent of board recovery and normalization. Ambiguous evidence requires review. The URL-ready aliases let Apple
 Shortcuts reuse one menu value when calling the API and building a xiangqiai.com viewer URL.
 
 Local detailed JSON response:

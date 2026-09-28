@@ -78,9 +78,9 @@ IP、文件名、请求 ID 或设备信息。单条事件 72 小时后删除，�
   `piece_placement + 一个真实空格 + w/b`，例如 `4k4/9/.../5K3 w`。
 - `full_fen`：为后续引擎保留的完整六字段形式，例如 `4k4/9/.../5K3 w - - 0 1`。
 
-`side_to_move=auto` 只比较棋盘方向规范化前、原图坐标系中唯一帅和唯一将的纵向位置。
+自动行棋方只比较原始上传图片中唯一帅和唯一将的像素中心 Y 坐标，不使用棋盘网格行号；因此角点恢复、透视校正、180 度旋转和方向规范化都不会改变行棋方结论。
 成功时响应 `side_to_move` 直接为 `red` 或 `black`，增加 `SIDE_TO_MOVE_INFERRED_FROM_BOTTOM_KING`，
-并在 `prediction.metadata.side_to_move_inference` 保留两枚主帅坐标和推断理由。主帅缺失、重复或位于同一图像行时，
+并在 `prediction.metadata.side_to_move_inference` 保留两枚主帅的原图像素中心、网格坐标和推断理由。主帅缺失、重复、缺少原图中心或中心高度相同时，
 响应为 `review_required`，`side_to_move=unknown`，警告为 `SIDE_TO_MOVE_AUTO_UNRESOLVED`。
 
 调用方应当使用以下等价逻辑：

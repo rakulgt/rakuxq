@@ -743,6 +743,17 @@ class OnnxRecognitionProvider(RecognitionProvider):
                     for index, is_visible in enumerate(visible)
                     if not is_visible
                 ],
+                "projected_king_centers": [
+                    {
+                        "symbol": symbol,
+                        "rank": index // 9,
+                        "file": index % 9,
+                        "x": float(projected_points[index][0]),
+                        "y": float(projected_points[index][1]),
+                    }
+                    for index, symbol in enumerate(symbols)
+                    if symbol in {"K", "k"}
+                ],
                 "prototype_refinements": selected.refinements,
                 "camp_color_refinements": [],
                 "camp_color_diagnostics": selected.camp_diagnostics,
