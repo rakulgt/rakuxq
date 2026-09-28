@@ -16,7 +16,7 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from . import __version__
-from .api_keys import APIKeyStore, TrialKeyCapacity, TrialKeyCooldown
+from .api_keys import APIKeyStore, APIKeyValidation, TrialKeyCapacity, TrialKeyCooldown
 from .audit import InteractionAuditMiddleware, InteractionAuditStore
 from .config import Settings
 from .domain import Orientation, RecognitionStatus, SideToMove, parse_side_to_move
@@ -120,9 +120,9 @@ def _trial_fingerprint(request: Request) -> str:
 def require_api_key(
     authorization: Annotated[str | None, Header()] = None,
     x_api_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
-) -> None:
+) -> APIKeyValidation:
     if not settings.require_api_key:
-        return
+        return APIKeyValidation("active", key_id="self-hosted", label="self-hosted")
     if api_key_store is None:
         raise HTTPException(
             status_code=503,
@@ -133,7 +133,7 @@ def require_api_key(
         supplied = authorization[7:].strip()
     validation = api_key_store.validate(supplied)
     if validation.status == "active":
-        return
+        return validation
     if validation.status == "expired":
         raise HTTPException(
             status_code=403,
@@ -163,6 +163,22 @@ def require_api_key(
         },
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+
+def require_engine_api_key(
+    validation: Annotated[APIKeyValidation, Depends(require_api_key)],
+) -> APIKeyValidation:
+    if not settings.require_api_key:
+        return validation
+    if validation.key_id not in settings.engine_allowed_key_ids:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "ENGINE_ACCESS_DENIED",
+                "message": "This API key does not include private engine access.",
+            },
+        )
+    return validation
 
 
 @asynccontextmanager
@@ -413,7 +429,7 @@ def issue_trial_key(request: Request) -> JSONResponse:
 @app.post("/v1/recognitions")
 async def recognize(
     image: Annotated[UploadFile, File()],
-    _api_key: Annotated[None, Depends(require_api_key)],
+    _api_key: Annotated[APIKeyValidation, Depends(require_api_key)],
     side_to_move: Annotated[str, Form()] = SideToMove.AUTO.value,
     orientation: Annotated[Orientation, Form()] = Orientation.AUTO,
 ):
@@ -424,7 +440,7 @@ async def recognize(
 @app.post("/v1/analyses")
 def analyze_position(
     payload: AnalysisRequest,
-    _api_key: Annotated[None, Depends(require_api_key)],
+    _api_key: Annotated[APIKeyValidation, Depends(require_engine_api_key)],
 ):
     return analysis_to_dict(_run_analysis(payload.fen, payload.movetime_ms))
 
@@ -432,7 +448,7 @@ def analyze_position(
 @app.post("/v1/solutions")
 def solve_position(
     payload: SolutionRequest,
-    _api_key: Annotated[None, Depends(require_api_key)],
+    _api_key: Annotated[APIKeyValidation, Depends(require_engine_api_key)],
 ):
     result = _run_analysis(payload.fen, payload.time_ms)
     return _solution_payload(result, payload.time_ms)
@@ -441,7 +457,7 @@ def solve_position(
 @app.post("/v1/solve")
 async def solve(
     image: Annotated[UploadFile, File()],
-    _api_key: Annotated[None, Depends(require_api_key)],
+    _api_key: Annotated[APIKeyValidation, Depends(require_engine_api_key)],
     side_to_move: Annotated[str, Form()] = SideToMove.AUTO.value,
     orientation: Annotated[Orientation, Form()] = Orientation.AUTO,
     movetime_ms: Annotated[int | None, Form()] = None,
@@ -472,7 +488,7 @@ async def solve(
 @app.post("/v1/fen", response_class=PlainTextResponse)
 async def fen(
     image: Annotated[UploadFile, File()],
-    _api_key: Annotated[None, Depends(require_api_key)],
+    _api_key: Annotated[APIKeyValidation, Depends(require_api_key)],
     side_to_move: Annotated[str, Form()] = SideToMove.AUTO.value,
     orientation: Annotated[Orientation, Form()] = Orientation.AUTO,
 ):

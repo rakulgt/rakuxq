@@ -4,6 +4,20 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.5.0-alpha.2] - 2026-09-28
+
+### 中文
+
+- 为三个引擎路由增加独立 Key 白名单：维护者个人 Key 可做非商业验证，临时 Key、普通识别 Key和客户 Key返回 `403 ENGINE_ACCESS_DENIED`。
+- 部署配置会安全保留已安装引擎路径、权重路径、版本和非秘密 Key ID 白名单，后续常规发布不会误清空引擎配置。
+- 生产基线保持单 Pikafish 进程、单线程、64 MiB 哈希和串行搜索，避免在小型服务器上挤占视觉识别资源。
+
+### English
+
+- Added a separate key-ID allowlist to all three engine routes. The maintainer's personal key can run non-commercial validation, while trial, ordinary vision, and customer keys receive `403 ENGINE_ACCESS_DENIED`.
+- Deployment now safely preserves installed engine paths, version, and the non-secret key-ID allowlist across ordinary releases.
+- Kept the production baseline at one persistent Pikafish process, one thread, a 64-MiB hash, and serialized searches to protect vision workloads on the small host.
+
 ## [0.5.0-alpha.1] - 2026-09-28
 
 ### 中文

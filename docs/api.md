@@ -2,7 +2,8 @@
 
 官方托管地址：`https://xq.rakubank.com`。视觉客户端默认调用完整 JSON 接口
 `POST /v1/recognitions`，仅在 `status` 为 `accepted` 时消费 `fen` 字段。实验性引擎接口
-可在配置了本地引擎的自托管环境使用；官方托管服务尚未部署受限 NNUE 权重。
+可在配置了本地引擎的自托管环境使用；官方托管的非商业验证引擎仅向维护者个人 Key 开放，
+六分钟临时 Key 和普通识别 Key 返回 `403 ENGINE_ACCESS_DENIED`。
 
 ## 标准 FEN 网页入口
 
@@ -207,8 +208,9 @@ else:
 - `recognition`：完整、可审计的原识别结果；
 - `analysis`：最佳着法、红方视角整数评分、PV 和可复现引擎信息。
 
-识别需要复核或被拒绝时，`analysis` 为 `null`，不得静默对不可靠局面给出着法。未配置引擎返回
-`503 ENGINE_NOT_CONFIGURED`；非法 FEN、分析超时和引擎异常分别返回明确的机器错误码。
+识别需要复核或被拒绝时，`analysis` 为 `null`，不得静默对不可靠局面给出着法。无个人引擎权限
+返回 `403 ENGINE_ACCESS_DENIED`，未配置引擎返回 `503 ENGINE_NOT_CONFIGURED`；非法 FEN、
+分析超时和引擎异常分别返回明确的机器错误码。
 
 ## 官方托管短期审计
 

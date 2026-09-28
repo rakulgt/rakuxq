@@ -8,8 +8,10 @@ engine implementation.
 
 Pikafish and its official NNUE network are **not bundled** with RakuXQ. Pikafish source is GPL-3.0,
 while the official network has separate terms that prohibit commercial use without permission.
-The initial integration is therefore for local, non-commercial technical validation only. Do not
-deploy the official network as part of a paid hosted service without permission from its owner.
+The initial integration is therefore for non-commercial technical validation only. A maintainer may
+run a private server-side installation for personal use, but it must not be exposed to trial or
+customer keys. Do not offer the official network as part of a paid hosted service without permission
+from its owner.
 
 Read [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md) and the upstream
 [network license](https://github.com/official-pikafish/Networks/blob/master/README.md) before use.
@@ -42,6 +44,10 @@ $env:RAKUXQ_ENGINE_DEFAULT_MOVETIME_MS = "3000"
 
 The service starts one persistent process and serializes searches through it. The conservative
 one-thread/64-MiB defaults protect the vision process on a small host. Supported limits are:
+
+- `RAKUXQ_ENGINE_ALLOWED_KEY_IDS`: comma-separated key IDs allowed to call engine routes when API
+  authentication is enabled. An empty value denies every hosted key; it never contains plaintext
+  keys.
 
 - `RAKUXQ_ENGINE_DEFAULT_MOVETIME_MS`: default search budget, initially `3000`.
 - `RAKUXQ_ENGINE_MAX_MOVETIME_MS`: public request ceiling, initially `10000`.

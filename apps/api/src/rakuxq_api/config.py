@@ -11,6 +11,14 @@ def _boolean(name: str, default: bool = False) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _comma_separated(name: str) -> tuple[str, ...]:
+    return tuple(
+        value
+        for item in os.getenv(name, "").split(",")
+        if (value := item.strip())
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     pose_model: str = os.getenv("RAKUXQ_POSE_MODEL", "../../models/pose.onnx")
@@ -67,6 +75,9 @@ class Settings:
     engine_path: str = os.getenv("RAKUXQ_ENGINE_PATH", "")
     engine_network: str = os.getenv("RAKUXQ_ENGINE_NETWORK", "")
     engine_version: str = os.getenv("RAKUXQ_ENGINE_VERSION", "unknown")
+    engine_allowed_key_ids: tuple[str, ...] = _comma_separated(
+        "RAKUXQ_ENGINE_ALLOWED_KEY_IDS"
+    )
     engine_threads: int = int(os.getenv("RAKUXQ_ENGINE_THREADS", "1"))
     engine_hash_mb: int = int(os.getenv("RAKUXQ_ENGINE_HASH_MB", "64"))
     engine_default_movetime_ms: int = int(

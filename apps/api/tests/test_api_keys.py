@@ -176,3 +176,43 @@ def test_valid_api_key_allows_json_recognition(tmp_path):
     assert accepted.json()["status"] == "accepted"
     assert accepted.json()["fen"].endswith(" w")
     assert accepted.json()["full_fen"].endswith(" w - - 0 1")
+
+
+def test_engine_routes_require_an_explicitly_allowed_personal_key(tmp_path):
+    database = tmp_path / "keys.sqlite3"
+    store = APIKeyStore(database)
+    owner_id, owner_plaintext, _ = store.create("owner")
+    _, customer_plaintext, _ = store.create("customer")
+    protected_settings = replace(
+        Settings(),
+        require_api_key=True,
+        api_keys_db=str(database),
+        engine_allowed_key_ids=(owner_id,),
+    )
+    client = TestClient(app)
+
+    with (
+        patch("rakuxq_api.main.settings", protected_settings),
+        patch("rakuxq_api.main.api_key_store", store),
+    ):
+        denied = client.post(
+            "/v1/solutions",
+            headers={"Authorization": f"Bearer {customer_plaintext}"},
+            json={
+                "fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/"
+                "P1P1P1P1P/1C5C1/9/RNBAKABNR w"
+            },
+        )
+        owner = client.post(
+            "/v1/solutions",
+            headers={"Authorization": f"Bearer {owner_plaintext}"},
+            json={
+                "fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/"
+                "P1P1P1P1P/1C5C1/9/RNBAKABNR w"
+            },
+        )
+
+    assert denied.status_code == 403
+    assert denied.json()["detail"]["code"] == "ENGINE_ACCESS_DENIED"
+    assert owner.status_code == 503
+    assert owner.json()["detail"]["code"] == "ENGINE_NOT_CONFIGURED"

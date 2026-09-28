@@ -11,7 +11,7 @@
 - systemd：`rakuxq-api.service`
 - 回环端口：`127.0.0.1:8040`
 - 公网入口：`https://xq.rakubank.com/v1/recognitions`
-- FEN 解题入口：`https://xq.rakubank.com/v1/solutions`（接口契约已部署；受限 NNUE 未获托管授权前保持未配置）
+- FEN 解题入口：`https://xq.rakubank.com/v1/solutions`（非商业验证阶段仅允许维护者个人 Key）
 - 棋局实验室：`https://xq.rakubank.com/lab`
 - 标准 FEN 入口：`https://xq.rakubank.com/fen/<standard-fen>`
 - 健康检查：`https://xq.rakubank.com/healthz`
@@ -99,7 +99,9 @@ python -m rakuxq_api.key_cli --database /opt/raku/secrets/rakuxq/api-keys.sqlite
 - 单 Uvicorn worker，ONNX Runtime 两线程，避免在 4 核 3.6 GiB 主机上与其他产品抢占资源。
 - systemd `MemoryMax=1200M`；Nginx 限制单请求约 13 MiB、每 Key 每分钟 30 次、突发 10 次、并发 2 次。
 - `/healthz` 不要求 API Key；`/v1/recognitions` 和 `/v1/fen` 必须鉴权。
-- `/v1/solutions`、`/v1/analyses` 和 `/v1/solve` 必须鉴权；生产未配置合法引擎权重时明确返回 `503 ENGINE_NOT_CONFIGURED`。
+- `/v1/solutions`、`/v1/analyses` 和 `/v1/solve` 除有效 Key 外还必须命中
+  `RAKUXQ_ENGINE_ALLOWED_KEY_IDS`；其他 Key 返回 `403 ENGINE_ACCESS_DENIED`。引擎未配置时明确返回
+  `503 ENGINE_NOT_CONFIGURED`。
 - `/` 与 `/api/public/stats` 公开访问，只提供官网资源和匿名指标。
 - `/developers` 与 `/api/public/trial-keys` 公开访问；后者只签发 6 分钟、不可续期的测试 Key。
 - API Key 和密钥库不得进入 Git、聊天、普通日志或部署记录。

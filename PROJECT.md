@@ -1,8 +1,8 @@
 ---
 document_type: living-project-cognitive-baseline
 project_id: rakuxq
-baseline_revision: "24"
-parent_revision: "23"
+baseline_revision: "25"
+parent_revision: "24"
 change_operation: UPDATE
 status: active
 updated_at: "2026-09-28T13:40:00+08:00"
@@ -83,7 +83,7 @@ RakuXQ 是面向开发者、自动化用户和中国象棋应用的开源智能�
 - 已确认：项目发起人为李国泰（rakulgt，`lgt@rakubank.com`），公开叙事保留从棋手经历、2008 年 lgtXQ、2018 年 RakuXQ 引擎、2023 年视觉原型到 2026 年开源视觉 API 的技术传承。
 - 已确认：源码采用 MIT License，通过公开仓库 `https://github.com/rakulgt/rakuxq` 发布；第三方 ONNX 权重不随源码仓库重新分发。
 - 已确认：第一阶段只解决局面识别，第二阶段解决最佳支招。
-- 已确认：第二阶段首个技术基线通过 UCI 接入用户另行安装的 Pikafish；程序与官方 NNUE 权重不进入 MIT 仓库，未取得商用授权前不部署到收费托管服务。
+- 已确认：第二阶段首个技术基线通过 UCI 接入用户另行安装的 Pikafish；程序与官方 NNUE 权重不进入 MIT 仓库。非商业验证阶段允许在正式服务器为维护者个人 Key 隔离启用，但六分钟临时 Key、普通识别 Key和客户 Key均不得调用；取得商用授权或切换自有权重前不得作为收费托管能力提供。
 - 已确认：`/v1/solutions` 是面向客户端的 FEN 解题契约；`/v1/analyses` 保留底层兼容，`/v1/solve` 串联自动通过的视觉结果；原 `/v1/recognitions` 和 `/v1/fen` 保持兼容。
 - 已确认：优先复用开源模型和通用推理框架，不从零重复建设基础算子；差异化投入数据、拒识、整盘评测和工程接口。
 - 已确认：局部棋盘图片中未进入画面的交叉点默认无子，风险由主动上传该图片的调用者承担；产品通过显式警告和坐标清单提供可审计性，而不是阻止生成结果。
@@ -93,7 +93,7 @@ RakuXQ 是面向开发者、自动化用户和中国象棋应用的开源智能�
 - 已确认：`xq.rakubank.com` 不是空白 API 根路径，而是包含实时匿名交互流、累计数据、项目动机、技术来历、路线图与 Apple 快捷指令入口的公开官网。
 - 已确认：公共开发者页面允许匿名领取只生效 6 分钟的随机测试 Key，并明确披露一次性显示、短期审计和年度生产 Key 的边界。
 - 已确认：首页不嵌入 xiangqiai.com 页面；RakuXQ 自己承担棋盘视觉与交互，BSD-2-Clause `xiangqi.js` 只承担可替换规则层，xiangqiai.com 保留为当前 FEN 的外部深入研究入口。
-- 已确认：`v0.4` 建设 RakuXQ Lab；标准 FEN 可直接拼接到 `https://xq.rakubank.com/fen/`，实验室提供变化树、红黑独立 AI 模式、本地自动保存及 FEN/ICCS/RakuXQ JSON/PNG 导入导出。生产站在取得权重授权前只公开棋盘能力，不部署受限 NNUE 权重。
+- 已确认：`v0.4` 建设 RakuXQ Lab；标准 FEN 可直接拼接到 `https://xq.rakubank.com/fen/`，实验室提供变化树、红黑独立 AI 模式、本地自动保存及 FEN/ICCS/RakuXQ JSON/PNG 导入导出。未取得权重授权前，生产站的受限 NNUE 仅供维护者个人非商业验证，不形成公共或客户能力。
 - 已确认：借鉴成熟棋谱工具的高频操作分组，但不复制第三方页面；RakuXQ 自行实现紧凑工具栏、标准新局、开头/上一步/下一步/末尾、局面编辑、本地文件导入和保存分享工作流。
 - 已否决：以 OCR 作为主识别路线，因为棋子字体、旋转、遮挡和复杂背景会使文字识别缺乏稳定性。
 - 已否决：用高单格准确率替代整盘准确率，因为一个错误棋子即可使后续引擎结论失真。
