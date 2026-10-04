@@ -336,6 +336,30 @@ class RecognitionService:
             for cell in prediction.cells
         ):
             warnings.append("SAME_IMAGE_PROTOTYPE_REFINEMENT")
+        if any(
+            cell.refinement is not None
+            and any(
+                method in cell.refinement
+                for method in (
+                    "same_image_prototype_confirmation",
+                    "model_margin_camp_confirmation",
+                )
+            )
+            for cell in prediction.cells
+        ):
+            warnings.append("LOW_CONFIDENCE_PIECE_CONFIRMED")
+        if any(
+            cell.refinement is not None
+            and "model_margin_empty_confirmation" in cell.refinement
+            for cell in prediction.cells
+        ):
+            warnings.append("LOW_CONFIDENCE_EMPTY_CONFIRMED")
+        if any(
+            cell.refinement is not None
+            and "same_image_prototype_camp_correction" in cell.refinement
+            for cell in prediction.cells
+        ):
+            warnings.append("CAMP_COLOR_LEGALITY_REFINEMENT")
         if semantic_orientation is not None:
             warnings.append("SEMANTIC_ORIENTATION_ROTATED")
         if trusted_corner_recovery:

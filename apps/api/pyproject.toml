@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "rakuxq-api"
-version = "0.5.0a5"
+version = "0.5.0a6"
 description = "RakuXQ image-to-FEN and Xiangqi engine analysis HTTP API"
 readme = "README.md"
 authors = [

@@ -20,7 +20,7 @@ RakuXQ 是由 **rakulgt / Raku Intelligence（罗酷智能）** 发起的开源�
 真实棋盘照片、斜拍、裁剪、背景噪声和部分遮挡；`v0.5` 已增加 `FEN → solution` 接口，
 通过可替换 UCI 引擎返回中文最佳着法、固定红方视角评分和候选变化。
 
-> 当前源码版本：`v0.5.0-alpha.5`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
+> 当前源码版本：`v0.5.0-alpha.6`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
 > Pikafish UCI 适配器与中文着法进入非商业技术验证。官方托管仅向维护者个人 Key 开放引擎，
 > 不向临时 Key 或普通客户 Key 提供受限 NNUE 能力。
 
@@ -242,7 +242,7 @@ screenshots, web boards, physical-board photos, perspective distortion, cropping
 noise, and partial occlusion. Version `0.5` adds a product-level FEN-to-solution endpoint with
 Chinese best-move notation, fixed-red-perspective scores, and principal variations.
 
-> Current source release: `v0.5.0-alpha.5`. The vision pipeline works on a growing set of real
+> Current source release: `v0.5.0-alpha.6`. The vision pipeline works on a growing set of real
 > screenshots and physical-board photos. The Pikafish UCI adapter is undergoing non-commercial
 > interoperability validation. The hosted engine is restricted to the maintainer's personal key;
 > trial and ordinary customer keys cannot use the restricted NNUE network.

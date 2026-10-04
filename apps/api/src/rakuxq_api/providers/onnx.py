@@ -24,8 +24,9 @@ class _LayoutCandidate:
     refined_symbols: list[str]
     confidences: Any
     effective_confidences: Any
-    refinements: list[dict[str, object]]
-    camp_diagnostics: list[dict[str, object]]
+    refinements: list[dict[str, Any]]
+    visual_fusions: list[dict[str, Any]]
+    camp_diagnostics: list[dict[str, Any]]
     projected_points: Any
     visible: list[bool]
     grid: list[list[str]]
@@ -167,23 +168,23 @@ class OnnxRecognitionProvider(RecognitionProvider):
         return exp / exp.sum(axis=-1, keepdims=True)
 
     @staticmethod
-    def _king_anchor_color_diagnostics(
+    def _king_anchor_color_evidence(
         warped,
         symbols: list[str],
         confidences,
         visible: list[bool],
+        minimum_anchor_confidence: float = 0.85,
         minimum_anchor_distance: float = 0.04,
         minimum_assignment_margin: float = 0.02,
         maximum_nearest_distance: float = 0.50,
     ):
-        """Record colour-based camp hypotheses without changing model output.
+        """Measure image-local camp colour evidence without changing model output.
 
         Piece identity is established first by the layout model.  The unique 帅
         (``K``) and 将 (``k``) patches then define image-local red and black colour
-        prototypes.  Whole-patch colour histograms are affected by disc colour,
-        board texture, shadows, and reflections, so they are not safe evidence
-        for mutating a recognized camp.  Candidate disagreements remain in
-        metadata for audit and future ink-segmentation work only.
+        prototypes.  Both agreements and disagreements are returned so a later,
+        independently gated fusion pass can combine colour with piece-type
+        prototypes and position legality.
         """
         import cv2
         import numpy as np
@@ -214,6 +215,11 @@ class OnnxRecognitionProvider(RecognitionProvider):
         features = {index: histogram(index) for index in occupied}
         red_index = red_anchors[0]
         black_index = black_anchors[0]
+        if (
+            float(confidences[red_index]) < minimum_anchor_confidence
+            or float(confidences[black_index]) < minimum_anchor_confidence
+        ):
+            return []
         red_anchor = features.get(red_index)
         black_anchor = features.get(black_index)
         if red_anchor is None or black_anchor is None:
@@ -242,8 +248,6 @@ class OnnxRecognitionProvider(RecognitionProvider):
             if nearest > maximum_nearest_distance or margin < minimum_assignment_margin:
                 continue
             inferred_red = red_distance < black_distance
-            if inferred_red == symbol.isupper():
-                continue
             suggested = symbol.upper() if inferred_red else symbol.lower()
             details.append(
                 {
@@ -251,6 +255,7 @@ class OnnxRecognitionProvider(RecognitionProvider):
                     "file": index % 9,
                     "from": symbol,
                     "suggested": suggested,
+                    "agrees_with_model": inferred_red == symbol.isupper(),
                     "raw_confidence": float(confidences[index]),
                     "applied": False,
                     "reason": "diagnostic_only_unsegmented_patch_colour",
@@ -261,6 +266,27 @@ class OnnxRecognitionProvider(RecognitionProvider):
                 }
             )
         return details
+
+    @classmethod
+    def _king_anchor_color_diagnostics(
+        cls,
+        warped,
+        symbols: list[str],
+        confidences,
+        visible: list[bool],
+    ):
+        """Retain the historical audit surface: only camp disagreements."""
+
+        return [
+            detail
+            for detail in cls._king_anchor_color_evidence(
+                warped,
+                symbols,
+                confidences,
+                visible,
+            )
+            if not detail["agrees_with_model"]
+        ]
 
     @staticmethod
     def _same_image_prototype_refinement(
@@ -347,6 +373,7 @@ class OnnxRecognitionProvider(RecognitionProvider):
             prototype_rank, prototype_file = divmod(prototype_index, 9)
             details.append(
                 {
+                    "method": "same_image_prototype_correction",
                     "rank": index // 9,
                     "file": index % 9,
                     "from": symbol,
@@ -359,6 +386,325 @@ class OnnxRecognitionProvider(RecognitionProvider):
                 }
             )
         return refined, effective_confidences, details
+
+    @staticmethod
+    def _piece_type_prototype_evidence(
+        warped,
+        symbols: list[str],
+        confidences,
+        visible: list[bool],
+        prototype_confidence: float = 0.85,
+        target_confidence: float = 0.75,
+    ) -> list[dict[str, Any]]:
+        """Compare weak pieces with strong same-image piece-type examples.
+
+        Camp case is deliberately ignored: a red cannon and a black cannon can
+        confirm the shared cannon glyph/type while camp is assessed separately.
+        """
+
+        import cv2
+        import numpy as np
+
+        gray = cv2.cvtColor(warped, cv2.COLOR_RGB2GRAY)
+        features = []
+        for index in range(90):
+            rank, file = divmod(index, 9)
+            center = (50.0 + file * 43.75, 50.0 + rank * (400.0 / 9.0))
+            patch = cv2.getRectSubPix(gray, (37, 37), center)
+            patch = cv2.resize(patch, (32, 32), interpolation=cv2.INTER_AREA).astype(
+                np.float32
+            )
+            patch -= patch.mean()
+            patch /= patch.std() + 1e-6
+            features.append(patch.reshape(-1))
+
+        prototypes = [
+            index
+            for index, symbol in enumerate(symbols)
+            if visible[index]
+            and symbol not in {".", "x"}
+            and float(confidences[index]) >= prototype_confidence
+        ]
+        details: list[dict[str, Any]] = []
+        for index, symbol in enumerate(symbols):
+            if (
+                not visible[index]
+                or symbol in {".", "x"}
+                or float(confidences[index]) >= target_confidence
+            ):
+                continue
+
+            type_matches: dict[str, tuple[float, int]] = {}
+            for candidate in prototypes:
+                candidate_type = symbols[candidate].lower()
+                similarity = float(
+                    np.dot(features[index], features[candidate]) / features[index].size
+                )
+                current = type_matches.get(candidate_type)
+                if current is None or similarity > current[0]:
+                    type_matches[candidate_type] = (similarity, candidate)
+
+            ranked = sorted(type_matches.items(), key=lambda item: item[1][0], reverse=True)
+            if not ranked:
+                continue
+            best_type, (best_similarity, prototype_index) = ranked[0]
+            runner_up = ranked[1][1][0] if len(ranked) > 1 else -1.0
+            details.append(
+                {
+                    "rank": index // 9,
+                    "file": index % 9,
+                    "model_symbol": symbol,
+                    "model_confidence": float(confidences[index]),
+                    "best_type": best_type,
+                    "similarity": best_similarity,
+                    "runner_up_similarity": runner_up,
+                    "type_margin": best_similarity - runner_up,
+                    "prototype_symbol": symbols[prototype_index],
+                    "prototype_rank": prototype_index // 9,
+                    "prototype_file": prototype_index % 9,
+                }
+            )
+        return details
+
+    @classmethod
+    def _apply_low_confidence_visual_fusion(
+        cls,
+        symbols: list[str],
+        model_confidences,
+        model_margins,
+        effective_confidences,
+        visible: list[bool],
+        type_evidence: list[dict[str, Any]],
+        color_evidence: list[dict[str, Any]],
+        minimum_model_confidence: float = 0.45,
+        minimum_decisive_model_confidence: float = 0.50,
+        minimum_model_margin: float = 0.15,
+        target_confidence: float = 0.75,
+        minimum_type_similarity: float = 0.68,
+        minimum_type_margin: float = 0.12,
+        minimum_anchor_distance: float = 0.20,
+        minimum_color_margin: float = 0.15,
+        maximum_color_distance: float = 0.40,
+    ):
+        """Fuse independent evidence for weak known pieces without lowering gates.
+
+        A piece is confirmed when either a strong same-image prototype confirms
+        its case-insensitive type, or it is the board's only weak occupied cell
+        and the model has a decisive lead over its runner-up.  The two king
+        anchors must independently confirm its camp.  A camp correction always
+        requires prototype evidence and must strictly reduce blocking-position
+        warnings.  High-confidence labels, piece types, empty cells, and unknown
+        cells are never rewritten by this pass.
+        """
+
+        import numpy as np
+
+        refined = symbols.copy()
+        effective = np.asarray(effective_confidences, dtype=np.float32).copy()
+        type_by_index = {
+            int(detail["rank"]) * 9 + int(detail["file"]): detail
+            for detail in type_evidence
+        }
+        color_by_index = {
+            int(detail["rank"]) * 9 + int(detail["file"]): detail
+            for detail in color_evidence
+        }
+        details: list[dict[str, Any]] = []
+        weak_occupied = [
+            index
+            for index, symbol in enumerate(refined)
+            if visible[index]
+            and symbol not in {".", "x", "K", "k"}
+            and minimum_model_confidence
+            <= float(model_confidences[index])
+            < target_confidence
+        ]
+
+        def blocking(values: list[str]) -> tuple[str, ...]:
+            grid = [values[index : index + 9] for index in range(0, 90, 9)]
+            validation_grid = cls._candidate_grid_for_validation(grid)
+            return tuple(
+                warning.code
+                for warning in validate_position(validation_grid)
+                if warning.blocking
+            )
+
+        for index, symbol in enumerate(refined):
+            model_confidence = float(model_confidences[index])
+            if (
+                not visible[index]
+                or symbol in {".", "x", "K", "k"}
+                or model_confidence < minimum_model_confidence
+                or float(effective[index]) >= target_confidence
+            ):
+                continue
+
+            color_detail = color_by_index.get(index)
+            if color_detail is None:
+                continue
+            type_detail = type_by_index.get(index)
+            type_confirmed = bool(
+                type_detail is not None
+                and str(type_detail["best_type"]) == symbol.lower()
+                and float(type_detail["similarity"]) >= minimum_type_similarity
+                and float(type_detail["type_margin"]) >= minimum_type_margin
+            )
+
+            anchor_distance = float(color_detail["anchor_distance"])
+            red_distance = float(color_detail["red_distance"])
+            black_distance = float(color_detail["black_distance"])
+            color_margin = float(color_detail["assignment_margin"])
+            if (
+                anchor_distance < minimum_anchor_distance
+                or min(red_distance, black_distance) > maximum_color_distance
+                or color_margin < minimum_color_margin
+            ):
+                continue
+
+            suggested = str(color_detail["suggested"])
+            if suggested.lower() != symbol.lower():
+                continue
+            before = blocking(refined)
+            model_margin = float(model_margins[index])
+            decisive_model_confirmation = (
+                suggested == symbol
+                and len(weak_occupied) == 1
+                and model_confidence >= minimum_decisive_model_confidence
+                and model_margin >= minimum_model_margin
+                and not before
+            )
+            if not type_confirmed and not decisive_model_confirmation:
+                continue
+
+            type_similarity = (
+                float(type_detail["similarity"]) if type_detail is not None else None
+            )
+            type_margin = (
+                float(type_detail["type_margin"]) if type_detail is not None else None
+            )
+            method = (
+                "same_image_prototype_confirmation"
+                if type_confirmed
+                else "model_margin_camp_confirmation"
+            )
+            if suggested != symbol:
+                if not type_confirmed or type_detail is None:
+                    continue
+                proposed = refined.copy()
+                proposed[index] = suggested
+                after = blocking(proposed)
+                if cls._blocking_warning_penalty(after) >= cls._blocking_warning_penalty(before):
+                    continue
+                refined = proposed
+                method = "same_image_prototype_camp_correction"
+            else:
+                after = before
+
+            evidence_confidence = (
+                type_similarity
+                if type_confirmed and type_similarity is not None
+                else model_confidence + model_margin
+            )
+            fused_confidence = max(target_confidence, min(evidence_confidence, 1.0))
+            effective[index] = fused_confidence
+            details.append(
+                {
+                    "method": method,
+                    "rank": index // 9,
+                    "file": index % 9,
+                    "from": symbol,
+                    "to": refined[index],
+                    "model_confidence": model_confidence,
+                    "model_margin": model_margin,
+                    "effective_confidence": fused_confidence,
+                    "type_similarity": type_similarity,
+                    "type_margin": type_margin,
+                    "prototype_symbol": (
+                        type_detail["prototype_symbol"] if type_detail is not None else None
+                    ),
+                    "prototype_rank": (
+                        type_detail["prototype_rank"] if type_detail is not None else None
+                    ),
+                    "prototype_file": (
+                        type_detail["prototype_file"] if type_detail is not None else None
+                    ),
+                    "red_distance": red_distance,
+                    "black_distance": black_distance,
+                    "color_margin": color_margin,
+                    "anchor_distance": anchor_distance,
+                    "blocking_warnings_before": list(before),
+                    "blocking_warnings_after": list(after),
+                }
+            )
+        return refined, effective, details
+
+    @classmethod
+    def _apply_decisive_empty_confirmation(
+        cls,
+        symbols: list[str],
+        model_confidences,
+        model_margins,
+        effective_confidences,
+        visible: list[bool],
+        minimum_confidence: float = 0.65,
+        minimum_margin: float = 0.50,
+        target_confidence: float = 0.75,
+    ):
+        """Confirm one borderline empty cell when the model lead is decisive.
+
+        This addresses transient board UI overlays without weakening the global
+        empty-cell gate.  The pass is disabled for unknown cells, multiple weak
+        cells, or an already impossible position.
+        """
+
+        import numpy as np
+
+        effective = np.asarray(effective_confidences, dtype=np.float32).copy()
+        if "x" in symbols:
+            return effective, []
+        weak = [
+            index
+            for index, symbol in enumerate(symbols)
+            if visible[index]
+            and float(effective[index]) < target_confidence
+            and symbol not in {"K", "k"}
+        ]
+        if len(weak) != 1:
+            return effective, []
+        index = weak[0]
+        if symbols[index] != ".":
+            return effective, []
+        confidence = float(model_confidences[index])
+        margin = float(model_margins[index])
+        if confidence < minimum_confidence or margin < minimum_margin:
+            return effective, []
+
+        grid = [symbols[offset : offset + 9] for offset in range(0, 90, 9)]
+        validation_grid = cls._candidate_grid_for_validation(grid)
+        blocking = [
+            warning.code
+            for warning in validate_position(validation_grid)
+            if warning.blocking
+        ]
+        if blocking:
+            return effective, []
+
+        fused_confidence = max(target_confidence, min(confidence + margin, 1.0))
+        effective[index] = fused_confidence
+        return effective, [
+            {
+                "method": "model_margin_empty_confirmation",
+                "rank": index // 9,
+                "file": index % 9,
+                "from": ".",
+                "to": ".",
+                "model_confidence": confidence,
+                "model_margin": margin,
+                "effective_confidence": fused_confidence,
+                "blocking_warnings_before": blocking,
+                "blocking_warnings_after": blocking,
+            }
+        ]
 
     @staticmethod
     def _blocking_warning_penalty(warnings: tuple[str, ...]) -> int:
@@ -456,20 +802,52 @@ class OnnxRecognitionProvider(RecognitionProvider):
         probabilities = self._softmax_if_needed(outputs[0][0])
         indexes = probabilities.argmax(axis=1)
         confidences = probabilities[np.arange(90), indexes]
+        sorted_probabilities = np.sort(probabilities, axis=1)
+        model_margins = sorted_probabilities[:, -1] - sorted_probabilities[:, -2]
         raw_symbols = [LABELS[int(index)] for index in indexes]
         projected_points, visible = self._visible_grid_mask(corners, width, height)
-        camp_diagnostics = self._king_anchor_color_diagnostics(
-            warped,
-            raw_symbols,
-            confidences,
-            visible,
-        )
         refined_symbols, effective_confidences, refinements = self._same_image_prototype_refinement(
             warped,
             raw_symbols,
             confidences,
             visible,
         )
+        color_evidence = self._king_anchor_color_evidence(
+            warped,
+            refined_symbols,
+            confidences,
+            visible,
+        )
+        camp_diagnostics = [
+            detail for detail in color_evidence if not detail["agrees_with_model"]
+        ]
+        type_evidence = self._piece_type_prototype_evidence(
+            warped,
+            refined_symbols,
+            effective_confidences,
+            visible,
+        )
+        refined_symbols, effective_confidences, visual_fusions = (
+            self._apply_low_confidence_visual_fusion(
+                refined_symbols,
+                confidences,
+                model_margins,
+                effective_confidences,
+                visible,
+                type_evidence,
+                color_evidence,
+            )
+        )
+        effective_confidences, empty_confirmations = (
+            self._apply_decisive_empty_confirmation(
+                refined_symbols,
+                confidences,
+                model_margins,
+                effective_confidences,
+                visible,
+            )
+        )
+        visual_fusions.extend(empty_confirmations)
         symbols = [
             refined_symbol if visible[index] else "."
             for index, refined_symbol in enumerate(refined_symbols)
@@ -494,6 +872,7 @@ class OnnxRecognitionProvider(RecognitionProvider):
             confidences=confidences,
             effective_confidences=effective_confidences,
             refinements=refinements,
+            visual_fusions=visual_fusions,
             camp_diagnostics=camp_diagnostics,
             projected_points=projected_points,
             visible=visible,
@@ -679,13 +1058,16 @@ class OnnxRecognitionProvider(RecognitionProvider):
 
         corners = selected.corners
         raw_symbols = selected.raw_symbols
-        refined_symbols = selected.refined_symbols
         confidences = selected.confidences
         effective_confidences = selected.effective_confidences
         visible = selected.visible
         projected_points = selected.projected_points
         grid = selected.grid
         symbols = [symbol for row in grid for symbol in row]
+        refinements_by_index: dict[int, list[str]] = {}
+        for detail in [*selected.refinements, *selected.visual_fusions]:
+            index = int(detail["rank"]) * 9 + int(detail["file"])
+            refinements_by_index.setdefault(index, []).append(str(detail["method"]))
         cells = [
             CellPrediction(
                 rank=index // 9,
@@ -695,22 +1077,10 @@ class OnnxRecognitionProvider(RecognitionProvider):
                 visible=visible[index],
                 assumed_empty=not visible[index],
                 raw_symbol=raw_symbols[index],
-                refinement=(
-                    "+".join(
-                        refinement
-                        for refinement, changed in (
-                            (
-                                "same_image_prototype",
-                                refined_symbols[index] != raw_symbols[index],
-                            ),
-                        )
-                        if changed
-                    )
-                    or None
-                ),
+                refinement="+".join(refinements_by_index.get(index, [])) or None,
                 raw_confidence=(
                     float(confidences[index])
-                    if refined_symbols[index] != raw_symbols[index]
+                    if index in refinements_by_index
                     else None
                 ),
             )
@@ -754,8 +1124,16 @@ class OnnxRecognitionProvider(RecognitionProvider):
                     for index, symbol in enumerate(symbols)
                     if symbol in {"K", "k"}
                 ],
-                "prototype_refinements": selected.refinements,
-                "camp_color_refinements": [],
+                "prototype_refinements": [
+                    *selected.refinements,
+                    *selected.visual_fusions,
+                ],
+                "camp_color_refinements": [
+                    detail
+                    for detail in selected.visual_fusions
+                    if detail["method"] == "same_image_prototype_camp_correction"
+                ],
+                "low_confidence_visual_fusions": selected.visual_fusions,
                 "camp_color_diagnostics": selected.camp_diagnostics,
                 "corner_order_recovery": {
                     "triggered": bool(fallback_reasons),

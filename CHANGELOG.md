@@ -4,6 +4,22 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.5.0-alpha.6] - 2026-10-04
+
+### 中文
+
+- 修复棋盘应用的选中光圈、落子高亮等动态 UI 效果导致明确棋子或空位略低于固定阈值、进而反复要求复核的问题。
+- 新增受限视觉证据融合：同图棋种原型确认字形，帅/将建立本图红黑颜色锚点，模型类别间隔确认单个边界格，阵营纠正还必须严格减少阻断性局面违法。
+- 高置信棋子、帅/将身份、空位与未知格不会被颜色证据任意改写；所有确认和纠正均记录原始置信度、模型间隔、颜色距离、原型和合法性变化。
+- 以短期审计池的 8 张历史复核图片回放：6 张正常图全部转为 `accepted`，2 张严重残缺且非法的图片继续 `review_required`。
+
+### English
+
+- Fixed repeated false review prompts caused by transient selection rings and last-move highlights in board apps.
+- Added tightly gated evidence fusion across same-image piece prototypes, king-anchored camp colours, model class margins, and position legality.
+- High-confidence pieces, king identities, empty cells, and unknown cells cannot be arbitrarily relabelled by colour evidence; every confirmation and correction remains auditable.
+- Replayed eight recent review samples: all six valid images are now accepted, while both genuinely incomplete and illegal images still require review.
+
 ## [0.5.0-alpha.5] - 2026-09-28
 
 ### 中文
