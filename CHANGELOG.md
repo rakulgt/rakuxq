@@ -4,6 +4,20 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [Engine baseline 2026-10-01] - 2026-10-05
+
+### 中文
+
+- 维护者个人非商业验证环境升级到固定的 Pikafish `1c66b9b2` 与匹配 `master-net`，程序和权重继续不进入 MIT 仓库，临时、普通和客户 Key 继续禁止调用。
+- 新增生产兼容的 Rocky Linux 9 构建流水线、哈希与源码身份校验、独立候选安装、五局串行 A/B 基准以及带健康等待和自动回滚的原子激活脚本。
+- 保持单进程、单线程和 64 MiB Hash；生产切换后两个公网入口与回环健康检查均通过，`NRestarts=0`，Swap 为 0。
+
+### English
+
+- Upgraded the maintainer-only non-commercial runtime to pinned Pikafish `1c66b9b2` and its matching `master-net`; neither artifact enters the MIT repository and trial, ordinary, and customer keys remain denied.
+- Added a Rocky Linux 9 compatibility build, source/hash verification, isolated staging, five-position serial A/B benchmark, and atomic activation with readiness polling and rollback.
+- Retained one process, one thread, and a 64-MiB hash; loopback and both public health endpoints passed with zero service restarts and no swap use.
+
 ## [0.5.0-alpha.6] - 2026-10-04
 
 ### 中文

@@ -31,6 +31,19 @@ prints the exact environment variables. It does not commit or redistribute eithe
 verified release, executable, and network metadata are recorded in
 [`engines/manifest.json`](../engines/manifest.json).
 
+The maintainer-only hosted validation baseline currently pins Pikafish commit
+`1c66b9b21cf2f280ce3b3ffa80c1c6609f2b29ff` and the matching `master-net` network SHA-256
+`6b74ac7bbd299dc26a17803135b616eda9248bef0cbfc7b811bfcf981832ba29`. It was built in Rocky
+Linux 9 for the production OpenCloudOS 9 runtime. This rolling baseline is available only to the
+maintainer's allowlisted key and does not change the commercial-use restriction.
+
+For repeatable upgrades, `.github/workflows/build-pikafish-master.yml` builds a pinned upstream
+commit in a production-compatible container, `scripts/install-pikafish-master-server.sh` stages and
+verifies the engine/network pair without switching traffic, and
+`scripts/activate-pikafish-master-server.sh` performs an atomic environment switch with automatic
+rollback. Run `scripts/benchmark-pikafish.py` against both pairs before activation. Never combine a
+rolling engine commit with an unverified or unrelated network.
+
 To configure assets stored elsewhere, set the variables directly:
 
 ```powershell

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-09-18T20:10:00+08:00",
+  "updated_at": "2026-10-05T23:35:50+08:00",
   "redistributed_by_rakuxq": false,
   "technical_baselines": [
     {
@@ -35,6 +35,42 @@
         "threads": 1,
         "hash_mb": 64,
         "api_version": "0.3.0a1"
+      }
+    },
+    {
+      "provider": "pikafish-uci",
+      "upstream_repository": "https://github.com/official-pikafish/Pikafish",
+      "release": "master-2026-10-01",
+      "release_commit": "1c66b9b21cf2f280ce3b3ffa80c1c6609f2b29ff",
+      "release_url": "https://github.com/official-pikafish/Pikafish/commit/1c66b9b21cf2f280ce3b3ffa80c1c6609f2b29ff",
+      "build": {
+        "target": "Linux-x86-64-vnni512",
+        "environment": "Rocky Linux 9",
+        "workflow_run": "https://github.com/rakulgt/rakuxq/actions/runs/37332613127"
+      },
+      "engine": {
+        "name": "pikafish",
+        "size_bytes": 947536,
+        "sha256": "0d7ff804a8c07022cb1bac10c5e82c6e6e40e4ce98e26aa1258fda339904dfb9",
+        "license": "GPL-3.0",
+        "license_url": "https://github.com/official-pikafish/Pikafish/blob/master/Copying.txt"
+      },
+      "network": {
+        "name": "pikafish.nnue",
+        "source_release": "master-net",
+        "size_bytes": 49982985,
+        "sha256": "6b74ac7bbd299dc26a17803135b616eda9248bef0cbfc7b811bfcf981832ba29",
+        "license_summary": "No commercial use without permission",
+        "license_url": "https://github.com/official-pikafish/Networks/blob/master/README.md"
+      },
+      "rakuxq_scope": "maintainer-only non-commercial hosted validation",
+      "production_deployed": true,
+      "verified_on": {
+        "os": "OpenCloudOS 9",
+        "threads": 1,
+        "hash_mb": 64,
+        "api_version": "0.5.0a6",
+        "deployed_at": "2026-10-05T23:33:06+08:00"
       }
     }
   ]

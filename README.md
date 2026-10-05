@@ -174,6 +174,9 @@ curl -X POST http://127.0.0.1:8000/v1/fen \
 互操作验证；生产商用前必须取得权重授权。安装、环境变量和调用示例见
 [`docs/engine.md`](docs/engine.md)。
 
+维护者个人非商业验证环境当前固定到 Pikafish `1c66b9b2`（2026-10-01）及匹配的
+`master-net`；它只对白名单维护者 Key 开放，不改变临时 Key、普通 Key 和客户 Key 的禁用边界。
+
 推荐的新接口直接接收 FEN；`time_ms` 可省略，默认搜索预算为 3000 毫秒：
 
 ```bash
@@ -395,6 +398,10 @@ its official NNUE weights are distributed by this repository. The current path i
 non-commercial interoperability validation until hosted-use authorization is obtained. See
 [`docs/engine.md`](docs/engine.md) for setup, environment variables, licensing boundaries, and API
 examples.
+
+The maintainer-only non-commercial server baseline currently pins Pikafish `1c66b9b2`
+(2026-10-01) and its matching `master-net`. It remains unavailable to trial, ordinary, and customer
+keys.
 
 ### Quality, privacy, and model provenance
 

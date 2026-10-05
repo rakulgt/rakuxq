@@ -94,6 +94,16 @@ python -m rakuxq_api.key_cli --database /opt/raku/secrets/rakuxq/api-keys.sqlite
 
 官方托管标准为 `39 元人民币/年`，续费联系微信 `lgtqcn`。收款后使用 `renew` 延长原 Key；只有泄露或主动更换时才重新签发。
 
+## 独立引擎基线升级
+
+Pikafish 程序与 NNUE 不进入应用发布目录或 Git。升级时先在
+`.github/workflows/build-pikafish-master.yml` 固定上游提交并使用 Rocky Linux 9 构建，再通过
+`scripts/install-pikafish-master-server.sh` 安装到独立候选目录。用
+`scripts/benchmark-pikafish.py` 对新旧引擎串行运行同一组局面并确认 UCI、合法着法、评分、PV
+和资源占用后，才运行 `scripts/activate-pikafish-master-server.sh` 原子更新引擎环境变量。激活脚本
+会备份旧环境、等待健康端点返回目标提交；失败自动恢复旧环境并重启服务。小型生产主机禁止直接
+并行编译引擎，程序提交与 NNUE 哈希必须成对记录在 `engines/manifest.json`。
+
 ## 容量与安全边界
 
 - 单 Uvicorn worker，ONNX Runtime 两线程，避免在 4 核 3.6 GiB 主机上与其他产品抢占资源。
