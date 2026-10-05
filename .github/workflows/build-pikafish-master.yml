@@ -1,0 +1,50 @@
+name: Build pinned Pikafish master
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-x86-64-vnni512:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out pinned upstream source
+        uses: actions/checkout@v4
+        with:
+          repository: official-pikafish/Pikafish
+          ref: 1c66b9b21cf2f280ce3b3ffa80c1c6609f2b29ff
+          path: pikafish
+
+      - name: Fetch and verify matching master network
+        shell: bash
+        run: |
+          curl --fail --location --retry 3 \
+            --output pikafish/src/pikafish.nnue \
+            https://github.com/official-pikafish/Networks/releases/download/master-net/pikafish.nnue
+          echo '6b74ac7bbd299dc26a17803135b616eda9248bef0cbfc7b811bfcf981832ba29  pikafish/src/pikafish.nnue' \
+            | sha256sum --check --strict
+
+      - name: Build Linux engine
+        run: make -C pikafish/src -j2 build ARCH=x86-64-vnni512
+
+      - name: Verify embedded source identity
+        shell: bash
+        run: |
+          chmod 0555 pikafish/src/pikafish
+          printf 'uci\nquit\n' | pikafish/src/pikafish | tee uci.txt
+          grep -q '1c66b9b2' uci.txt
+          sha256sum pikafish/src/pikafish | tee engine.sha256
+
+      - name: Upload short-lived engine artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pikafish-linux-x86-64-vnni512-1c66b9b2
+          path: |
+            pikafish/src/pikafish
+            engine.sha256
+            uci.txt
+          retention-days: 1
+          if-no-files-found: error
