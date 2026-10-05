@@ -12,10 +12,12 @@ PRELOADED_NETWORK="${RAKUXQ_PRELOADED_NETWORK:-/tmp/rakuxq-pikafish-master.nnue}
 PREBUILT_ENGINE="${RAKUXQ_PREBUILT_ENGINE:-}"
 ENGINE_ROOT="/opt/raku/portable/rakuxq/engines"
 TARGET_DIR="${ENGINE_ROOT}/pikafish-master-${ENGINE_COMMIT:0:12}"
+STAGE_DIR="${TARGET_DIR}.stage.$$"
 BUILD_DIR="$(mktemp -d /tmp/rakuxq-pikafish.XXXXXX)"
 
 cleanup() {
   rm -rf -- "${BUILD_DIR}"
+  [[ ! -e "${STAGE_DIR}" ]] || rm -rf -- "${STAGE_DIR}"
 }
 trap cleanup EXIT
 
@@ -83,11 +85,11 @@ if [[ ! -x "${ENGINE_BINARY}" ]]; then
   exit 1
 fi
 
-install -d -m 0755 "${TARGET_DIR}"
-install -m 0555 "${ENGINE_BINARY}" "${TARGET_DIR}/pikafish"
-install -m 0444 "${BUILD_DIR}/pikafish.nnue" "${TARGET_DIR}/pikafish.nnue"
+install -d -m 0755 "${STAGE_DIR}"
+install -m 0555 "${ENGINE_BINARY}" "${STAGE_DIR}/pikafish"
+install -m 0444 "${BUILD_DIR}/pikafish.nnue" "${STAGE_DIR}/pikafish.nnue"
 
-ENGINE_SHA256="$(sha256sum "${TARGET_DIR}/pikafish" | awk '{print $1}')"
+ENGINE_SHA256="$(sha256sum "${STAGE_DIR}/pikafish" | awk '{print $1}')"
 {
   printf 'upstream_repository=%s\n' 'https://github.com/official-pikafish/Pikafish'
   printf 'engine_commit=%s\n' "${ENGINE_COMMIT}"
@@ -96,18 +98,20 @@ ENGINE_SHA256="$(sha256sum "${TARGET_DIR}/pikafish" | awk '{print $1}')"
   printf 'network_sha256=%s\n' "${NETWORK_SHA256}"
   printf 'build_arch=%s\n' "${BUILD_ARCH}"
   printf 'built_at=%s\n' "$(date --iso-8601=seconds)"
-} >"${TARGET_DIR}/SOURCE.txt"
-chmod 0444 "${TARGET_DIR}/SOURCE.txt"
+} >"${STAGE_DIR}/SOURCE.txt"
+chmod 0444 "${STAGE_DIR}/SOURCE.txt"
 
 UCI_OUTPUT="$({
   printf 'uci\n'
-  printf 'setoption name EvalFile value %s\n' "${TARGET_DIR}/pikafish.nnue"
+  printf 'setoption name EvalFile value %s\n' "${STAGE_DIR}/pikafish.nnue"
   printf 'isready\nquit\n'
-} | "${TARGET_DIR}/pikafish")"
+} | "${STAGE_DIR}/pikafish")"
 
 grep -q '^uciok$' <<<"${UCI_OUTPUT}"
 grep -q '^readyok$' <<<"${UCI_OUTPUT}"
 grep -q "${ENGINE_COMMIT:0:8}" <<<"${UCI_OUTPUT}"
+
+mv "${STAGE_DIR}" "${TARGET_DIR}"
 
 echo "Staged verified Pikafish candidate:"
 echo "  directory: ${TARGET_DIR}"
