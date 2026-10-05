@@ -34,7 +34,7 @@ jobs:
             --volume "${GITHUB_WORKSPACE}:/work" \
             --workdir /work \
             rockylinux:9 \
-            bash -lc 'dnf install -y gcc-c++ make binutils && git config --global --add safe.directory /work/pikafish && make -C pikafish/src -j2 build ARCH=x86-64-vnni512 && chown --reference=pikafish/src/main.cpp pikafish/src/pikafish && chmod 0555 pikafish/src/pikafish'
+            bash -lc 'dnf install -y gcc-c++ make binutils git-core && git config --global --add safe.directory /work/pikafish && make -C pikafish/src -j2 build ARCH=x86-64-vnni512 && chown --reference=pikafish/src/main.cpp pikafish/src/pikafish && chmod 0555 pikafish/src/pikafish'
 
       - name: Verify embedded source identity
         shell: bash
