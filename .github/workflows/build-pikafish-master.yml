@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Check out pinned upstream source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: official-pikafish/Pikafish
           ref: 1c66b9b21cf2f280ce3b3ffa80c1c6609f2b29ff
@@ -34,8 +34,7 @@ jobs:
         shell: bash
         run: |
           chmod 0555 pikafish/src/pikafish
-          printf 'uci\nquit\n' | pikafish/src/pikafish | tee uci.txt
-          grep -q '1c66b9b2' uci.txt
+          strings pikafish/src/pikafish | grep -m1 '1c66b9b2' | tee build-identity.txt
           sha256sum pikafish/src/pikafish | tee engine.sha256
 
       - name: Upload short-lived engine artifact
@@ -45,6 +44,6 @@ jobs:
           path: |
             pikafish/src/pikafish
             engine.sha256
-            uci.txt
+            build-identity.txt
           retention-days: 1
           if-no-files-found: error
