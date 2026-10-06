@@ -1,30 +1,32 @@
 from __future__ import annotations
 
+import base64
 import json
 import sqlite3
 import threading
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from .domain import RecognitionResult, RecognitionStatus
+from .geo import GeoLocation
 
 
-@dataclass(frozen=True, slots=True)
-class PublicEvent:
-    occurred_at: str
-    status: str
-    fen: str
-    confidence: float
-    duration_ms: int
+class InvalidEventCursor(ValueError):
+    pass
 
 
 class PublicMetricsStore:
-    """Persistent anonymous counters plus a rolling public interaction window."""
+    """Persistent anonymous counters plus an age- and count-bounded event stream."""
 
-    def __init__(self, database: str | Path, event_hours: int = 72):
+    def __init__(
+        self,
+        database: str | Path,
+        event_hours: int = 720,
+        max_events: int = 100_000,
+    ):
         self.database = Path(database)
-        self.event_hours = event_hours
+        self.event_hours = max(1, event_hours)
+        self.max_events = max(1, max_events)
         self._lock = threading.Lock()
 
     def initialize(self) -> None:
@@ -38,10 +40,14 @@ class PublicMetricsStore:
                     status TEXT NOT NULL,
                     fen TEXT NOT NULL,
                     confidence REAL NOT NULL,
-                    duration_ms INTEGER NOT NULL
+                    duration_ms INTEGER NOT NULL,
+                    country_code TEXT,
+                    country_name TEXT,
+                    region_name TEXT,
+                    city_name TEXT,
+                    latitude REAL,
+                    longitude REAL
                 );
-                CREATE INDEX IF NOT EXISTS idx_public_events_occurred_at
-                    ON public_events(occurred_at DESC);
 
                 CREATE TABLE IF NOT EXISTS public_totals (
                     singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
@@ -54,8 +60,25 @@ class PublicMetricsStore:
                 INSERT OR IGNORE INTO public_totals(singleton) VALUES (1);
                 """
             )
+            self._migrate_event_columns(connection)
+            connection.executescript(
+                """
+                CREATE INDEX IF NOT EXISTS idx_public_events_occurred_at
+                    ON public_events(occurred_at DESC);
+                CREATE INDEX IF NOT EXISTS idx_public_events_order
+                    ON public_events(occurred_at DESC, source_id DESC);
+                CREATE INDEX IF NOT EXISTS idx_public_events_location
+                    ON public_events(country_code, city_name);
+                """
+            )
+            self._prune_connection(connection, datetime.now(UTC))
 
-    def record(self, result: RecognitionResult, occurred_at: datetime | None = None) -> bool:
+    def record(
+        self,
+        result: RecognitionResult,
+        occurred_at: datetime | None = None,
+        location: GeoLocation | None = None,
+    ) -> bool:
         if result.fen is None or result.status not in {
             RecognitionStatus.ACCEPTED,
             RecognitionStatus.REVIEW_REQUIRED,
@@ -68,6 +91,7 @@ class PublicMetricsStore:
             fen=result.fen,
             confidence=result.confidence,
             duration_ms=result.prediction.elapsed_ms if result.prediction else 0,
+            location=location,
         )
 
     def import_audit_directory(self, audit_root: str | Path) -> int:
@@ -96,6 +120,7 @@ class PublicMetricsStore:
                     fen=self._simplified_fen(fen),
                     confidence=float(response["confidence"] or 0),
                     duration_ms=int(metadata["duration_ms"] or 0),
+                    location=None,
                 ):
                     imported += 1
             except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError):
@@ -111,14 +136,17 @@ class PublicMetricsStore:
         fen: str,
         confidence: float,
         duration_ms: int,
+        location: GeoLocation | None,
     ) -> bool:
         timestamp = self._timestamp(occurred_at)
+        geo = location or GeoLocation()
         with self._lock, self._connect() as connection:
             cursor = connection.execute(
                 """
                 INSERT OR IGNORE INTO public_events(
-                    source_id, occurred_at, status, fen, confidence, duration_ms
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                    source_id, occurred_at, status, fen, confidence, duration_ms,
+                    country_code, country_name, region_name, city_name, latitude, longitude
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     source_id,
@@ -127,6 +155,12 @@ class PublicMetricsStore:
                     fen,
                     confidence,
                     duration_ms,
+                    geo.country_code,
+                    geo.country_name,
+                    geo.region_name,
+                    geo.city_name,
+                    geo.latitude,
+                    geo.longitude,
                 ),
             )
             if cursor.rowcount != 1:
@@ -151,6 +185,7 @@ class PublicMetricsStore:
     def snapshot(self, limit: int = 60, now: datetime | None = None) -> dict[str, object]:
         current = now or datetime.now(UTC)
         cutoff = self._timestamp(current - timedelta(hours=self.event_hours))
+        hourly_cutoff = self._timestamp(current - timedelta(hours=min(self.event_hours, 72)))
         with self._lock, self._connect() as connection:
             self._prune_connection(connection, current)
             totals = connection.execute(
@@ -164,17 +199,19 @@ class PublicMetricsStore:
                 SELECT COUNT(*) AS successful,
                        SUM(status = 'accepted') AS accepted,
                        SUM(status = 'review_required') AS review_required,
-                       AVG(duration_ms) AS average_duration_ms
+                       AVG(duration_ms) AS average_duration_ms,
+                       SUM(country_code IS NOT NULL) AS located
                 FROM public_events WHERE occurred_at >= ?
                 """,
                 (cutoff,),
             ).fetchone()
             rows = connection.execute(
                 """
-                SELECT occurred_at, status, fen, confidence, duration_ms
+                SELECT occurred_at, status, fen, confidence, duration_ms,
+                       country_code, country_name, region_name, city_name
                 FROM public_events
                 WHERE occurred_at >= ?
-                ORDER BY occurred_at DESC
+                ORDER BY occurred_at DESC, source_id DESC
                 LIMIT ?
                 """,
                 (cutoff, max(1, min(limit, 200))),
@@ -188,6 +225,31 @@ class PublicMetricsStore:
                 GROUP BY hour
                 ORDER BY hour ASC
                 """,
+                (hourly_cutoff,),
+            ).fetchall()
+            daily_rows = connection.execute(
+                """
+                SELECT substr(occurred_at, 1, 10) AS day,
+                       COUNT(*) AS interactions
+                FROM public_events
+                WHERE occurred_at >= ?
+                GROUP BY day
+                ORDER BY day ASC
+                """,
+                (cutoff,),
+            ).fetchall()
+            location_rows = connection.execute(
+                """
+                SELECT country_code, country_name, region_name, city_name,
+                       ROUND(AVG(latitude), 2) AS latitude,
+                       ROUND(AVG(longitude), 2) AS longitude,
+                       COUNT(*) AS interactions
+                FROM public_events
+                WHERE occurred_at >= ? AND country_code IS NOT NULL
+                GROUP BY country_code, country_name, region_name, city_name
+                ORDER BY interactions DESC, country_code ASC, city_name ASC
+                LIMIT 100
+                """,
                 (cutoff,),
             ).fetchall()
 
@@ -198,6 +260,8 @@ class PublicMetricsStore:
         return {
             "generated_at": self._timestamp(current),
             "recent_window_hours": self.event_hours,
+            "max_retained_events": self.max_events,
+            "retained_events": recent_successful,
             "lifetime": {
                 "successful": lifetime_successful,
                 "accepted": lifetime_accepted,
@@ -214,14 +278,96 @@ class PublicMetricsStore:
                 "average_duration_ms": round(
                     float((recent["average_duration_ms"] if recent else 0) or 0)
                 ),
+                "located": int((recent["located"] if recent else 0) or 0),
             },
             "hourly": [dict(row) for row in hourly_rows],
-            "events": [dict(row) for row in rows],
+            "daily": [dict(row) for row in daily_rows],
+            "locations": [dict(row) for row in location_rows],
+            "events": [self._public_event(row) for row in rows],
+        }
+
+    def event_page(
+        self,
+        *,
+        limit: int = 50,
+        cursor: str | None = None,
+        now: datetime | None = None,
+    ) -> dict[str, object]:
+        current = now or datetime.now(UTC)
+        page_size = max(1, min(limit, 100))
+        anchor, offset = self._decode_cursor(cursor, current)
+        cutoff = self._timestamp(current - timedelta(hours=self.event_hours))
+        with self._lock, self._connect() as connection:
+            self._prune_connection(connection, current)
+            rows = connection.execute(
+                """
+                SELECT occurred_at, status, fen, confidence, duration_ms,
+                       country_code, country_name, region_name, city_name
+                FROM public_events
+                WHERE occurred_at >= ? AND occurred_at <= ?
+                ORDER BY occurred_at DESC, source_id DESC
+                LIMIT ? OFFSET ?
+                """,
+                (cutoff, anchor, page_size + 1, offset),
+            ).fetchall()
+            retained = int(
+                connection.execute(
+                    "SELECT COUNT(*) FROM public_events WHERE occurred_at >= ?",
+                    (cutoff,),
+                ).fetchone()[0]
+            )
+        has_more = len(rows) > page_size and offset + page_size < self.max_events
+        page_rows = rows[:page_size]
+        next_cursor = (
+            self._encode_cursor(anchor, offset + len(page_rows)) if has_more else None
+        )
+        return {
+            "generated_at": self._timestamp(current),
+            "recent_window_hours": self.event_hours,
+            "max_retained_events": self.max_events,
+            "retained_events": retained,
+            "page_size": page_size,
+            "offset": offset,
+            "events": [self._public_event(row) for row in page_rows],
+            "has_more": has_more,
+            "next_cursor": next_cursor,
         }
 
     def _prune_connection(self, connection: sqlite3.Connection, now: datetime) -> None:
         cutoff = self._timestamp(now - timedelta(hours=self.event_hours))
         connection.execute("DELETE FROM public_events WHERE occurred_at < ?", (cutoff,))
+        retained = int(connection.execute("SELECT COUNT(*) FROM public_events").fetchone()[0])
+        overflow = retained - self.max_events
+        if overflow > 0:
+            connection.execute(
+                """
+                DELETE FROM public_events
+                WHERE rowid IN (
+                    SELECT rowid FROM public_events
+                    ORDER BY occurred_at ASC, source_id ASC
+                    LIMIT ?
+                )
+                """,
+                (overflow,),
+            )
+
+    @staticmethod
+    def _migrate_event_columns(connection: sqlite3.Connection) -> None:
+        columns = {
+            str(row["name"])
+            for row in connection.execute("PRAGMA table_info(public_events)").fetchall()
+        }
+        additions = {
+            "country_code": "TEXT",
+            "country_name": "TEXT",
+            "region_name": "TEXT",
+            "city_name": "TEXT",
+            "latitude": "REAL",
+            "longitude": "REAL",
+        }
+        for name, sql_type in additions.items():
+            if name not in columns:
+                connection.execute(f"ALTER TABLE public_events ADD COLUMN {name} {sql_type}")
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.database, timeout=10)
@@ -229,6 +375,50 @@ class PublicMetricsStore:
         connection.execute("PRAGMA journal_mode=WAL")
         connection.execute("PRAGMA busy_timeout=10000")
         return connection
+
+    def _decode_cursor(self, cursor: str | None, current: datetime) -> tuple[str, int]:
+        if not cursor:
+            return self._timestamp(current), 0
+        try:
+            padded = cursor + "=" * (-len(cursor) % 4)
+            payload = json.loads(base64.urlsafe_b64decode(padded).decode("utf-8"))
+            anchor = str(payload["before"])
+            offset = int(payload["offset"])
+            parsed = datetime.fromisoformat(anchor.replace("Z", "+00:00"))
+            normalized = self._timestamp(parsed)
+        except (KeyError, TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise InvalidEventCursor("invalid event cursor") from exc
+        if offset < 0 or offset >= self.max_events or normalized != anchor:
+            raise InvalidEventCursor("invalid event cursor")
+        return anchor, offset
+
+    @staticmethod
+    def _encode_cursor(anchor: str, offset: int) -> str:
+        payload = json.dumps(
+            {"before": anchor, "offset": offset},
+            ensure_ascii=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        return base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
+
+    @staticmethod
+    def _public_event(row: sqlite3.Row) -> dict[str, object]:
+        location: dict[str, object] | None = None
+        if row["country_code"] or row["country_name"] or row["city_name"]:
+            location = {
+                "country_code": row["country_code"],
+                "country": row["country_name"],
+                "region": row["region_name"],
+                "city": row["city_name"],
+            }
+        return {
+            "occurred_at": row["occurred_at"],
+            "status": row["status"],
+            "fen": row["fen"],
+            "confidence": row["confidence"],
+            "duration_ms": row["duration_ms"],
+            "location": location,
+        }
 
     @staticmethod
     def _timestamp(value: datetime) -> str:

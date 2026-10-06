@@ -1,0 +1,11 @@
+[Unit]
+Description=Hourly retention enforcement for RakuXQ anonymous events
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=5m
+Unit=rakuxq-metrics-retention.service
+
+[Install]
+WantedBy=timers.target

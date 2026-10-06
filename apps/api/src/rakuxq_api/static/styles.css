@@ -126,10 +126,11 @@ h1 em { color: var(--gold); font-style: normal; font-family: "STKaiti", "KaiTi",
 .quality-legend i { width: 7px; height: 7px; border-radius: 50%; }.accepted-dot { background: var(--cyan); }.review-dot { background: #59677a; }
 .quality-legend strong { color: var(--text); }
 .feed-panel { margin-top: 12px; }
-.feed-head, .feed-row { display: grid; grid-template-columns: 120px 100px minmax(210px,1fr) 72px 72px 168px; gap: 12px; align-items: center; }
+.feed-head, .feed-row { display: grid; grid-template-columns: 112px 88px 108px minmax(190px,1fr) 64px 72px 168px; gap: 12px; align-items: center; }
 .feed-head { margin-top: 22px; padding: 8px 12px; color: #657990; font-size: 10px; letter-spacing: .12em; }
 .feed-row { padding: 12px; border-top: 1px solid var(--line); font-size: 12px; }
-.feed-row time, .feed-row .confidence, .feed-row .duration { color: var(--muted); }
+.feed-row time, .feed-row .confidence, .feed-row .duration, .event-location { color: var(--muted); }
+.event-location { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .feed-row code { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #cdd9e6; }
 .feed-actions { display: flex; gap: 6px; justify-content: flex-end; }
 .feed-action { min-height: 30px; padding: 4px 9px; border: 1px solid var(--line); border-radius: 7px; background: rgba(255,255,255,.025); color: #bdcad8; font: inherit; font-size: 10px; white-space: nowrap; cursor: pointer; }
@@ -137,6 +138,11 @@ h1 em { color: var(--gold); font-style: normal; font-family: "STKaiti", "KaiTi",
 .status-badge { justify-self: start; border-radius: 999px; padding: 3px 9px; font-size: 10px; }
 .status-accepted { color: var(--cyan); background: var(--cyan-soft); }.status-review_required { color: var(--gold); background: rgba(242,187,100,.12); }
 .empty-state { padding: 40px 12px 20px; color: var(--muted); text-align: center; }
+.feed-pager { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 12px 2px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+.feed-pager > div { display: flex; gap: 8px; }
+.feed-pager button { min-height: 34px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.025); color: var(--text); font: inherit; cursor: pointer; }
+.feed-pager button:hover, .feed-pager button:focus-visible { color: var(--cyan); border-color: rgba(82,227,194,.4); outline: none; }
+.feed-pager button:disabled { cursor: default; opacity: .5; }
 
 .story-grid { display: grid; grid-template-columns: .8fr 1.2fr; gap: 12px; }
 .manifesto { border-radius: 14px; padding: 36px; }
@@ -193,7 +199,7 @@ pre { margin: 0; padding: 20px; overflow: auto; color: #cbd8e6; font-size: 12px;
   .hero { gap: 42px; min-height: auto; }.hero-actions .button { width: 100%; }
   .section-heading { display: block; }.section-heading > p { margin-top: 14px; }
   .metrics-grid { grid-template-columns: 1fr 1fr; }.metric { padding: 16px; }.metric strong { font-size: 24px; }
-  .feed-head { display: none; }.feed-row { grid-template-columns: 1fr auto; gap: 7px 12px; }.feed-row code { grid-column: 1 / -1; grid-row: 2; }.feed-row .confidence { display: none; }.feed-row .duration { text-align: right; }.feed-actions { grid-column: 1 / -1; justify-content: flex-start; }.feed-action { min-height: 34px; }
+  .feed-head { display: none; }.feed-row { grid-template-columns: 1fr auto; gap: 7px 12px; }.feed-row .event-location { text-align: right; }.feed-row code { grid-column: 1 / -1; grid-row: 3; }.feed-row .confidence { display: none; }.feed-row .duration { display: none; }.feed-actions { grid-column: 1 / -1; justify-content: flex-start; }.feed-action { min-height: 34px; }.feed-pager { align-items: flex-start; flex-direction: column; }.feed-pager > div { width: 100%; }.feed-pager button { flex: 1; }
   .story-grid .manifesto { padding: 24px; }.manifesto blockquote { font-size: 27px; }
   .privacy-strip, footer { flex-direction: column; align-items: flex-start; }.privacy-strip { padding: 22px; }footer { padding: 25px 0; }footer > div { flex-wrap: wrap; }
   .docs-hero { padding-top: 65px; }.trial-actions .button { width: 100%; }

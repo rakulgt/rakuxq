@@ -46,9 +46,17 @@ IP，只保存服务器秘密加盐后的不可逆 HMAC 指纹。使用测试 Ke
 
 ## `GET /api/public/stats`
 
-无需 API Key。返回历史累计成功交互数、自动通过数、最近 72 小时汇总、小时趋势和匿名事件流。
-事件只包含 `occurred_at`、`status`、`fen`、`confidence`、`duration_ms`；不包含原图、Key/Key ID、
-IP、文件名、请求 ID 或设备信息。单条事件 72 小时后删除，历史累计数字继续保留。
+无需 API Key。返回历史累计成功交互数、自动通过数、最近 720 小时汇总、30 天每日趋势、匿名
+城市聚合和第一页事件。事件只包含 `occurred_at`、`status`、`location`、`fen`、`confidence`、
+`duration_ms`；不包含原图、Key/Key ID、原始 IP、文件名、请求 ID 或设备信息。单条事件最多
+保留 720 小时且总量最多 100,000 条，历史累计数字继续保留。
+
+## `GET /api/public/events?limit=50&cursor=...`
+
+无需 API Key。按时间倒序返回匿名事件页；`limit` 为 `1–100`，首次调用省略 `cursor`，后续把响应
+中的不透明 `next_cursor` 原样传回。`has_more=false` 表示已到当前保留窗口的最早记录。游标不含
+请求 ID，允许官网逐页遍历最多 100,000 条当前明细。`location` 是本地城市库对请求 IP 的近似推断；
+原始 IP 查询后立即丢弃，无法定位时为 `null`。
 
 ## `POST /api/public/trial-keys`
 

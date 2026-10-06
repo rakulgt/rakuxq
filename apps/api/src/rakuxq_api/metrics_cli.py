@@ -6,6 +6,8 @@ from contextlib import closing
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from .metrics import PublicMetricsStore
+
 
 def backup(database: Path, output_directory: Path, keep_days: int) -> Path:
     if not database.is_file():
@@ -38,11 +40,26 @@ def backup(database: Path, output_directory: Path, keep_days: int) -> Path:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Back up RakuXQ anonymous metrics.")
     parser.add_argument("--database", type=Path, required=True)
-    parser.add_argument("--output-directory", type=Path, required=True)
+    parser.add_argument("--output-directory", type=Path)
     parser.add_argument("--keep-days", type=int, default=30)
+    parser.add_argument("--event-hours", type=int, default=720)
+    parser.add_argument("--max-events", type=int, default=100_000)
+    parser.add_argument("--prune-only", action="store_true")
     arguments = parser.parse_args()
     if arguments.keep_days < 1:
         parser.error("--keep-days must be at least 1")
+    if arguments.event_hours < 1 or arguments.max_events < 1:
+        parser.error("retention values must be at least 1")
+    store = PublicMetricsStore(
+        arguments.database,
+        event_hours=arguments.event_hours,
+        max_events=arguments.max_events,
+    )
+    store.initialize()
+    if arguments.prune_only:
+        return
+    if arguments.output_directory is None:
+        parser.error("--output-directory is required unless --prune-only is used")
     print(backup(arguments.database, arguments.output_directory, arguments.keep_days))
 
 

@@ -28,7 +28,8 @@ from .engines import (
     PikafishEngine,
     analysis_to_dict,
 )
-from .metrics import PublicMetricsStore
+from .geo import GeoIPCityResolver, GeoLocation
+from .metrics import InvalidEventCursor, PublicMetricsStore
 from .providers import OnnxRecognitionProvider, ProviderNotReady
 from .providers.base import RecognitionFailed
 from .service import RecognitionService
@@ -76,10 +77,15 @@ audit_store = (
     else None
 )
 public_metrics_store = (
-    PublicMetricsStore(settings.public_metrics_db, settings.public_event_hours)
+    PublicMetricsStore(
+        settings.public_metrics_db,
+        settings.public_event_hours,
+        settings.public_event_max_rows,
+    )
     if settings.public_metrics_db
     else None
 )
+geoip_resolver = GeoIPCityResolver(settings.geoip_city_db)
 analysis_engine = PikafishEngine(
     settings.engine_path,
     settings.engine_network,
@@ -200,6 +206,7 @@ async def lifespan(_app: FastAPI):
         public_metrics_store.initialize()
         if settings.audit_dir:
             public_metrics_store.import_audit_directory(settings.audit_dir)
+    geoip_resolver.initialize()
     if analysis_engine.configured:
         try:
             analysis_engine.start()
@@ -209,6 +216,7 @@ async def lifespan(_app: FastAPI):
         yield
     finally:
         analysis_engine.close()
+        geoip_resolver.close()
 
 
 app = FastAPI(
@@ -239,16 +247,36 @@ async def _read_image(image: UploadFile) -> bytes:
     return data
 
 
-def _run(data: bytes, side_to_move: SideToMove, orientation: Orientation):
+def _run(
+    data: bytes,
+    side_to_move: SideToMove,
+    orientation: Orientation,
+    location: GeoLocation | None = None,
+):
     try:
         result = service.recognize(data, side_to_move, orientation)
         if public_metrics_store is not None:
-            public_metrics_store.record(result)
+            public_metrics_store.record(result, location=location)
         return result
     except ProviderNotReady as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except RecognitionFailed as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+def _request_location(request: Request) -> GeoLocation | None:
+    host = request.headers.get("host", "").split(":", 1)[0].lower()
+    candidates: list[str | None] = []
+    if host == "xq-fast.rakubank.com":
+        candidates.append(request.headers.get("cf-connecting-ip"))
+    candidates.append(request.headers.get("x-real-ip"))
+    if request.client is not None:
+        candidates.append(request.client.host)
+    for candidate in candidates:
+        location = geoip_resolver.lookup(candidate)
+        if location is not None:
+            return location
+    return None
 
 
 def _normalize_side_to_move(value: str) -> SideToMove:
@@ -328,6 +356,7 @@ def healthz():
         "engine_configured": analysis_engine.configured,
         "engine_ready": analysis_engine.ready,
         "engine": asdict(analysis_engine.identity) if analysis_engine.identity else None,
+        "geoip_ready": geoip_resolver.ready,
     }
 
 
@@ -363,6 +392,8 @@ def public_stats() -> JSONResponse:
                 "+00:00", "Z"
             ),
             "recent_window_hours": settings.public_event_hours,
+            "max_retained_events": settings.public_event_max_rows,
+            "retained_events": 0,
             "lifetime": {
                 "successful": 0,
                 "accepted": 0,
@@ -377,8 +408,11 @@ def public_stats() -> JSONResponse:
                 "review_required": 0,
                 "acceptance_rate": 0.0,
                 "average_duration_ms": 0,
+                "located": 0,
             },
             "hourly": [],
+            "daily": [],
+            "locations": [],
             "events": [],
         }
     else:
@@ -390,6 +424,32 @@ def public_stats() -> JSONResponse:
         else None
     )
     return JSONResponse(snapshot, headers={"Cache-Control": "public, max-age=5"})
+
+
+@app.get("/api/public/events", include_in_schema=False)
+def public_events(cursor: str | None = None, limit: int = 50) -> JSONResponse:
+    if limit < 1 or limit > 100:
+        raise HTTPException(status_code=422, detail="limit must be between 1 and 100")
+    if public_metrics_store is None:
+        payload: dict[str, object] = {
+            "generated_at": datetime.now(UTC).isoformat(timespec="milliseconds").replace(
+                "+00:00", "Z"
+            ),
+            "recent_window_hours": settings.public_event_hours,
+            "max_retained_events": settings.public_event_max_rows,
+            "retained_events": 0,
+            "page_size": limit,
+            "offset": 0,
+            "events": [],
+            "has_more": False,
+            "next_cursor": None,
+        }
+    else:
+        try:
+            payload = public_metrics_store.event_page(limit=limit, cursor=cursor)
+        except InvalidEventCursor as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return JSONResponse(payload, headers={"Cache-Control": "no-store"})
 
 
 @app.post("/api/public/trial-keys", include_in_schema=False)
@@ -435,13 +495,21 @@ def issue_trial_key(request: Request) -> JSONResponse:
 
 @app.post("/v1/recognitions")
 async def recognize(
+    request: Request,
     image: Annotated[UploadFile, File()],
     _api_key: Annotated[APIKeyValidation, Depends(require_api_key)],
     side_to_move: Annotated[str, Form()] = SideToMove.AUTO.value,
     orientation: Annotated[Orientation, Form()] = Orientation.AUTO,
 ):
     data = await _read_image(image)
-    return asdict(_run(data, _normalize_side_to_move(side_to_move), orientation))
+    return asdict(
+        _run(
+            data,
+            _normalize_side_to_move(side_to_move),
+            orientation,
+            _request_location(request),
+        )
+    )
 
 
 @app.post("/v1/analyses")
@@ -463,6 +531,7 @@ def solve_position(
 
 @app.post("/v1/solve")
 async def solve(
+    request: Request,
     image: Annotated[UploadFile, File()],
     _api_key: Annotated[APIKeyValidation, Depends(require_engine_api_key)],
     side_to_move: Annotated[str, Form()] = SideToMove.AUTO.value,
@@ -470,7 +539,12 @@ async def solve(
     movetime_ms: Annotated[int | None, Form()] = None,
 ):
     data = await _read_image(image)
-    recognition = _run(data, _normalize_side_to_move(side_to_move), orientation)
+    recognition = _run(
+        data,
+        _normalize_side_to_move(side_to_move),
+        orientation,
+        _request_location(request),
+    )
     recognition_payload = asdict(recognition)
     if recognition.status != RecognitionStatus.ACCEPTED or recognition.full_fen is None:
         return {
@@ -497,13 +571,19 @@ async def solve(
 
 @app.post("/v1/fen", response_class=PlainTextResponse)
 async def fen(
+    request: Request,
     image: Annotated[UploadFile, File()],
     _api_key: Annotated[APIKeyValidation, Depends(require_api_key)],
     side_to_move: Annotated[str, Form()] = SideToMove.AUTO.value,
     orientation: Annotated[Orientation, Form()] = Orientation.AUTO,
 ):
     data = await _read_image(image)
-    result = _run(data, _normalize_side_to_move(side_to_move), orientation)
+    result = _run(
+        data,
+        _normalize_side_to_move(side_to_move),
+        orientation,
+        _request_location(request),
+    )
     if result.status != RecognitionStatus.ACCEPTED or result.fen is None:
         raise HTTPException(
             status_code=422,

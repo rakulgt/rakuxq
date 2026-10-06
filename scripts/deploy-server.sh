@@ -21,6 +21,8 @@ fi
 BASE=/opt/raku/portable/rakuxq
 RELEASE_DIR="${BASE}/releases/${REVISION}"
 MODELS_DIR="${BASE}/models"
+GEOIP_DIR="${BASE}/geoip"
+GEOIP_CITY_DB="${GEOIP_DIR}/dbip-city-lite.mmdb"
 SECRET_DIR=/opt/raku/secrets/rakuxq
 LOG_DIR=/opt/raku/logs/rakuxq
 AUDIT_DIR=${LOG_DIR}/interactions
@@ -38,6 +40,8 @@ AUDIT_RETENTION_SERVICE=/etc/systemd/system/rakuxq-audit-retention.service
 AUDIT_RETENTION_TIMER=/etc/systemd/system/rakuxq-audit-retention.timer
 METRICS_BACKUP_SERVICE=/etc/systemd/system/rakuxq-metrics-backup.service
 METRICS_BACKUP_TIMER=/etc/systemd/system/rakuxq-metrics-backup.timer
+METRICS_RETENTION_SERVICE=/etc/systemd/system/rakuxq-metrics-retention.service
+METRICS_RETENTION_TIMER=/etc/systemd/system/rakuxq-metrics-retention.timer
 LOGROTATE_CONF=/etc/logrotate.d/rakuxq
 PREVIOUS_RELEASE=""
 
@@ -55,6 +59,7 @@ fi
 mkdir -p \
   "${RELEASE_DIR}" \
   "${MODELS_DIR}" \
+  "${GEOIP_DIR}" \
   "${SECRET_DIR}" \
   "${LOG_DIR}" \
   "${AUDIT_DIR}" \
@@ -71,11 +76,13 @@ fi
 setfacl -m u:rakuxq:--x /opt/raku/secrets
 chown rakuxq:rakuxq "${SECRET_DIR}" "${LOG_DIR}" "${AUDIT_DIR}" "${METRICS_DIR}"
 chown rakuxq:rakuxq "${METRICS_BACKUP_DIR}"
+chown root:rakuxq "${GEOIP_DIR}"
 chmod 700 "${SECRET_DIR}"
 chmod 750 "${LOG_DIR}"
 chmod 700 "${AUDIT_DIR}"
 chmod 700 "${METRICS_DIR}"
 chmod 700 "${METRICS_BACKUP_DIR}"
+chmod 750 "${GEOIP_DIR}"
 
 tar -xzf "${ARCHIVE}" -C "${RELEASE_DIR}"
 install -o root -g rakuxq -m 0440 "${POSE_UPLOAD}" "${MODELS_DIR}/pose.onnx"
@@ -87,6 +94,38 @@ python3 "${RELEASE_DIR}/scripts/verify_models.py"
 python3 -m venv "${RELEASE_DIR}/.venv"
 "${RELEASE_DIR}/.venv/bin/python" -m pip install --upgrade pip
 "${RELEASE_DIR}/.venv/bin/python" -m pip install "${RELEASE_DIR}/apps/api"
+
+refresh_geoip_city() {
+  local release url archive candidate
+  for release in "$(date -u +%Y-%m)" "$(date -u -d '1 month ago' +%Y-%m)"; do
+    url="https://download.db-ip.com/free/dbip-city-lite-${release}.mmdb.gz"
+    archive="$(mktemp /tmp/rakuxq-geoip-XXXXXX.mmdb.gz)"
+    candidate="$(mktemp /tmp/rakuxq-geoip-XXXXXX.mmdb)"
+    if curl --fail --location --silent --show-error --retry 2 \
+      --connect-timeout 15 --max-time 900 --output "${archive}" "${url}" \
+      && gzip --test "${archive}" \
+      && gzip --decompress --stdout "${archive}" >"${candidate}" \
+      && "${RELEASE_DIR}/.venv/bin/python" -c \
+        'import maxminddb,sys; reader=maxminddb.open_database(sys.argv[1]); reader.metadata(); reader.close()' \
+        "${candidate}"; then
+      install -o root -g rakuxq -m 0440 "${candidate}" "${GEOIP_CITY_DB}"
+      rm -f "${archive}" "${candidate}"
+      return 0
+    fi
+    rm -f "${archive}" "${candidate}"
+  done
+  return 1
+}
+
+if [[ ! -r "${GEOIP_CITY_DB}" ]] || find "${GEOIP_CITY_DB}" -mtime +32 -print -quit | grep -q .; then
+  if ! refresh_geoip_city; then
+    if [[ ! -r "${GEOIP_CITY_DB}" ]]; then
+      echo "unable to install the DB-IP City Lite database" >&2
+      exit 1
+    fi
+    echo "warning: keeping the existing DB-IP City Lite database" >&2
+  fi
+fi
 
 if [[ -f "${KEY_DB_UPLOAD}" && ! -f "${SECRET_DIR}/api-keys.sqlite3" ]]; then
   install -o rakuxq -g rakuxq -m 0600 "${KEY_DB_UPLOAD}" "${SECRET_DIR}/api-keys.sqlite3"
@@ -144,7 +183,9 @@ RAKUXQ_AUDIT_DIR=${AUDIT_DIR}
 RAKUXQ_AUDIT_RETENTION_HOURS=12
 RAKUXQ_AUDIT_MAX_TOTAL_BYTES=2147483648
 RAKUXQ_PUBLIC_METRICS_DB=${METRICS_DIR}/public-metrics.sqlite3
-RAKUXQ_PUBLIC_EVENT_HOURS=72
+RAKUXQ_PUBLIC_EVENT_HOURS=720
+RAKUXQ_PUBLIC_EVENT_MAX_ROWS=100000
+RAKUXQ_GEOIP_CITY_DB=${GEOIP_CITY_DB}
 RAKUXQ_SHORTCUT_URL=${SHORTCUT_URL}
 RAKUXQ_TRIAL_KEY_PEPPER_FILE=${SECRET_DIR}/trial-key-pepper
 RAKUXQ_TRIAL_KEY_MINUTES=6
@@ -177,6 +218,8 @@ for managed in \
   "${AUDIT_RETENTION_TIMER}" \
   "${METRICS_BACKUP_SERVICE}" \
   "${METRICS_BACKUP_TIMER}" \
+  "${METRICS_RETENTION_SERVICE}" \
+  "${METRICS_RETENTION_TIMER}" \
   "${LOGROTATE_CONF}"; do
   if [[ -f "${managed}" ]]; then
     cp -a "${managed}" "${BACKUP_DIR}/$(basename "${managed}")"
@@ -192,6 +235,10 @@ install -o root -g root -m 0644 \
 install -o root -g root -m 0644 \
   "${RELEASE_DIR}/infra/rakuxq-metrics-backup.timer" "${METRICS_BACKUP_TIMER}"
 install -o root -g root -m 0644 \
+  "${RELEASE_DIR}/infra/rakuxq-metrics-retention.service" "${METRICS_RETENTION_SERVICE}"
+install -o root -g root -m 0644 \
+  "${RELEASE_DIR}/infra/rakuxq-metrics-retention.timer" "${METRICS_RETENTION_TIMER}"
+install -o root -g root -m 0644 \
   "${RELEASE_DIR}/infra/rakuxq-logrotate.conf" "${LOGROTATE_CONF}"
 install -o root -g root -m 0644 "${RELEASE_DIR}/infra/xq-rakubank-routes.conf" "${NGINX_ROUTES}"
 if [[ -f /etc/letsencrypt/live/xq.rakubank.com/fullchain.pem && -f /etc/letsencrypt/live/xq.rakubank.com/privkey.pem ]]; then
@@ -205,7 +252,9 @@ systemd-analyze verify \
   "${AUDIT_RETENTION_SERVICE}" \
   "${AUDIT_RETENTION_TIMER}" \
   "${METRICS_BACKUP_SERVICE}" \
-  "${METRICS_BACKUP_TIMER}"
+  "${METRICS_BACKUP_TIMER}" \
+  "${METRICS_RETENTION_SERVICE}" \
+  "${METRICS_RETENTION_TIMER}"
 /usr/sbin/logrotate --debug "${LOGROTATE_CONF}" >/dev/null
 
 ln -sfn "${RELEASE_DIR}" "${BASE}/current"
@@ -213,6 +262,7 @@ systemctl daemon-reload
 systemctl enable rakuxq-api.service >/dev/null
 systemctl enable --now rakuxq-audit-retention.timer >/dev/null
 systemctl enable --now rakuxq-metrics-backup.timer >/dev/null
+systemctl enable --now rakuxq-metrics-retention.timer >/dev/null
 if ! nginx -t; then
   if [[ -f "${BACKUP_DIR}/xq-rakubank.conf" ]]; then
     cp -a "${BACKUP_DIR}/xq-rakubank.conf" "${NGINX_CONF}"
@@ -233,7 +283,8 @@ systemctl start rakuxq-audit-retention.service
 
 healthy=0
 for _ in {1..30}; do
-  if curl --fail --silent "http://127.0.0.1:${PORT}/healthz" | grep -q '"status":"ok"'; then
+  if curl --fail --silent "http://127.0.0.1:${PORT}/healthz" \
+    | "${venv}/bin/python" -c 'import json, sys; data = json.load(sys.stdin); raise SystemExit(0 if data.get("status") == "ok" and data.get("geoip_ready") is True else 1)'; then
     healthy=1
     break
   fi
@@ -250,6 +301,7 @@ if [[ "${healthy}" -ne 1 ]]; then
 fi
 
 systemctl start rakuxq-metrics-backup.service
+systemctl start rakuxq-metrics-retention.service
 
 rm -f "${ARCHIVE}" "${POSE_UPLOAD}" "${LAYOUT_UPLOAD}" "${KEY_DB_UPLOAD}"
 echo "deployed ${REVISION} to ${DOMAIN} on 127.0.0.1:${PORT}"

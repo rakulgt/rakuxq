@@ -26,15 +26,18 @@ async function copyText(value) {
   input.remove();
 }
 
-function renderChart(hourly) {
+let eventCursor = null;
+let loadedEventCount = 0;
+
+function renderChart(daily) {
   const chart = document.getElementById("activity-chart");
-  const counts = new Map(hourly.map((item) => [item.hour, Number(item.interactions)]));
+  const counts = new Map(daily.map((item) => [item.day, Number(item.interactions)]));
   const now = new Date();
-  now.setMinutes(0, 0, 0);
+  now.setUTCHours(0, 0, 0, 0);
   const values = [];
-  for (let offset = 71; offset >= 0; offset -= 1) {
-    const time = new Date(now.getTime() - offset * 3600000);
-    const key = time.toISOString().slice(0, 13) + ":00:00Z";
+  for (let offset = 29; offset >= 0; offset -= 1) {
+    const time = new Date(now.getTime() - offset * 86400000);
+    const key = time.toISOString().slice(0, 10);
     values.push({ time, count: counts.get(key) || 0 });
   }
   const max = Math.max(...values.map((item) => item.count), 1);
@@ -42,60 +45,101 @@ function renderChart(hourly) {
     const bar = document.createElement("span");
     bar.className = "bar";
     bar.style.setProperty("--height", `${Math.max(2, item.count / max * 100)}%`);
-    bar.title = `${dateTime.format(item.time)} · ${item.count} 次`;
+    bar.title = `${item.time.toLocaleDateString("zh-CN")} · ${item.count} 次`;
     return bar;
   }));
 }
 
-function renderEvents(events) {
+function locationLabel(location) {
+  if (!location) return "未知";
+  const country = location.country || location.country_code;
+  const locality = location.city || location.region;
+  return [country, locality].filter((value, index, values) => value && values.indexOf(value) === index).join(" · ") || "未知";
+}
+
+function eventRow(event) {
+  const row = document.createElement("div");
+  row.className = "feed-row";
+  const time = document.createElement("time");
+  time.dateTime = event.occurred_at;
+  time.textContent = dateTime.format(new Date(event.occurred_at));
+  const status = document.createElement("span");
+  status.className = `status-badge status-${event.status}`;
+  status.textContent = event.status === "accepted" ? "自动通过" : "建议复核";
+  const location = document.createElement("span");
+  location.className = "event-location";
+  location.textContent = locationLabel(event.location);
+  location.title = "IP 数据库推断的近似国家/城市，不代表精确位置";
+  const code = document.createElement("code");
+  code.textContent = event.fen;
+  code.title = event.fen;
+  const confidence = document.createElement("span");
+  confidence.className = "confidence";
+  confidence.textContent = `${Math.round(event.confidence * 100)}%`;
+  const duration = document.createElement("span");
+  duration.className = "duration";
+  duration.textContent = `${number.format(event.duration_ms)} ms`;
+  const actions = document.createElement("div");
+  actions.className = "feed-actions";
+  const copy = document.createElement("button");
+  copy.type = "button";
+  copy.className = "feed-action";
+  copy.textContent = "复制 FEN";
+  copy.addEventListener("click", async () => {
+    try {
+      await copyText(event.fen);
+      copy.textContent = "已复制";
+      window.setTimeout(() => { copy.textContent = "复制 FEN"; }, 1600);
+    } catch {
+      copy.textContent = "复制失败";
+    }
+  });
+  const open = document.createElement("a");
+  open.className = "feed-action";
+  open.href = `https://xiangqiai.com/#/${event.fen.replace(" ", "%20")}`;
+  open.target = "_blank";
+  open.rel = "noreferrer";
+  open.textContent = "打开局面 ↗";
+  actions.append(copy, open);
+  row.append(time, status, location, code, confidence, duration, actions);
+  return row;
+}
+
+function renderEvents(events, append = false) {
   const feed = document.getElementById("event-feed");
-  if (!events.length) {
+  if (!append && !events.length) {
     feed.innerHTML = '<div class="empty-state">还没有公开交互。第一条记录正在路上。</div>';
     return;
   }
-  feed.replaceChildren(...events.map((event) => {
-    const row = document.createElement("div");
-    row.className = "feed-row";
-    const time = document.createElement("time");
-    time.dateTime = event.occurred_at;
-    time.textContent = dateTime.format(new Date(event.occurred_at));
-    const status = document.createElement("span");
-    status.className = `status-badge status-${event.status}`;
-    status.textContent = event.status === "accepted" ? "自动通过" : "建议复核";
-    const code = document.createElement("code");
-    code.textContent = event.fen;
-    code.title = event.fen;
-    const confidence = document.createElement("span");
-    confidence.className = "confidence";
-    confidence.textContent = `${Math.round(event.confidence * 100)}%`;
-    const duration = document.createElement("span");
-    duration.className = "duration";
-    duration.textContent = `${number.format(event.duration_ms)} ms`;
-    const actions = document.createElement("div");
-    actions.className = "feed-actions";
-    const copy = document.createElement("button");
-    copy.type = "button";
-    copy.className = "feed-action";
-    copy.textContent = "复制 FEN";
-    copy.addEventListener("click", async () => {
-      try {
-        await copyText(event.fen);
-        copy.textContent = "已复制";
-        window.setTimeout(() => { copy.textContent = "复制 FEN"; }, 1600);
-      } catch {
-        copy.textContent = "复制失败";
-      }
-    });
-    const open = document.createElement("a");
-    open.className = "feed-action";
-    open.href = `https://xiangqiai.com/#/${event.fen.replace(" ", "%20")}`;
-    open.target = "_blank";
-    open.rel = "noreferrer";
-    open.textContent = "打开局面 ↗";
-    actions.append(copy, open);
-    row.append(time, status, code, confidence, duration, actions);
-    return row;
-  }));
+  const rows = events.map(eventRow);
+  if (append) feed.append(...rows);
+  else feed.replaceChildren(...rows);
+}
+
+async function loadEvents(reset = false) {
+  const more = document.getElementById("feed-more");
+  const status = document.getElementById("feed-page-status");
+  more.disabled = true;
+  more.textContent = "读取中…";
+  try {
+    const cursor = reset ? null : eventCursor;
+    const query = new URLSearchParams({ limit: "50" });
+    if (cursor) query.set("cursor", cursor);
+    const response = await fetch(`/api/public/events?${query}`, { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    renderEvents(data.events, !reset && loadedEventCount > 0);
+    loadedEventCount = reset ? data.events.length : loadedEventCount + data.events.length;
+    eventCursor = data.next_cursor;
+    status.textContent = `已显示 ${number.format(loadedEventCount)} / ${number.format(data.retained_events)} 条 · 最多保留 ${number.format(data.max_retained_events)} 条`;
+    more.disabled = !data.has_more;
+    more.textContent = data.has_more ? "加载更早记录" : "已到最早记录";
+  } catch (error) {
+    status.textContent = "记录读取失败，请稍后重试";
+    more.disabled = false;
+    more.textContent = "重新加载";
+    console.warn("RakuXQ public event stream unavailable", error);
+  }
 }
 
 function configureShortcut(url) {
@@ -126,8 +170,7 @@ async function refresh() {
     const donut = document.getElementById("quality-donut");
     donut.style.setProperty("--rate", `${data.recent.acceptance_rate * 3.6}deg`);
     setText("last-updated", `更新于 ${dateTime.format(new Date(data.generated_at))}`);
-    renderChart(data.hourly);
-    renderEvents(data.events);
+    renderChart(data.daily || []);
     configureShortcut(data.shortcut_url);
   } catch (error) {
     setText("last-updated", "数据暂时不可用");
@@ -135,5 +178,9 @@ async function refresh() {
   }
 }
 
+document.getElementById("feed-more").addEventListener("click", () => loadEvents(false));
+document.getElementById("feed-refresh").addEventListener("click", () => loadEvents(true));
+
 refresh();
+loadEvents(true);
 setInterval(refresh, 15000);

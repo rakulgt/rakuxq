@@ -104,12 +104,13 @@ client = TestClient(app)
 def test_public_homepage_and_empty_metrics_are_available_without_api_key():
     homepage = client.get("/")
     metrics = client.get("/api/public/stats")
+    events = client.get("/api/public/events?limit=50")
 
     assert homepage.status_code == 200
     assert "让现实中的每一个" in homepage.text
     assert "3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w" in homepage.text
     assert homepage.text.count('<use href="#star') == 14
-    assert "/static/styles.css?v=0.4.0a1" in homepage.text
+    assert "/static/styles.css?v=0.5.1a1" in homepage.text
     assert "/static/vendor/xiangqi.min.js?v=f9019ac" in homepage.text
     assert 'id="interactive-pieces"' in homepage.text
     assert 'id="position-playground"' in homepage.text
@@ -119,8 +120,11 @@ def test_public_homepage_and_empty_metrics_are_available_without_api_key():
     assert "/developers" in homepage.text
     assert 'href="/lab"' in homepage.text
     assert metrics.status_code == 200
-    assert metrics.json()["recent_window_hours"] == 72
+    assert metrics.json()["recent_window_hours"] == 720
+    assert metrics.json()["max_retained_events"] == 100_000
     assert metrics.json()["shortcut_url"] is None
+    assert events.status_code == 200
+    assert events.json()["events"] == []
 
 
 def test_lab_and_fixed_prefix_fen_url_are_publicly_accessible():

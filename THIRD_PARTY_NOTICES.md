@@ -1,5 +1,19 @@
 # Third-party notices
 
+## DB-IP City Lite (server-side, not bundled)
+
+The official hosted service may install the monthly
+[`DB-IP City Lite`](https://db-ip.com/db/lite.php) MMDB database on the server.
+
+- Purpose: convert a request IP in memory to an approximate country, region, city, and city-centroid
+  coordinate for anonymous public usage statistics.
+- License: Creative Commons Attribution 4.0 International (CC BY 4.0).
+- Distribution: the database is downloaded independently during deployment and is not committed to
+  this repository or included in the Python wheel.
+- Privacy: the source IP is not written to the public metrics database; only the coarse lookup result
+  is retained. IP geolocation is approximate and must not be treated as a precise address.
+- Attribution: the hosted homepage links to DB-IP as required by the database license.
+
 ## xiangqi.js
 
 RakuXQ bundles `xiangqi.min.js` from

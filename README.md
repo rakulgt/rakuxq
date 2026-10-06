@@ -58,7 +58,7 @@ RakuXQ 的发起人是 **李国泰（rakulgt，<lgt@rakubank.com>）**。这个�
 - **可运营托管**：官方服务支持每客户独立 API Key、到期、续费和吊销。
 - **视觉与解题解耦**：引擎只消费稳定 FEN 契约，可替换而不影响识别 provider。
 - **三条解题路径**：`/v1/solutions` 提供稳定的 FEN 解题契约，`/v1/analyses` 保留底层分析兼容，`/v1/solve` 串联自动通过的图片局面。
-- **公开运行面板**：官网匿名展示最近 72 小时交互与历史累计统计，不公开原图或客户标识。
+- **公开运行面板**：官网匿名展示最近 30 天、最多 10 万条交互与历史累计统计，可连续翻页并显示近似国家/城市；原始 IP、原图和客户标识均不公开。
 - **即领即试**：公开开发文档可领取明文只显示一次、6 分钟失效的临时测试 Key。
 - **交互局面研究器**：首页经典残局支持合法落点、走子、吃子、悔棋、重置、实时 FEN 与外部深入研究。
 - **RakuXQ Lab**：标准 FEN 直达统一研究工作台；桌面顶栏、分组侧边菜单和常驻招法轨提供一键标准新局、引擎执红/黑、分析与立即出招、分支导航、翻转、自由摆子、本地文件导入、保存分享和非破坏变化树。
@@ -208,7 +208,7 @@ npm run test:web
 
 - 自托管默认只在内存中处理图片。官方托管服务为早期质量分析保存已鉴权调用的原图、请求和响应，最长 12 小时后自动删除。
 - 短期审计图片不会自动进入长期样本集或训练集；API Key 明文永不写入审计日志。
-- 官网公开记录只包含时间、状态、简化 FEN、置信度与耗时，72 小时后删除；累计层只保留汇总数字。
+- 官网公开记录只包含时间、状态、近似国家/城市、简化 FEN、置信度与耗时；明细最多保留 30 天且不超过 10 万条，累计层只保留汇总数字。原始 IP 仅在内存中供本地城市库查询，随后立即丢弃。
 - `.onnx` 权重、上传图片、缓存、日志和真实环境变量均被排除在 Git 之外。
 - 当前基线来自 `yolo12138/Chinese_Chess_Recognition`；来源、版本和 SHA-256 记录于
   [`models/manifest.json`](models/manifest.json)。
@@ -221,7 +221,7 @@ npm run test:web
 - [x] 图片上传、棋盘定位、透视校正与布局识别
 - [x] FEN、合法性检查、置信度门控与 Apple 快捷指令接口
 - [x] 局部棋盘可见性规则和同图视觉原型复核
-- [x] 匿名实时官网、72 小时交互流与历史累计统计
+- [x] 匿名实时官网、30 天/10 万条分页交互流、城市级匿名统计与历史累计数字
 - [x] FEN 驱动的首页交互局面研究器与合法走子规则
 - [ ] 授权盲测集、公开评测和自有模型训练流程
 - [ ] 独立占位检测器与更多实体棋字体覆盖
@@ -299,8 +299,9 @@ code into the first release. See [`docs/history.md`](docs/history.md) for the fu
 - **Three solving paths**: `/v1/solutions` is the stable FEN-to-solution contract,
   `/v1/analyses` remains the low-level compatibility endpoint, and `/v1/solve` analyzes only
   auto-accepted image recognition results.
-- **Public operating pulse**: the homepage shows anonymous 72-hour activity and lifetime totals
-  without exposing images or customer identifiers.
+- **Public operating pulse**: the homepage exposes a paginated anonymous stream for up to 30 days
+  and 100,000 rows, approximate country/city analytics, and lifetime totals without publishing raw
+  IP addresses, images, or customer identifiers.
 - **Instant trial access**: the public developer guide can issue a one-time-display test key that
   expires after six minutes.
 - **Interactive position playground**: the homepage puzzle supports legal targets, moves,
@@ -414,15 +415,17 @@ authenticated originals, requests, and responses for at most 12 hours for early 
 Short-lived audits never become a permanent dataset or training data automatically, and plaintext
 API keys are never logged. Third-party model weights are not redistributed. Their provenance,
 versions, and checksums are documented in [`models/manifest.json`](models/manifest.json).
-Public event rows contain only time, status, simplified FEN, confidence, and latency, and disappear
-after 72 hours; only aggregate lifetime counters persist.
+Public event rows contain only time, status, approximate country/city, simplified FEN, confidence,
+and latency. Rows are capped at 30 days and 100,000 entries, whichever limit is reached first; only
+aggregate lifetime counters persist. Raw IP addresses are used only for an in-memory local database
+lookup and are immediately discarded.
 
 ### Roadmap
 
 - [x] Image upload, board localization, perspective rectification, and layout recognition
 - [x] FEN, position validation, confidence gating, and Apple Shortcuts endpoint
 - [x] Partial-board visibility rules and same-image visual prototype refinement
-- [x] Anonymous live homepage, rolling 72-hour activity, and lifetime counters
+- [x] Anonymous live homepage, paginated 30-day/100,000-row stream, city-level aggregates, and lifetime counters
 - [ ] Consented blind benchmark and first-party training pipeline
 - [ ] Independent occupancy detector and broader physical-piece typography support
 - [x] Replaceable UCI boundary, local Pikafish adapter, best-move and principal-variation APIs

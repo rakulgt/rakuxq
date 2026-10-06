@@ -7,10 +7,10 @@
     <meta name="theme-color" content="#08111f" />
     <title>RakuXQ · 让每一个象棋局面进入计算</title>
     <link rel="icon" href="/static/favicon.svg?v=0.4.0a1" type="image/svg+xml" />
-    <link rel="stylesheet" href="/static/styles.css?v=0.4.0a1" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.5.1a1" />
     <script src="/static/vendor/xiangqi.min.js?v=f9019ac" defer></script>
     <script src="/static/position-board.js?v=0.4.0a1" defer></script>
-    <script src="/static/app.js?v=0.4.0a1" defer></script>
+    <script src="/static/app.js?v=0.5.1a1" defer></script>
   </head>
   <body>
     <div class="ambient ambient-one"></div>
@@ -89,21 +89,21 @@
       <section id="live" class="live-section">
         <div class="section-heading">
           <div><span class="kicker">PUBLIC PULSE</span><h2>正在发生的识别</h2></div>
-          <p>匿名展示最近 72 小时的成功识别交互。数据每 15 秒刷新。</p>
+          <p>匿名展示最近 30 天的成功识别交互；最多保留 10 万条，达到上限后自动淘汰最早记录。</p>
         </div>
 
         <div class="metrics-grid">
           <article class="metric"><span>历史累计交互</span><strong id="metric-lifetime">—</strong><small id="metric-since">从现在开始记录</small></article>
-          <article class="metric"><span>最近 72 小时</span><strong id="metric-recent">—</strong><small>滚动窗口内的成功响应</small></article>
+          <article class="metric"><span>最近 30 天</span><strong id="metric-recent">—</strong><small>30 天 / 10 万条双重上限</small></article>
           <article class="metric"><span>自动通过率</span><strong id="metric-rate">—</strong><small>accepted / 成功交互</small></article>
-          <article class="metric"><span>平均推理耗时</span><strong id="metric-latency">—</strong><small>最近 72 小时，服务端模型</small></article>
+          <article class="metric"><span>平均推理耗时</span><strong id="metric-latency">—</strong><small>最近 30 天，服务端模型</small></article>
         </div>
 
         <div class="dashboard-grid">
           <article class="panel chart-panel">
-            <div class="panel-title"><div><span>72H ACTIVITY</span><h3>每小时交互趋势</h3></div><span id="last-updated">等待数据</span></div>
-            <div id="activity-chart" class="activity-chart" aria-label="最近72小时交互柱状图"></div>
-            <div class="chart-axis"><span>72 小时前</span><span>现在</span></div>
+            <div class="panel-title"><div><span>30D ACTIVITY</span><h3>每日交互趋势</h3></div><span id="last-updated">等待数据</span></div>
+            <div id="activity-chart" class="activity-chart" aria-label="最近30天交互柱状图"></div>
+            <div class="chart-axis"><span>30 天前</span><span>现在</span></div>
           </article>
           <article class="panel split-panel">
             <div class="panel-title"><div><span>QUALITY GATE</span><h3>质量门控</h3></div></div>
@@ -118,9 +118,13 @@
         </div>
 
         <article class="panel feed-panel">
-          <div class="panel-title"><div><span>ANONYMOUS STREAM</span><h3>最近成功交互</h3></div><p>不公开原图、密钥、IP、文件名或设备信息</p></div>
-          <div class="feed-head"><span>时间</span><span>状态</span><span>简化 FEN</span><span>置信度</span><span>耗时</span><span>操作</span></div>
+          <div class="panel-title"><div><span>ANONYMOUS STREAM</span><h3>最近成功交互</h3></div><p>只展示近似国家/城市；原始 IP 不落库、不公开</p></div>
+          <div class="feed-head"><span>时间</span><span>状态</span><span>来源</span><span>简化 FEN</span><span>置信度</span><span>耗时</span><span>操作</span></div>
           <div id="event-feed" class="event-feed"><div class="empty-state">正在连接 RakuXQ 数据流…</div></div>
+          <div class="feed-pager">
+            <span id="feed-page-status">正在读取记录…</span>
+            <div><button id="feed-refresh" type="button">回到最新</button><button id="feed-more" type="button">加载更早记录</button></div>
+          </div>
         </article>
       </section>
 
@@ -158,10 +162,10 @@
 
       <section class="privacy-strip">
         <div><span>隐私边界</span><strong>公开统计是匿名的</strong></div>
-        <p>原图仅在官方服务器短期保留最多 12 小时用于质量分析；公开面板只保留匿名指标，单条交互 72 小时后自动消失，累计数字继续保留。</p>
+        <p>原图仍只保留最多 12 小时。匿名 FEN 明细最多保留 30 天且不超过 10 万条；请求 IP 只在内存中解析为近似国家/城市后立即丢弃，地理结果不代表精确住址。</p>
       </section>
     </main>
 
-    <footer><div><strong>RakuXQ</strong><span>Built by rakulgt · Raku Intelligence</span></div><div><a href="https://rakubank.com/">RAKUBANK 项目总览 ↗</a><a href="/lab">棋局实验室</a><a href="/developers">开发文档</a><a href="/docs">OpenAPI</a><a href="https://github.com/rakulgt/rakuxq">MIT License</a><span>© 2026</span></div></footer>
+    <footer><div><strong>RakuXQ</strong><span>Built by rakulgt · Raku Intelligence</span></div><div><a href="https://rakubank.com/">RAKUBANK 项目总览 ↗</a><a href="/lab">棋局实验室</a><a href="/developers">开发文档</a><a href="/docs">OpenAPI</a><a href="https://github.com/rakulgt/rakuxq">MIT License</a><a href="https://db-ip.com">IP Geolocation by DB-IP</a><span>© 2026</span></div></footer>
   </body>
 </html>

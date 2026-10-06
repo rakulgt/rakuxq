@@ -20,6 +20,7 @@
 - 运行日志：journald 单元 `rakuxq-api`
 - Nginx 日志：`/opt/raku/logs/rakuxq/`
 - 匿名统计库：`/opt/raku/logs/rakuxq/public-metrics/public-metrics.sqlite3`
+- 城市定位库：`/opt/raku/portable/rakuxq/geoip/dbip-city-lite.mmdb`
 - 备份：`/opt/raku/backups/rakuxq/`
 
 已鉴权调用的上传原图和完整交互记录短期保存在
@@ -29,10 +30,18 @@
 Git、永久样本集或自动训练集。模型只读保存在 `/opt/raku/portable/rakuxq/models/`，来源与校验
 信息见 `models/manifest.json`。
 
-匿名统计库跨版本保留：单条事件在 72 小时后删除，`public_totals` 只保存累计数字。该目录由
-`rakuxq` 专用用户以 `0700` 访问，不得随发布清空。官网根路径和 `/api/public/stats` 无需 API Key，
-但公开响应不得出现客户或请求标识。`rakuxq-metrics-backup.timer` 每天使用 SQLite 在线备份创建
-一致性快照，保存到 `/opt/raku/backups/rakuxq/metrics/` 并自动删除超过 30 天的旧快照。
+匿名统计库跨版本保留：单条事件最多保留 720 小时且总量最多 100,000 条，任一上限触发时删除
+最旧明细；`public_totals` 只保存累计数字。该目录由 `rakuxq` 专用用户以 `0700` 访问，不得随发布
+清空。官网根路径、`/api/public/stats` 和游标分页的 `/api/public/events` 无需 API Key，但公开响应
+不得出现客户、请求标识或原始 IP。`rakuxq-metrics-backup.timer` 每天使用 SQLite 在线备份创建
+一致性快照，保存到 `/opt/raku/backups/rakuxq/metrics/` 并自动删除超过 30 天的旧快照；
+`rakuxq-metrics-retention.timer` 每小时独立执行一次双重上限清理，因此即使没有新请求或官网访问，
+过期明细也不会无限滞留。
+
+部署脚本从 DB-IP 官方 HTTPS 地址独立下载月度 City Lite MMDB，并在本地解析请求 IP。统计库只写入
+近似国家、地区、城市和城市中心坐标，原始 IP 不落库，也不会发送给在线定位服务。City Lite 使用
+CC BY 4.0，官网必须保留 `IP Geolocation by DB-IP` 链接；数据库过期超过 32 天时，后续部署会尝试
+更新，下载失败且已有可读数据库时保留旧版，首次安装失败则中止发布。
 
 ## 首次与后续发布
 
@@ -112,7 +121,7 @@ Pikafish 程序与 NNUE 不进入应用发布目录或 Git。升级时先在
 - `/v1/solutions`、`/v1/analyses` 和 `/v1/solve` 除有效 Key 外还必须命中
   `RAKUXQ_ENGINE_ALLOWED_KEY_IDS`；其他 Key 返回 `403 ENGINE_ACCESS_DENIED`。引擎未配置时明确返回
   `503 ENGINE_NOT_CONFIGURED`。
-- `/` 与 `/api/public/stats` 公开访问，只提供官网资源和匿名指标。
+- `/`、`/api/public/stats` 与 `/api/public/events` 公开访问，只提供官网资源和匿名指标。
 - `/developers` 与 `/api/public/trial-keys` 公开访问；后者只签发 6 分钟、不可续期的测试 Key。
 - API Key 和密钥库不得进入 Git、聊天、普通日志或部署记录。
 - 短期审计只保存有效 Key 的调用；匿名、无效、过期或吊销 Key 的请求不保存请求体。

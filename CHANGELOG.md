@@ -4,6 +4,22 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.5.1-alpha.1] - 2026-10-06
+
+### 中文
+
+- 官网匿名明细由 72 小时升级为“最多 720 小时且最多 100,000 条”的双重保留上限，达到任一上限后自动淘汰最旧记录，历史累计计数保持不变。
+- 新增不透明游标分页接口与首页“加载更早记录”，允许从最新记录持续翻到当前保留窗口的最早记录，不公开请求 ID。
+- 使用服务器本地 DB-IP City Lite 将请求 IP 即时转换为近似国家、地区和城市；原始 IP 不落库、不发送到在线定位服务，并提供匿名城市聚合数据为后续地理分布图做准备。
+- 首页趋势改为最近 30 天每日视图，事件流增加近似来源地与清晰的隐私/准确性说明。
+
+### English
+
+- Replaced the 72-hour event window with dual 720-hour and 100,000-row limits; the oldest detail rows are evicted when either limit is reached while lifetime counters remain intact.
+- Added opaque cursor pagination and a load-older homepage flow that can traverse the full retained stream without exposing request IDs.
+- Added local DB-IP City Lite lookups for approximate country, region, and city. Raw IP addresses are neither persisted nor sent to an online geolocation service, and anonymous city aggregates prepare a future geographic dashboard.
+- Switched the activity chart to a 30-day daily view and added explicit location privacy and accuracy disclosures.
+
 ## [Engine baseline 2026-10-01] - 2026-10-05
 
 ### 中文
