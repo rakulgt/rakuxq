@@ -1,13 +1,13 @@
 # RakuXQ 当前交接状态
 
-基线时间：`2026-10-06T19:05:36+08:00`
-当前生产稳定版本：`v0.5.2-alpha.1`
+基线时间：`2026-10-06T20:44:48+08:00`
+当前生产稳定版本：`v0.5.2-alpha.2`
 当前源码开发版本：`v0.5.2-alpha.2`
 
 ## 最近完成
 
-- v0.5.2-alpha.2 已完成本地实现：RakuXQ Lab 网站内永久免费且无需 Key，页面移除 Key 输入与凭据门控，改用不进入 OpenAPI 的同源专用分析入口；单次搜索最多 3 秒，Nginx 独立限制每 IP 每分钟 60 次、突发 8 次和并发 1 次。`/v1/solutions`、`/v1/analyses` 与 `/v1/solve` 的远程 Key 鉴权及引擎白名单保持不变。
-- v0.5.2-alpha.2 本地门禁通过：Python 114 项、Web 12 项、Ruff、Mypy（21 个源文件）、前端语法、ONNX 清单和 wheel 构建全部成功；浏览器确认 Lab 不含 Key 控件并显示永久免费边界。生产发布待本提交完成后执行。
+- v0.5.2-alpha.2 已发布：RakuXQ Lab 网站内永久免费且无需 Key，页面移除 Key 输入与凭据门控，改用不进入 OpenAPI 的同源专用分析入口；单次搜索最多 3 秒，Nginx 独立限制每 IP 每分钟 60 次、突发 8 次和并发 1 次。`/v1/solutions`、`/v1/analyses` 与 `/v1/solve` 的远程 Key 鉴权及引擎白名单保持不变。两个公网入口的免 Key Lab 分析均返回 `前炮进二 红方 KO(2)`，而无 Key `/v1/analyses` 保持 `401`。完整记录见 `docs/deployments/20261006-204448-v0.5.2-alpha.2.md`。
+- v0.5.2-alpha.2 本地门禁通过：Python 114 项、Web 12 项、Ruff、Mypy（21 个源文件）、前端语法、ONNX 清单和 wheel 构建全部成功；浏览器确认 Lab 不含 Key 控件并显示永久免费边界。生产服务 `active`、`NRestarts=0`，Nginx 校验通过，两个健康端点均返回 `version=0.5.2a2`、`status=ok`、`engine_ready=true`。
 
 - v0.5.2-alpha.1 已发布：首页首屏改写为普通棋友可直接理解的“拍下棋局、读懂局面、推荐好棋”，不再用 FEN/NNUE 解释产品价值，并明确仅供非商业研究、学习与娱乐、请勿用于赌棋。
 - v0.5.2-alpha.1 定位到实验室自动走棋无响应的真实根因为最近 `/v1/analyses` 请求返回 `401`：旧按钮只检查服务器已安装引擎，没有检查当前标签页是否填写授权 Key。新版在启用引擎执红/黑前执行显式凭据门控，缺少 Key 时进入设置并聚焦输入框；单边自动应招、双边逐手串行自动对弈、自动方禁止人工落子以及将死/困毙/和棋停止均进入可测试状态机。两个公网入口均返回 `version=0.5.2a1`，服务 `active`、`NRestarts=0`。完整记录见 `docs/deployments/20261006-190536-v0.5.2-alpha.1.md`。
@@ -135,7 +135,7 @@
 - 新增三例用户人工核验：横置实体棋盘的 `accepted` FEN `CR1akab2/5R3/6n2/p1p1p3p/3r2p2/2P3P2/P7P/2NC5/4A4/2B1KAr2 w - - 0 1` 全部正确；稀疏实体残局的候选 FEN `4k4/4a4/4P4/9/9/9/9/9/9/5K3 w - - 0 1` 全部正确；被弹窗遮挡关键内容的案例正确返回 `review_required`，没有作为可直接消费的 FEN 自动通过。这些历史图片未进入项目或训练集；官方托管自 `v0.1.2-alpha.1` 起仅对有效 Key 调用启用 12 小时短期留存。
 - `scripts/check-document-governance.ps1`：RakuXQ 无错误；工作区其他遗留项目仍有 8 条既有迁移警告。
 - 生产公网验收：健康检查返回 `status=ok`；无 Key 返回 HTTP `401` / `API_KEY_REQUIRED`；有效 Key + 真实基准图片返回 `accepted` 和正确 FEN `3k5/9/9/9/9/9/3p5/2pANR3/3KNR3/3ACC3 w - - 0 1`。
-- 生产运行状态：服务器发布标识为 `7cc45bf2c9599fcc9177b561553b42e35a609a83`；服务 `active`、`NRestarts=0`，两个公网健康检查均返回 `version=0.5.2a1`、`provider_ready=true`、`engine_ready=true`、`geoip_ready=true`。
+- 生产运行状态：服务器发布标识为 `f15c6bbb7c0804db7b2d6e28833ecb2339eaa800`；服务 `active`、`NRestarts=0`，两个公网健康检查均返回 `version=0.5.2a2`、`provider_ready=true`、`engine_ready=true`、`geoip_ready=true`。
 - 生产短期审计验收：公网上传后的服务器原图 SHA-256 与本地原图完全一致；有效 Key 的 `422` 参数错误被完整记录，无 Key 请求不留存；13 小时测试记录被清理。完整记录见 `docs/deployments/20260917-180422-v0.1.2-alpha.1.md`。
 - 生产 URL 别名验收：以真实图片和字面值 `%20w` 调用成功完成模型推理，响应规范化为 `side_to_move=red`，FEN 使用 `w`；健康检查报告 `version=0.1.2a2`。完整记录见 `docs/deployments/20260917-181607-v0.1.2-alpha.2.md`。
 - 生产简化 FEN 验收：真实图片响应的 `fen` 只包含布局与 `w`，`full_fen` 保留完整形式；健康检查报告 `version=0.1.2a3`。完整记录见 `docs/deployments/20260917-183215-v0.1.2-alpha.3.md`。
