@@ -11,8 +11,9 @@
 - systemd：`rakuxq-api.service`
 - 回环端口：`127.0.0.1:8040`
 - 公网入口：`https://xq.rakubank.com/v1/recognitions`
-- FEN 解题入口：`https://xq.rakubank.com/v1/solutions`（非商业验证阶段仅允许维护者个人 Key）
+- FEN 远程解题入口：`https://xq.rakubank.com/v1/solutions`（当前仍仅允许维护者个人 Key；与免费 Lab 分离）
 - 棋局实验室：`https://xq.rakubank.com/lab`
+- 免费 Lab 引擎入口：`POST /api/lab/analyses`（仅同源网页、免 Key、单次最多 3 秒）
 - 标准 FEN 入口：`https://xq.rakubank.com/fen/<standard-fen>`
 - 健康检查：`https://xq.rakubank.com/healthz`
 - 密钥库：`/opt/raku/secrets/rakuxq/api-keys.sqlite3`
@@ -101,7 +102,7 @@ python -m rakuxq_api.key_cli --database /opt/raku/secrets/rakuxq/api-keys.sqlite
 python -m rakuxq_api.key_cli --database /opt/raku/secrets/rakuxq/api-keys.sqlite3 revoke --id <key-id>
 ```
 
-官方托管标准为 `39 元人民币/年`，续费联系微信 `lgtqcn`。收款后使用 `renew` 延长原 Key；只有泄露或主动更换时才重新签发。
+RakuXQ Lab 网站内使用永久免费且无需 Key。`39 元人民币/年`只适用于当前图片识别等远程 API 托管 Key，续费联系微信 `lgtqcn`；未来远程引擎 API 若商业开放，必须另行明确授权与定价。收款后使用 `renew` 延长原 Key；只有泄露或主动更换时才重新签发。
 
 ## 独立引擎基线升级
 
@@ -121,6 +122,7 @@ Pikafish 程序与 NNUE 不进入应用发布目录或 Git。升级时先在
 - `/v1/solutions`、`/v1/analyses` 和 `/v1/solve` 除有效 Key 外还必须命中
   `RAKUXQ_ENGINE_ALLOWED_KEY_IDS`；其他 Key 返回 `403 ENGINE_ACCESS_DENIED`。引擎未配置时明确返回
   `503 ENGINE_NOT_CONFIGURED`。
+- `/api/lab/analyses` 只服务 RakuXQ Lab：不要求 Key，但必须通过同源 `Origin`/Fetch Metadata 校验，Nginx 按 IP 限制每分钟 60 次、突发 8 次和并发 1 次，单次搜索预算最多 3000 毫秒。它不进入 OpenAPI，也不替代 `/v1/*` 远程接口。
 - `/`、`/api/public/stats` 与 `/api/public/events` 公开访问，只提供官网资源和匿名指标。
 - `/developers` 与 `/api/public/trial-keys` 公开访问；后者只签发 6 分钟、不可续期的测试 Key。
 - API Key 和密钥库不得进入 Git、聊天、普通日志或部署记录。

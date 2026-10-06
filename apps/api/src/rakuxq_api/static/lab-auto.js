@@ -3,11 +3,8 @@ export function engineTurnAction({
   engineAvailable = false,
   editorActive = false,
   terminal = false,
-  authenticationRequired = false,
-  hasCredentials = false,
 } = {}) {
   if (!engineAvailable || editorActive || terminal || assistMode === "off") return "none";
-  if (authenticationRequired && !hasCredentials) return "credentials";
   return assistMode === "auto" ? "analyze-and-move" : "analyze";
 }
 

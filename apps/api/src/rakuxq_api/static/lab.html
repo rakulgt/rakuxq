@@ -8,9 +8,9 @@
     <title>RakuXQ Lab · 棋局实验室</title>
     <link rel="icon" href="/static/favicon.svg?v=0.4.2a1" type="image/svg+xml" />
     <link rel="stylesheet" href="/static/styles.css?v=0.4.2a1" />
-    <link rel="stylesheet" href="/static/lab.css?v=0.5.2a1" />
+    <link rel="stylesheet" href="/static/lab.css?v=0.5.2a2" />
     <script src="/static/vendor/xiangqi.min.js?v=f9019ac" defer></script>
-    <script type="module" src="/static/lab.js?v=0.5.2a1"></script>
+    <script type="module" src="/static/lab.js?v=0.5.2a2"></script>
   </head>
   <body class="lab-body">
     <div class="ambient ambient-one"></div>
@@ -211,12 +211,9 @@
               </select>
             </label>
             <label class="lab-field">单次思考时间
-              <select id="engine-time"><option value="100">100 ms</option><option value="500">500 ms</option><option value="1000">1 秒</option><option value="3000" selected>3 秒</option><option value="5000">5 秒</option><option value="10000">10 秒</option></select>
+              <select id="engine-time"><option value="100">100 ms</option><option value="500">500 ms</option><option value="1000">1 秒</option><option value="3000" selected>3 秒</option></select>
             </label>
-            <label class="lab-field">API Key（仅本次浏览器会话）
-              <span class="engine-key-entry"><input id="engine-key" type="password" autocomplete="off" placeholder="粘贴有解题权限的 Key" /><button id="engine-key-apply" type="button">应用</button></span>
-            </label>
-            <p class="lab-help">正式站的解题引擎目前只向维护者个人非商业验证 Key 开放。Key 仅保存在当前标签页内存中，不写入地址、棋谱或浏览器永久存储。</p>
+            <p class="lab-help"><strong>网站内研究永久免费，无需 API Key。</strong> 免费 Lab 的单次思考时间最多 3 秒，并设有公平使用限流；面向程序、快捷指令和第三方系统的远程 API 是独立服务，继续使用 Key 鉴权。</p>
           </section>
         </aside>
 

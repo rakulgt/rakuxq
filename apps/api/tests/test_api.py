@@ -110,7 +110,7 @@ def test_public_homepage_and_empty_metrics_are_available_without_api_key():
     assert "让现实中的每一个" in homepage.text
     assert "3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w" in homepage.text
     assert homepage.text.count('<use href="#star') == 14
-    assert "/static/styles.css?v=0.5.2a1" in homepage.text
+    assert "/static/styles.css?v=0.5.2a2" in homepage.text
     assert "拍下棋局 · 读懂局面 · 推荐好棋" in homepage.text
     assert "仅供非商业研究与娱乐，请勿用于赌棋" in homepage.text
     assert "简洁 FEN" not in homepage.text
@@ -151,10 +151,12 @@ def test_lab_and_fixed_prefix_fen_url_are_publicly_accessible():
     assert 'id="position-editor"' in lab.text
     assert 'id="import-file"' in lab.text
     assert 'id="red-assist"' in lab.text
-    assert 'id="engine-key-apply"' in lab.text
+    assert "网站内研究永久免费，无需 API Key" in lab.text
+    assert 'id="engine-key-apply"' not in lab.text
     lab_script = client.get("/static/lab.js").text
     assert "/static/lab-core.js" in lab_script
-    assert "/static/lab-auto.js?v=0.5.2a1" in lab_script
+    assert "/static/lab-auto.js?v=0.5.2a2" in lab_script
+    assert 'fetch("/api/lab/analyses"' in lab_script
     assert 'byId("lab-new").addEventListener("click", () => startNewGame(START_FEN' in lab_script
     assert "new-game-dialog" not in lab_script
 
@@ -342,6 +344,43 @@ def test_analysis_endpoint_returns_red_perspective_integer_score():
     assert payload["score"]["value"] == 186
     assert payload["score"]["display"] == "红优 186"
     assert payload["time_ms"] == 250
+
+
+def test_lab_analysis_is_free_for_same_origin_browser_requests():
+    fake_engine = FixedAnalysisEngine()
+    with patch("rakuxq_api.main.analysis_engine", fake_engine):
+        response = client.post(
+            "/api/lab/analyses",
+            headers={"Origin": "http://testserver", "Sec-Fetch-Site": "same-origin"},
+            json={"fen": START_FEN, "movetime_ms": 1000},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["best_move"]["notation"] == "炮二平五"
+    assert response.headers["cache-control"] == "no-store, max-age=0"
+    assert "/api/lab/analyses" not in client.get("/openapi.json").json()["paths"]
+
+
+def test_lab_analysis_rejects_non_browser_and_cross_origin_requests():
+    for headers in ({}, {"Origin": "https://example.com", "Sec-Fetch-Site": "cross-site"}):
+        response = client.post(
+            "/api/lab/analyses",
+            headers=headers,
+            json={"fen": START_FEN, "movetime_ms": 1000},
+        )
+        assert response.status_code == 403
+        assert response.json()["detail"]["code"] == "LAB_SAME_ORIGIN_REQUIRED"
+
+
+def test_lab_analysis_caps_free_search_at_three_seconds():
+    response = client.post(
+        "/api/lab/analyses",
+        headers={"Origin": "http://testserver", "Sec-Fetch-Site": "same-origin"},
+        json={"fen": START_FEN, "movetime_ms": 3001},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "LAB_ANALYSIS_TIME_INVALID"
 
 
 def test_solution_endpoint_defaults_to_three_seconds_and_returns_display_text():

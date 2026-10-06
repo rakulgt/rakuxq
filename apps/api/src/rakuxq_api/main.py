@@ -8,6 +8,7 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import urlsplit
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
@@ -107,6 +108,9 @@ class SolutionRequest(BaseModel):
     time_ms: int | None = None
 
 
+LAB_MAX_MOVETIME_MS = 3_000
+
+
 def _renewal_detail() -> dict[str, object]:
     return {
         "wechat": settings.renewal_wechat,
@@ -192,6 +196,48 @@ def require_engine_api_key(
             },
         )
     return validation
+
+
+def require_lab_same_origin(request: Request) -> None:
+    """Keep the free Lab channel browser-local without weakening remote API auth."""
+    origin = request.headers.get("origin")
+    host = request.headers.get("host", "").lower()
+    forwarded_proto = request.headers.get("x-forwarded-proto")
+    expected_scheme = (forwarded_proto or request.url.scheme).split(",", 1)[0].strip()
+    fetch_site = request.headers.get("sec-fetch-site")
+    try:
+        parsed_origin = urlsplit(origin or "")
+    except ValueError:
+        parsed_origin = urlsplit("")
+    if (
+        not origin
+        or parsed_origin.scheme != expected_scheme
+        or parsed_origin.netloc.lower() != host
+        or (fetch_site and fetch_site != "same-origin")
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "LAB_SAME_ORIGIN_REQUIRED",
+                "message": "Free engine analysis is available from the RakuXQ Lab page.",
+            },
+        )
+
+
+def _lab_analysis_time(requested: int | None) -> int:
+    value = settings.engine_default_movetime_ms if requested is None else requested
+    if value < 50 or value > LAB_MAX_MOVETIME_MS:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "LAB_ANALYSIS_TIME_INVALID",
+                "message": (
+                    "Lab movetime_ms must be between 50 and "
+                    f"{LAB_MAX_MOVETIME_MS} milliseconds"
+                ),
+            },
+        )
+    return value
 
 
 @asynccontextmanager
@@ -518,6 +564,18 @@ def analyze_position(
     _api_key: Annotated[APIKeyValidation, Depends(require_engine_api_key)],
 ):
     return analysis_to_dict(_run_analysis(payload.fen, payload.movetime_ms))
+
+
+@app.post("/api/lab/analyses", include_in_schema=False)
+def analyze_lab_position(
+    payload: AnalysisRequest,
+    _same_origin: Annotated[None, Depends(require_lab_same_origin)],
+):
+    result = _run_analysis(payload.fen, _lab_analysis_time(payload.movetime_ms))
+    return JSONResponse(
+        analysis_to_dict(result),
+        headers={"Cache-Control": "no-store, max-age=0"},
+    )
 
 
 @app.post("/v1/solutions")

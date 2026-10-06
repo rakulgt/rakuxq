@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-10-05T23:35:50+08:00",
+  "updated_at": "2026-10-06T20:30:00+08:00",
   "redistributed_by_rakuxq": false,
   "technical_baselines": [
     {
@@ -63,7 +63,7 @@
         "license_summary": "No commercial use without permission",
         "license_url": "https://github.com/official-pikafish/Networks/blob/master/README.md"
       },
-      "rakuxq_scope": "maintainer-only non-commercial hosted validation",
+      "rakuxq_scope": "free public non-commercial Lab study; paid remote engine API disabled",
       "production_deployed": true,
       "verified_on": {
         "os": "OpenCloudOS 9",

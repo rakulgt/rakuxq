@@ -1,9 +1,9 @@
 # RakuXQ API v1
 
 官方托管地址：`https://xq.rakubank.com`。视觉客户端默认调用完整 JSON 接口
-`POST /v1/recognitions`，仅在 `status` 为 `accepted` 时消费 `fen` 字段。实验性引擎接口
-可在配置了本地引擎的自托管环境使用；官方托管的非商业验证引擎仅向维护者个人 Key 开放，
-六分钟临时 Key 和普通识别 Key 返回 `403 ENGINE_ACCESS_DENIED`。
+`POST /v1/recognitions`，仅在 `status` 为 `accepted` 时消费 `fen` 字段。RakuXQ Lab 网站内
+研究永久免费且无需 Key；面向程序的 `/v1/solutions`、`/v1/analyses` 与 `/v1/solve` 仍是
+独立鉴权的远程接口，六分钟临时 Key 和普通识别 Key 当前返回 `403 ENGINE_ACCESS_DENIED`。
 
 ## 标准 FEN 网页入口
 
@@ -14,8 +14,19 @@ https://xq.rakubank.com/fen/3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4%20w
 ```
 
 地址只需要把 FEN 中的空格编码为 `%20`；浏览器与 Apple 快捷指令通常会自动完成。网页也兼容
-`/#/<FEN>` 和 `/lab?fen=<FEN>`。两字段输入会在需要调用引擎时规范化为六字段形式，API Key
-必须继续通过 `Authorization` 或 `X-API-Key` 请求头传递，禁止加入 URL。
+`/#/<FEN>` 和 `/lab?fen=<FEN>`。两字段输入会在需要调用引擎时规范化为六字段形式。Lab
+网页内分析不需要 API Key；远程 API 的 Key 必须继续通过 `Authorization` 或 `X-API-Key`
+请求头传递，禁止加入 URL。
+
+## 免费 RakuXQ Lab 与远程 API 的边界
+
+访问 [`/lab`](https://xq.rakubank.com/lab) 可以免费走棋、打谱、复盘、请求最佳着法或开启红黑方
+自动行棋，不收费且不要求 Key。浏览器内部使用不进入 OpenAPI 的 `POST /api/lab/analyses`：只接受
+同源网页请求，单次思考最多 3000 毫秒，并受独立 IP 频率和并发保护。该入口不承诺远程 API 的
+稳定调用契约，不应用于脚本、快捷指令或第三方系统。
+
+程序化调用继续使用 `/v1/*` 并按本页“鉴权与有效期”传 Key。未来可能收费的只是这些远程托管
+接口；网站上的 RakuXQ Lab 保持免费。
 
 ## 鉴权与有效期
 

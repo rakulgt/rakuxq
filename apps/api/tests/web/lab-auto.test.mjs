@@ -7,8 +7,6 @@ const ready = {
   engineAvailable: true,
   editorActive: false,
   terminal: false,
-  authenticationRequired: true,
-  hasCredentials: true,
 };
 
 test("single-side engine waits on the human turn and moves on its own turn", () => {
@@ -19,10 +17,6 @@ test("single-side engine waits on the human turn and moves on its own turn", () 
 test("two enabled sides keep requesting sequential engine moves", () => {
   assert.equal(engineTurnAction({ ...ready, assistMode: "auto" }), "analyze-and-move");
   assert.equal(engineTurnAction({ ...ready, assistMode: "auto" }), "analyze-and-move");
-});
-
-test("hosted automatic play asks for credentials before analysis", () => {
-  assert.equal(engineTurnAction({ ...ready, assistMode: "auto", hasCredentials: false }), "credentials");
 });
 
 test("terminal positions never request another move", () => {

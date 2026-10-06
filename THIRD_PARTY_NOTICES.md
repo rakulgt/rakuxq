@@ -37,11 +37,12 @@ the UCI protocol.
 - NNUE weights: separately licensed by the Pikafish Networks project; the official weights prohibit
   commercial use without permission.
 - Distribution: neither the Pikafish executable nor its NNUE weights are included in this MIT
-  repository, Python wheel, or application container image. A separately installed server copy is
-  restricted to the maintainer's allowlisted key for private non-commercial validation; trial,
-  ordinary, and customer keys cannot access it.
+  repository, Python wheel, or application container image. A separately installed server copy may
+  support the free, non-commercial RakuXQ Lab. The remote engine API remains restricted to the
+  maintainer's allowlisted key; trial, ordinary, and customer keys cannot access it, and no paid
+  engine service is offered without permission.
 - Stable local setup baseline: official `Pikafish-2026-09-06` release, downloaded independently.
-- Current maintainer-only hosted baseline: upstream commit `1c66b9b2` (2026-10-01) with its matching
+- Current free non-commercial Lab baseline: upstream commit `1c66b9b2` (2026-10-01) with its matching
   `master-net`; exact provenance and SHA-256 values are recorded in `engines/manifest.json`.
 
 Users who install Pikafish separately are responsible for reviewing and complying with both the

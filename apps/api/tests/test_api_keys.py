@@ -195,6 +195,10 @@ def test_engine_routes_require_an_explicitly_allowed_personal_key(tmp_path):
         patch("rakuxq_api.main.settings", protected_settings),
         patch("rakuxq_api.main.api_key_store", store),
     ):
+        missing = client.post(
+            "/v1/analyses",
+            json={"fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w"},
+        )
         denied = client.post(
             "/v1/solutions",
             headers={"Authorization": f"Bearer {customer_plaintext}"},
@@ -212,6 +216,8 @@ def test_engine_routes_require_an_explicitly_allowed_personal_key(tmp_path):
             },
         )
 
+    assert missing.status_code == 401
+    assert missing.json()["detail"]["code"] == "API_KEY_REQUIRED"
     assert denied.status_code == 403
     assert denied.json()["detail"]["code"] == "ENGINE_ACCESS_DENIED"
     assert owner.status_code == 503

@@ -20,9 +20,9 @@ RakuXQ 是由 **rakulgt / Raku Intelligence（罗酷智能）** 发起的开源�
 高水平参考着法，用于复盘、研究和学习；开发者可以使用“棋盘图片 → FEN”和
 “FEN → solution”HTTP API 接入自己的工具。公开服务仅供非商业研究与娱乐，请勿用于赌棋。
 
-> 当前源码版本：`v0.5.2-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
-> Pikafish UCI 适配器与中文着法进入非商业技术验证。官方托管仅向维护者个人 Key 开放引擎，
-> 不向临时 Key 或普通客户 Key 提供受限 NNUE 能力。
+> 当前源码版本：`v0.5.2-alpha.2`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
+> Pikafish UCI 适配器与中文着法用于非商业研究。RakuXQ Lab 在网站内永久免费、无需 Key；
+> 面向程序的远程引擎 API 仍不向临时 Key 或普通客户 Key 提供受限 NNUE 能力。
 
 ### 从 lgtXQ 到 RakuXQ
 
@@ -61,7 +61,7 @@ RakuXQ 的发起人是 **李国泰（rakulgt，<lgt@rakubank.com>）**。这个�
 - **公开运行面板**：官网匿名展示最近 30 天、最多 10 万条交互与历史累计统计，可连续翻页并只显示近似国家；原始 IP、地区、城市、坐标、原图和客户标识均不公开。
 - **即领即试**：公开开发文档可领取明文只显示一次、6 分钟失效的临时测试 Key。
 - **交互局面研究器**：首页经典残局支持合法落点、走子、吃子、悔棋、重置、实时 FEN 与外部深入研究。
-- **RakuXQ Lab**：标准 FEN 直达统一研究工作台；桌面顶栏、分组侧边菜单和常驻招法轨提供一键标准新局、引擎执红/黑、分析与立即出招、分支导航、翻转、自由摆子、本地文件导入、保存分享和非破坏变化树。
+- **RakuXQ Lab**：网站内永久免费且无需 Key；标准 FEN 直达统一研究工作台，支持一键标准新局、引擎执红/黑、分析与立即出招、分支导航、翻转、自由摆子、本地文件导入、保存分享和非破坏变化树。
 
 ### 标准 FEN 直达
 
@@ -71,7 +71,7 @@ RakuXQ 的发起人是 **李国泰（rakulgt，<lgt@rakubank.com>）**。这个�
 https://xq.rakubank.com/fen/3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4%20w
 ```
 
-竞品风格的 `/#/<FEN>` 和通用 `/lab?fen=<FEN>` 也会被兼容解析。API Key 永远不进入 URL。
+竞品风格的 `/#/<FEN>` 和通用 `/lab?fen=<FEN>` 也会被兼容解析。网站内研究不需要 API Key；程序、快捷指令和第三方系统调用的 `/v1/*` 远程接口继续独立鉴权。
 
 ### 处理流程
 
@@ -174,8 +174,9 @@ curl -X POST http://127.0.0.1:8000/v1/fen \
 互操作验证；生产商用前必须取得权重授权。安装、环境变量和调用示例见
 [`docs/engine.md`](docs/engine.md)。
 
-维护者个人非商业验证环境当前固定到 Pikafish `1c66b9b2`（2026-10-01）及匹配的
-`master-net`；它只对白名单维护者 Key 开放，不改变临时 Key、普通 Key 和客户 Key 的禁用边界。
+免费、非商业 RakuXQ Lab 当前固定到 Pikafish `1c66b9b2`（2026-10-01）及匹配的
+`master-net`；网站内无需 Key，远程 API 仍只对白名单维护者 Key 开放，不改变临时 Key、普通 Key
+和客户 Key 的禁用边界。
 
 推荐的新接口直接接收 FEN；`time_ms` 可省略，默认搜索预算为 3000 毫秒：
 
@@ -245,10 +246,11 @@ screenshots, web boards, physical-board photos, perspective distortion, cropping
 noise, and partial occlusion. Version `0.5` adds a product-level FEN-to-solution endpoint with
 Chinese best-move notation, fixed-red-perspective scores, and principal variations.
 
-> Current source release: `v0.5.2-alpha.1`. The vision pipeline works on a growing set of real
+> Current source release: `v0.5.2-alpha.2`. The vision pipeline works on a growing set of real
 > screenshots and physical-board photos. The Pikafish UCI adapter is undergoing non-commercial
-> interoperability validation. The hosted engine is restricted to the maintainer's personal key;
-> trial and ordinary customer keys cannot use the restricted NNUE network.
+> interoperability validation. The on-site RakuXQ Lab is free and requires no key; the separate
+> remote engine API remains restricted to the maintainer's key, and trial or ordinary customer
+> keys cannot use the restricted NNUE network.
 
 ### From lgtXQ to RakuXQ
 
@@ -306,7 +308,7 @@ code into the first release. See [`docs/history.md`](docs/history.md) for the fu
   expires after six minutes.
 - **Interactive position playground**: the homepage puzzle supports legal targets, moves,
   captures, undo, reset, live FEN, and handoff to an external analysis page.
-- **RakuXQ Lab**: a standard-FEN deep link opens one compact workspace with a desktop action bar,
+- **RakuXQ Lab**: free on-site study with no API key; a standard-FEN deep link opens one compact workspace with a desktop action bar,
   grouped side drawer, persistent move rail, one-click standard new game, per-side engine control,
   analysis/play-now actions, branch navigation, position editing, import/export, and local recovery.
 
@@ -395,14 +397,14 @@ convention that the lower side is asking for its move. See [`docs/api.md`](docs/
 RakuXQ `v0.3` can control a separately installed Pikafish process through UCI and return an ICCS
 best move, PV, search metadata, and an integer score with a fixed red perspective. Ordinary scores
 are displayed as `红优 186`, `黑优 243`, or `均势 0`; forced mates use `红方 KO(N)` or `黑方 KO(N)`. Neither Pikafish nor
-its official NNUE weights are distributed by this repository. The current path is limited to local,
-non-commercial interoperability validation until hosted-use authorization is obtained. See
+its official NNUE weights are distributed by this repository. The current path is limited to free,
+non-commercial local use and on-site Lab study; paid remote hosting still requires authorization. See
 [`docs/engine.md`](docs/engine.md) for setup, environment variables, licensing boundaries, and API
 examples.
 
-The maintainer-only non-commercial server baseline currently pins Pikafish `1c66b9b2`
-(2026-10-01) and its matching `master-net`. It remains unavailable to trial, ordinary, and customer
-keys.
+The free, non-commercial Lab baseline currently pins Pikafish `1c66b9b2` (2026-10-01) and its
+matching `master-net`. The website requires no key; the remote engine API remains unavailable to
+trial, ordinary, and customer keys.
 
 ### Quality, privacy, and model provenance
 

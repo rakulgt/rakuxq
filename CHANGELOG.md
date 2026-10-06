@@ -4,6 +4,20 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.5.2-alpha.2] - 2026-10-06
+
+### 中文
+
+- RakuXQ Lab 改为网站内永久免费、无需 API Key；走棋、打谱、分析、双方 AI 辅导和自动对弈均直接使用。
+- 新增独立的同源 Lab 分析通道，单次搜索最多 3 秒，并配置独立 IP 频率与并发保护；它不进入 OpenAPI，也不削弱 `/v1/*` 远程接口鉴权。
+- 明确商业边界：未来可能收费的是程序、快捷指令和第三方系统远程调用；网站内非商业研究和学习保持免费。
+
+### English
+
+- Made the on-site RakuXQ Lab free and keyless for board study, analysis, per-side assistance, and automatic play.
+- Added a separate same-origin Lab analysis channel with a three-second search cap and dedicated per-IP rate/concurrency protection; it is excluded from OpenAPI and does not weaken `/v1/*` authentication.
+- Clarified the commercial boundary: only programmatic remote hosting may be charged in the future, while non-commercial study on the website remains free.
+
 ## [0.5.2-alpha.1] - 2026-10-06
 
 ### 中文
