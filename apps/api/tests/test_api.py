@@ -110,7 +110,10 @@ def test_public_homepage_and_empty_metrics_are_available_without_api_key():
     assert "让现实中的每一个" in homepage.text
     assert "3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w" in homepage.text
     assert homepage.text.count('<use href="#star') == 14
-    assert "/static/styles.css?v=0.5.1a2" in homepage.text
+    assert "/static/styles.css?v=0.5.2a1" in homepage.text
+    assert "拍下棋局 · 读懂局面 · 推荐好棋" in homepage.text
+    assert "仅供非商业研究与娱乐，请勿用于赌棋" in homepage.text
+    assert "简洁 FEN" not in homepage.text
     assert "平均视觉识别耗时" in homepage.text
     assert "来源国家" in homepage.text
     assert "/static/vendor/xiangqi.min.js?v=f9019ac" in homepage.text
@@ -148,8 +151,10 @@ def test_lab_and_fixed_prefix_fen_url_are_publicly_accessible():
     assert 'id="position-editor"' in lab.text
     assert 'id="import-file"' in lab.text
     assert 'id="red-assist"' in lab.text
+    assert 'id="engine-key-apply"' in lab.text
     lab_script = client.get("/static/lab.js").text
     assert "/static/lab-core.js" in lab_script
+    assert "/static/lab-auto.js?v=0.5.2a1" in lab_script
     assert 'byId("lab-new").addEventListener("click", () => startNewGame(START_FEN' in lab_script
     assert "new-game-dialog" not in lab_script
 

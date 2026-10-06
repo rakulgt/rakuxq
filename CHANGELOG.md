@@ -4,6 +4,20 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.5.2-alpha.1] - 2026-10-06
+
+### 中文
+
+- 首页主文案改为面向普通象棋爱好者的“拍下棋局、读懂局面、推荐好棋”，移除首屏 FEN/NNUE 术语，并明确非商业研究、娱乐与禁赌边界。
+- 修复实验室引擎按钮只检查服务器可用性、未检查当前标签页授权 Key 的交互缺陷；需要 Key 时会直接进入设置并明确提示，不再表现为点击后无响应。
+- 将单边自动应招、双边连续自动对弈、终局停止和鉴权门控提取为可测试状态；自动执棋方回合禁止手动落子，双引擎会逐手串行计算，直至将死、困毙、和棋或用户关闭自动行棋。
+
+### English
+
+- Rewrote the homepage hero for ordinary Xiangqi players, removing FEN/NNUE jargon from the first screen and stating the non-commercial research, recreation, and no-gambling boundary.
+- Fixed misleading Lab engine controls that checked server readiness but not the current tab's authorized key; missing credentials now lead directly to a clear in-session setup flow.
+- Extracted testable single-side reply, two-side sequential autoplay, terminal-stop, and authorization state; humans cannot move for an engine-controlled side, and two engines continue until checkmate, stalemate, draw, or manual stop.
+
 ## [0.5.1-alpha.2] - 2026-10-06
 
 ### 中文

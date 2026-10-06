@@ -5,9 +5,9 @@
 [![Python](https://img.shields.io/badge/Python-3.11--3.14-3776AB.svg)](https://www.python.org/)
 [![Release](https://img.shields.io/github/v/release/rakulgt/rakuxq?include_prereleases)](https://github.com/rakulgt/rakuxq/releases)
 
-**Robust Xiangqi image recognition with a clean path to NNUE-powered move analysis.**
+**Photograph a Xiangqi position, understand it, and get a strong reference move in seconds.**
 
-**先把复杂场景中的中国象棋图片可靠转换为 FEN，再连接 NNUE 引擎计算最佳着法。**
+**随手拍下棋盘或上传截图，数秒内获得高水平参考着法，用于复盘、研究和学习。**
 
 [中文](#中文) · [English](#english)
 
@@ -16,11 +16,11 @@
 ## 中文
 
 RakuXQ 是由 **rakulgt / Raku Intelligence（罗酷智能）** 发起的开源中国象棋视觉与
-解题基础设施。第一阶段提供“棋盘图片 → FEN”的通用 HTTP API，面向手机截图、网页棋盘、
-真实棋盘照片、斜拍、裁剪、背景噪声和部分遮挡；`v0.5` 已增加 `FEN → solution` 接口，
-通过可替换 UCI 引擎返回中文最佳着法、固定红方视角评分和候选变化。
+解题基础设施。普通棋友可以随手拍下棋盘或上传截图，让系统读懂当前局面，并在数秒内获得
+高水平参考着法，用于复盘、研究和学习；开发者可以使用“棋盘图片 → FEN”和
+“FEN → solution”HTTP API 接入自己的工具。公开服务仅供非商业研究与娱乐，请勿用于赌棋。
 
-> 当前源码版本：`v0.5.0-alpha.6`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
+> 当前源码版本：`v0.5.2-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
 > Pikafish UCI 适配器与中文着法进入非商业技术验证。官方托管仅向维护者个人 Key 开放引擎，
 > 不向临时 Key 或普通客户 Key 提供受限 NNUE 能力。
 
@@ -245,7 +245,7 @@ screenshots, web boards, physical-board photos, perspective distortion, cropping
 noise, and partial occlusion. Version `0.5` adds a product-level FEN-to-solution endpoint with
 Chinese best-move notation, fixed-red-perspective scores, and principal variations.
 
-> Current source release: `v0.5.0-alpha.6`. The vision pipeline works on a growing set of real
+> Current source release: `v0.5.2-alpha.1`. The vision pipeline works on a growing set of real
 > screenshots and physical-board photos. The Pikafish UCI adapter is undergoing non-commercial
 > interoperability validation. The hosted engine is restricted to the maintainer's personal key;
 > trial and ordinary customer keys cannot use the restricted NNUE network.

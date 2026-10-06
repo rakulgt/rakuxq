@@ -12,6 +12,7 @@ import {
   toPublicFen,
   validateImportedTree,
 } from "/static/lab-core.js?v=0.4.2a1";
+import { engineTurnAction, terminalOutcome } from "/static/lab-auto.js?v=0.5.2a1";
 
 const svgNamespace = "http://www.w3.org/2000/svg";
 const files = "abcdefghi";
@@ -44,7 +45,9 @@ let analysisArrow = null;
 let analysisController = null;
 let analysisGeneration = 0;
 let engineAvailable = false;
+let engineAuthenticationRequired = false;
 let autoTimer = null;
+let pendingEngineRequest = null;
 let editorPosition = null;
 let editorSelectedPiece = "P";
 
@@ -93,6 +96,19 @@ function currentFen() {
 
 function currentAssistMode() {
   return game.turn() === "r" ? byId("red-assist").value : byId("black-assist").value;
+}
+
+function hasEngineCredentials() {
+  return Boolean(byId("engine-key").value.trim());
+}
+
+function currentTerminalOutcome() {
+  return terminalOutcome({
+    turn: game.turn(),
+    checkmate: game.in_checkmate(),
+    stalemate: game.in_stalemate(),
+    draw: game.in_draw(),
+  });
 }
 
 function assistControl(side) {
@@ -203,8 +219,8 @@ function describeState() {
   }
   const side = game.turn() === "r" ? "红方" : "黑方";
   turnOutput.textContent = `${side}走`;
-  if (game.in_checkmate()) return `${side}被将死`;
-  if (game.in_stalemate()) return "无子可走，和棋";
+  if (game.in_checkmate()) return currentTerminalOutcome();
+  if (game.in_stalemate()) return currentTerminalOutcome();
   if (game.in_draw()) return "当前局面为和棋";
   if (game.in_check()) return `${side}被将军`;
   return `${side}行棋`;
@@ -288,9 +304,10 @@ function renderEngineToolbar() {
   const redAuto = assistControl("r").value === "auto";
   const blackAuto = assistControl("b").value === "auto";
   const analysisMode = assistControl("r").value === "hint" && assistControl("b").value === "hint";
+  const terminal = Boolean(currentTerminalOutcome());
   [["engine-red", redAuto], ["engine-black", blackAuto], ["analysis-mode", analysisMode]].forEach(([id, active]) => {
     const button = byId(id);
-    button.disabled = !engineAvailable || Boolean(editorPosition);
+    button.disabled = !engineAvailable || Boolean(editorPosition) || terminal;
     button.classList.toggle("active", active);
     button.setAttribute("aria-pressed", String(active));
   });
@@ -434,6 +451,11 @@ function selectSquare(square) {
     render();
     return;
   }
+  if (currentAssistMode() === "auto") {
+    transientMessage = `${game.turn() === "r" ? "红方" : "黑方"}由引擎执棋，正在等待引擎落子`;
+    render();
+    return;
+  }
   const piece = game.get(square);
   if (selectedSquare === square) {
     selectedSquare = null;
@@ -492,7 +514,8 @@ function headersForEngine() {
 function friendlyEngineError(status, payload) {
   const code = payload?.detail?.code;
   if (status === 401 || code === "API_KEY_REQUIRED") return "当前服务需要 API Key；可在设置中仅为本次会话填写。";
-  if (status === 403) return "API Key 已过期或不可用。";
+  if (code === "ENGINE_ACCESS_DENIED") return "这个 Key 没有解题引擎权限；正式站目前仅开放维护者个人非商业验证 Key。";
+  if (status === 403) return "API Key 已过期、被撤销或不可用。";
   if (status === 503) return "当前服务没有配置可用的解题引擎。";
   return payload?.detail?.message || payload?.detail || `引擎请求失败（HTTP ${status}）`;
 }
@@ -514,6 +537,10 @@ async function analyzeCurrent({ manual = false } = {}) {
     return null;
   }
   if (game.in_checkmate() || game.in_draw() || game.in_stalemate()) return null;
+  if (engineAuthenticationRequired && !hasEngineCredentials()) {
+    requestEngineCredentials(manual ? null : game.turn(), manual ? "manual" : currentAssistMode());
+    return null;
+  }
   clearPendingAnalysis();
   const generation = analysisGeneration;
   const targetNode = tree.current_node_id;
@@ -531,7 +558,12 @@ async function analyzeCurrent({ manual = false } = {}) {
       signal: analysisController.signal,
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(friendlyEngineError(response.status, payload));
+    if (!response.ok) {
+      const requestError = new Error(friendlyEngineError(response.status, payload));
+      requestError.status = response.status;
+      requestError.code = payload?.detail?.code;
+      throw requestError;
+    }
     if (generation !== analysisGeneration || targetNode !== tree.current_node_id || targetFen !== currentFen()) return null;
     tree.nodes[targetNode].analysis = payload;
     engineAvailable = true;
@@ -549,6 +581,14 @@ async function analyzeCurrent({ manual = false } = {}) {
     return payload;
   } catch (error) {
     if (error.name === "AbortError") return null;
+    if (error.status === 401 || error.status === 403) {
+      const side = game.turn();
+      const mode = manual ? "manual" : currentAssistMode();
+      if (mode === "auto") assistControl(side).value = "off";
+      pendingEngineRequest = { side, mode };
+      switchTab("settings");
+      window.setTimeout(() => byId("engine-key").focus(), 0);
+    }
     transientMessage = error.message;
     showAlert(error.message);
     render();
@@ -574,7 +614,28 @@ async function playEngineMove() {
 
 function maybeAssist() {
   const mode = currentAssistMode();
-  if (engineAvailable && mode !== "off") analyzeCurrent();
+  const outcome = currentTerminalOutcome();
+  if (outcome) {
+    ["r", "b"].forEach((side) => {
+      if (assistControl(side).value === "auto") assistControl(side).value = "off";
+    });
+    transientMessage = `本局结束：${outcome}`;
+    render();
+    return;
+  }
+  const action = engineTurnAction({
+    assistMode: mode,
+    engineAvailable,
+    editorActive: Boolean(editorPosition),
+    terminal: false,
+    authenticationRequired: engineAuthenticationRequired,
+    hasCredentials: hasEngineCredentials(),
+  });
+  if (action === "credentials") {
+    requestEngineCredentials(game.turn(), mode);
+    return;
+  }
+  if (action !== "none") analyzeCurrent();
 }
 
 async function checkEngine() {
@@ -583,6 +644,7 @@ async function checkEngine() {
     const response = await fetch("/healthz", { cache: "no-store" });
     const health = await response.json();
     engineAvailable = Boolean(health.engine_ready);
+    engineAuthenticationRequired = Boolean(health.authentication_required);
     pill.className = `engine-pill ${engineAvailable ? "ready" : "unavailable"}`;
     pill.textContent = engineAvailable ? "引擎就绪" : "仅棋盘模式";
     if (engineAvailable && health.engine?.version) pill.title = `${health.engine.version} · ${health.engine.network_sha256 || ""}`;
@@ -590,6 +652,7 @@ async function checkEngine() {
     renderAnalysis();
   } catch {
     engineAvailable = false;
+    engineAuthenticationRequired = false;
     pill.className = "engine-pill unavailable";
     pill.textContent = "引擎状态未知";
     updateEngineControls();
@@ -619,10 +682,44 @@ function setMenuOpen(open) {
 
 function toggleEngineSide(side) {
   const control = assistControl(side);
-  control.value = control.value === "auto" ? "off" : "auto";
+  const enabling = control.value !== "auto";
+  if (enabling && engineAuthenticationRequired && !hasEngineCredentials()) {
+    requestEngineCredentials(side);
+    return;
+  }
+  pendingEngineRequest = null;
+  control.value = enabling ? "auto" : "off";
   transientMessage = `${side === "r" ? "红方" : "黑方"}自动行棋${control.value === "auto" ? "已开启" : "已关闭"}`;
   render();
   maybeAssist();
+}
+
+function requestEngineCredentials(side, mode = "auto") {
+  pendingEngineRequest = { side, mode };
+  switchTab("settings");
+  const sideName = side === "r" ? "红方" : (side === "b" ? "黑方" : "当前局面分析");
+  transientMessage = `启用${mode === "auto" ? `引擎执${sideName.slice(0, 1)}` : sideName}前，请填写有解题权限的 API Key`;
+  showAlert(`尚未启用${mode === "auto" ? `${sideName}自动行棋` : sideName}：正式站的解题引擎需要授权 Key。Key 只保存在当前标签页内存中。`);
+  render();
+  window.setTimeout(() => byId("engine-key").focus(), 0);
+}
+
+function applyEngineCredentials() {
+  if (engineAuthenticationRequired && !hasEngineCredentials()) {
+    showAlert("请先填写 API Key，再启用自动行棋。");
+    byId("engine-key").focus();
+    return;
+  }
+  const request = pendingEngineRequest;
+  pendingEngineRequest = null;
+  if (request?.side && request.mode === "auto") assistControl(request.side).value = "auto";
+  showAlert("");
+  transientMessage = request?.side && request.mode === "auto"
+    ? `${request.side === "r" ? "红方" : "黑方"}自动行棋已开启`
+    : "API Key 已在当前标签页生效";
+  render();
+  if (request?.mode === "manual") analyzeCurrent({ manual: true });
+  else maybeAssist();
 }
 
 function toggleAnalysisMode() {
@@ -697,6 +794,7 @@ function startNewGame(fen, message) {
   resetTree(fen);
   showAlert("");
   if (window.location.pathname !== "/lab") history.replaceState(null, "", "/lab");
+  maybeAssist();
 }
 
 function applyEditedPosition() {
@@ -707,6 +805,7 @@ function applyEditedPosition() {
     resetTree(fen);
     showAlert("");
     if (window.location.pathname !== "/lab") history.replaceState(null, "", "/lab");
+    maybeAssist();
   } catch (error) {
     byId("editor-error").textContent = error.message;
   }
@@ -752,6 +851,7 @@ function importValue(value) {
   persist();
   render();
   history.replaceState(null, "", canonicalFenPath(currentFen()));
+  maybeAssist();
 }
 
 function download(name, type, contents) {
@@ -888,6 +988,13 @@ function bindEvents() {
   byId("lab-copy-link").addEventListener("click", (event) => flashCopy(event.currentTarget, `${location.origin}${canonicalFenPath(currentFen())}`));
   byId("analysis-run").addEventListener("click", () => analyzeCurrent({ manual: true }));
   ["red-assist", "black-assist", "engine-time"].forEach((id) => byId(id).addEventListener("change", () => { render(); maybeAssist(); }));
+  byId("engine-key-apply").addEventListener("click", applyEngineCredentials);
+  byId("engine-key").addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      applyEngineCredentials();
+    }
+  });
   byId("lab-import").addEventListener("click", () => { byId("import-error").hidden = true; byId("import-dialog").showModal(); });
   byId("lab-export").addEventListener("click", () => byId("export-dialog").showModal());
   byId("import-file").addEventListener("change", async (event) => {
