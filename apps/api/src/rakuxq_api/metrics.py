@@ -67,8 +67,18 @@ class PublicMetricsStore:
                     ON public_events(occurred_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_public_events_order
                     ON public_events(occurred_at DESC, source_id DESC);
-                CREATE INDEX IF NOT EXISTS idx_public_events_location
-                    ON public_events(country_code, city_name);
+                DROP INDEX IF EXISTS idx_public_events_location;
+                CREATE INDEX IF NOT EXISTS idx_public_events_country
+                    ON public_events(country_code);
+                """
+            )
+            connection.execute(
+                """
+                UPDATE public_events
+                SET region_name = NULL, city_name = NULL,
+                    latitude = NULL, longitude = NULL
+                WHERE region_name IS NOT NULL OR city_name IS NOT NULL
+                   OR latitude IS NOT NULL OR longitude IS NOT NULL
                 """
             )
             self._prune_connection(connection, datetime.now(UTC))
@@ -157,10 +167,10 @@ class PublicMetricsStore:
                     duration_ms,
                     geo.country_code,
                     geo.country_name,
-                    geo.region_name,
-                    geo.city_name,
-                    geo.latitude,
-                    geo.longitude,
+                    None,
+                    None,
+                    None,
+                    None,
                 ),
             )
             if cursor.rowcount != 1:
@@ -208,7 +218,7 @@ class PublicMetricsStore:
             rows = connection.execute(
                 """
                 SELECT occurred_at, status, fen, confidence, duration_ms,
-                       country_code, country_name, region_name, city_name
+                       country_code, country_name
                 FROM public_events
                 WHERE occurred_at >= ?
                 ORDER BY occurred_at DESC, source_id DESC
@@ -240,15 +250,12 @@ class PublicMetricsStore:
             ).fetchall()
             location_rows = connection.execute(
                 """
-                SELECT country_code, country_name, region_name, city_name,
-                       ROUND(AVG(latitude), 2) AS latitude,
-                       ROUND(AVG(longitude), 2) AS longitude,
-                       COUNT(*) AS interactions
+                SELECT country_code, country_name, COUNT(*) AS interactions
                 FROM public_events
                 WHERE occurred_at >= ? AND country_code IS NOT NULL
-                GROUP BY country_code, country_name, region_name, city_name
-                ORDER BY interactions DESC, country_code ASC, city_name ASC
-                LIMIT 100
+                GROUP BY country_code, country_name
+                ORDER BY interactions DESC, country_code ASC
+                LIMIT 250
                 """,
                 (cutoff,),
             ).fetchall()
@@ -302,7 +309,7 @@ class PublicMetricsStore:
             rows = connection.execute(
                 """
                 SELECT occurred_at, status, fen, confidence, duration_ms,
-                       country_code, country_name, region_name, city_name
+                       country_code, country_name
                 FROM public_events
                 WHERE occurred_at >= ? AND occurred_at <= ?
                 ORDER BY occurred_at DESC, source_id DESC
@@ -404,12 +411,10 @@ class PublicMetricsStore:
     @staticmethod
     def _public_event(row: sqlite3.Row) -> dict[str, object]:
         location: dict[str, object] | None = None
-        if row["country_code"] or row["country_name"] or row["city_name"]:
+        if row["country_code"] or row["country_name"]:
             location = {
                 "country_code": row["country_code"],
                 "country": row["country_name"],
-                "region": row["region_name"],
-                "city": row["city_name"],
             }
         return {
             "occurred_at": row["occurred_at"],

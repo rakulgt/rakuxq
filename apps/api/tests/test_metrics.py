@@ -133,10 +133,6 @@ def test_public_metrics_cursor_pages_reach_all_retained_events_without_identifie
     location = GeoLocation(
         country_code="CN",
         country_name="中国",
-        region_name="北京市",
-        city_name="北京",
-        latitude=39.9,
-        longitude=116.4,
     )
     for index in range(5):
         assert store.record(
@@ -156,9 +152,10 @@ def test_public_metrics_cursor_pages_reach_all_retained_events_without_identifie
     assert events[0]["location"] == {
         "country_code": "CN",
         "country": "中国",
-        "region": "北京市",
-        "city": "北京",
     }
+    assert store.snapshot(now=now)["locations"] == [
+        {"country_code": "CN", "country_name": "中国", "interactions": 5}
+    ]
     assert "private-" not in str(first) + str(second) + str(third)
 
 
@@ -194,3 +191,49 @@ def test_public_metrics_migrate_existing_database_with_location_columns(tmp_path
         columns = {row[1] for row in connection.execute("PRAGMA table_info(public_events)")}
     assert {"country_code", "country_name", "region_name", "city_name"} <= columns
     assert {"latitude", "longitude"} <= columns
+
+
+def test_public_metrics_redact_legacy_city_detail_to_country_only(tmp_path):
+    database = tmp_path / "public.sqlite3"
+    store = PublicMetricsStore(database)
+    store.initialize()
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            """
+            INSERT INTO public_events(
+                source_id, occurred_at, status, fen, confidence, duration_ms,
+                country_code, country_name, region_name, city_name, latitude, longitude
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "legacy-city",
+                "2026-10-06T10:00:00.000Z",
+                "accepted",
+                "9/9/9/9/9/9/9/9/9/9 w",
+                0.9,
+                300,
+                "CN",
+                "中国",
+                "Beijing",
+                "Jinrongjie (Xicheng District)",
+                39.91,
+                116.36,
+            ),
+        )
+        connection.commit()
+
+    store.initialize()
+    page = store.event_page(now=datetime(2026, 10, 6, 11, tzinfo=UTC))
+
+    assert page["events"][0]["location"] == {
+        "country_code": "CN",
+        "country": "中国",
+    }
+    with sqlite3.connect(database) as connection:
+        details = connection.execute(
+            """
+            SELECT region_name, city_name, latitude, longitude
+            FROM public_events WHERE source_id = 'legacy-city'
+            """
+        ).fetchone()
+    assert details == (None, None, None, None)

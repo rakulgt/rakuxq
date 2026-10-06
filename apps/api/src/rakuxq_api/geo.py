@@ -18,14 +18,10 @@ logger = logging.getLogger(__name__)
 class GeoLocation:
     country_code: str | None = None
     country_name: str | None = None
-    region_name: str | None = None
-    city_name: str | None = None
-    latitude: float | None = None
-    longitude: float | None = None
 
 
 class GeoIPCityResolver:
-    """Resolve a public IP locally and return only coarse geographic fields."""
+    """Resolve a public IP locally and retain only country-level fields."""
 
     def __init__(self, database: str | Path = ""):
         self.database = Path(database) if database else None
@@ -79,33 +75,15 @@ class GeoIPCityResolver:
         if not isinstance(record, dict):
             return None
         country = record.get("country")
-        city = record.get("city")
-        subdivisions = record.get("subdivisions")
-        location = record.get("location")
         country_map = country if isinstance(country, dict) else {}
-        city_map = city if isinstance(city, dict) else {}
-        location_map = location if isinstance(location, dict) else {}
-        region_map: dict[str, object] = {}
-        if isinstance(subdivisions, list) and subdivisions:
-            first = subdivisions[0]
-            if isinstance(first, dict):
-                region_map = first
 
         country_code = cls._text(country_map.get("iso_code"), 2, upper=True)
         country_name = cls._localized_name(country_map)
-        region_name = cls._localized_name(region_map)
-        city_name = cls._localized_name(city_map)
-        latitude = cls._coordinate(location_map.get("latitude"), -90, 90)
-        longitude = cls._coordinate(location_map.get("longitude"), -180, 180)
-        if not any((country_code, country_name, region_name, city_name)):
+        if not any((country_code, country_name)):
             return None
         return GeoLocation(
             country_code=country_code,
             country_name=country_name,
-            region_name=region_name,
-            city_name=city_name,
-            latitude=latitude,
-            longitude=longitude,
         )
 
     @classmethod
@@ -127,12 +105,3 @@ class GeoIPCityResolver:
         if not normalized:
             return None
         return normalized.upper() if upper else normalized
-
-    @staticmethod
-    def _coordinate(value: object, minimum: float, maximum: float) -> float | None:
-        if not isinstance(value, (int, float)):
-            return None
-        coordinate = float(value)
-        if not minimum <= coordinate <= maximum:
-            return None
-        return round(coordinate, 2)

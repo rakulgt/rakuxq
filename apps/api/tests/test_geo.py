@@ -15,7 +15,7 @@ class _Reader:
         pass
 
 
-def test_geoip_resolver_returns_only_coarse_local_fields():
+def test_geoip_resolver_returns_only_country_fields():
     resolver = GeoIPCityResolver()
     resolver._reader = _Reader()
 
@@ -24,10 +24,7 @@ def test_geoip_resolver_returns_only_coarse_local_fields():
     assert location is not None
     assert location.country_code == "US"
     assert location.country_name == "美国"
-    assert location.region_name == "加利福尼亚州"
-    assert location.city_name == "山景城"
-    assert location.latitude == 37.42
-    assert location.longitude == -122.08
+    assert location.__slots__ == ("country_code", "country_name")
 
 
 def test_geoip_resolver_rejects_private_and_invalid_addresses():

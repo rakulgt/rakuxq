@@ -7,10 +7,10 @@
     <meta name="theme-color" content="#08111f" />
     <title>RakuXQ · 让每一个象棋局面进入计算</title>
     <link rel="icon" href="/static/favicon.svg?v=0.4.0a1" type="image/svg+xml" />
-    <link rel="stylesheet" href="/static/styles.css?v=0.5.1a1" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.5.1a2" />
     <script src="/static/vendor/xiangqi.min.js?v=f9019ac" defer></script>
     <script src="/static/position-board.js?v=0.4.0a1" defer></script>
-    <script src="/static/app.js?v=0.5.1a1" defer></script>
+    <script src="/static/app.js?v=0.5.1a2" defer></script>
   </head>
   <body>
     <div class="ambient ambient-one"></div>
@@ -96,7 +96,7 @@
           <article class="metric"><span>历史累计交互</span><strong id="metric-lifetime">—</strong><small id="metric-since">从现在开始记录</small></article>
           <article class="metric"><span>最近 30 天</span><strong id="metric-recent">—</strong><small>30 天 / 10 万条双重上限</small></article>
           <article class="metric"><span>自动通过率</span><strong id="metric-rate">—</strong><small>accepted / 成功交互</small></article>
-          <article class="metric"><span>平均推理耗时</span><strong id="metric-latency">—</strong><small>最近 30 天，服务端模型</small></article>
+          <article class="metric"><span>平均视觉识别耗时</span><strong id="metric-latency">—</strong><small>图片到达服务器后；不含上传与出招</small></article>
         </div>
 
         <div class="dashboard-grid">
@@ -118,8 +118,8 @@
         </div>
 
         <article class="panel feed-panel">
-          <div class="panel-title"><div><span>ANONYMOUS STREAM</span><h3>最近成功交互</h3></div><p>只展示近似国家/城市；原始 IP 不落库、不公开</p></div>
-          <div class="feed-head"><span>时间</span><span>状态</span><span>来源</span><span>简化 FEN</span><span>置信度</span><span>耗时</span><span>操作</span></div>
+          <div class="panel-title"><div><span>ANONYMOUS STREAM</span><h3>最近成功交互</h3></div><p>只展示近似国家；原始 IP 不落库、不公开</p></div>
+          <div class="feed-head"><span>时间</span><span>状态</span><span>来源国家</span><span>简化 FEN</span><span>置信度</span><span>视觉识别</span><span>操作</span></div>
           <div id="event-feed" class="event-feed"><div class="empty-state">正在连接 RakuXQ 数据流…</div></div>
           <div class="feed-pager">
             <span id="feed-page-status">正在读取记录…</span>
@@ -162,7 +162,7 @@
 
       <section class="privacy-strip">
         <div><span>隐私边界</span><strong>公开统计是匿名的</strong></div>
-        <p>原图仍只保留最多 12 小时。匿名 FEN 明细最多保留 30 天且不超过 10 万条；请求 IP 只在内存中解析为近似国家/城市后立即丢弃，地理结果不代表精确住址。</p>
+        <p>原图仍只保留最多 12 小时。匿名 FEN 明细最多保留 30 天且不超过 10 万条；请求 IP 只在内存中解析为近似国家后立即丢弃。VPN 或运营商出口可能影响国家判断。</p>
       </section>
     </main>
 

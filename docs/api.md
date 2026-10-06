@@ -47,7 +47,7 @@ IP，只保存服务器秘密加盐后的不可逆 HMAC 指纹。使用测试 Ke
 ## `GET /api/public/stats`
 
 无需 API Key。返回历史累计成功交互数、自动通过数、最近 720 小时汇总、30 天每日趋势、匿名
-城市聚合和第一页事件。事件只包含 `occurred_at`、`status`、`location`、`fen`、`confidence`、
+国家聚合和第一页事件。事件只包含 `occurred_at`、`status`、`location`、`fen`、`confidence`、
 `duration_ms`；不包含原图、Key/Key ID、原始 IP、文件名、请求 ID 或设备信息。单条事件最多
 保留 720 小时且总量最多 100,000 条，历史累计数字继续保留。
 
@@ -55,8 +55,10 @@ IP，只保存服务器秘密加盐后的不可逆 HMAC 指纹。使用测试 Ke
 
 无需 API Key。按时间倒序返回匿名事件页；`limit` 为 `1–100`，首次调用省略 `cursor`，后续把响应
 中的不透明 `next_cursor` 原样传回。`has_more=false` 表示已到当前保留窗口的最早记录。游标不含
-请求 ID，允许官网逐页遍历最多 100,000 条当前明细。`location` 是本地城市库对请求 IP 的近似推断；
-原始 IP 查询后立即丢弃，无法定位时为 `null`。
+请求 ID，允许官网逐页遍历最多 100,000 条当前明细。`location` 是本地数据库对请求 IP 的近似推断；
+只包含 `country_code` 和 `country`，不包含原始 IP、地区、城市或坐标，无法定位时为 `null`。
+VPN 与运营商出口可能影响国家判断。`duration_ms` 只表示图片到达应用后的视觉识别阶段：图像解码、
+棋盘定位、90 格分类和后处理；不包含客户端上传、鉴权、响应发送或 NNUE 出招计算。
 
 ## `POST /api/public/trial-keys`
 

@@ -4,6 +4,18 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.5.1-alpha.2] - 2026-10-06
+
+### 中文
+
+- 根据真实公网记录暴露的 IP 库过度精确问题，将匿名地理信息由国家/地区/城市降级为仅国家；旧明细中的地区、城市和坐标在迁移时清空。
+- 官网明确“视觉识别耗时”只覆盖图片到达服务端后的解码、棋盘定位、布局分类与后处理，不包含上传网络和 NNUE 出招计算。
+
+### English
+
+- Reduced anonymous geolocation from country/region/city to country only after a real public event demonstrated misleading sub-city precision; migration clears legacy region, city, and coordinate fields.
+- Clarified that visual-recognition latency covers server-side decoding, board localization, layout classification, and post-processing, excluding upload transit and NNUE search.
+
 ## [0.5.1-alpha.1] - 2026-10-06
 
 ### 中文

@@ -52,9 +52,7 @@ function renderChart(daily) {
 
 function locationLabel(location) {
   if (!location) return "未知";
-  const country = location.country || location.country_code;
-  const locality = location.city || location.region;
-  return [country, locality].filter((value, index, values) => value && values.indexOf(value) === index).join(" · ") || "未知";
+  return location.country || location.country_code || "未知";
 }
 
 function eventRow(event) {
@@ -69,7 +67,7 @@ function eventRow(event) {
   const location = document.createElement("span");
   location.className = "event-location";
   location.textContent = locationLabel(event.location);
-  location.title = "IP 数据库推断的近似国家/城市，不代表精确位置";
+  location.title = "IP 数据库推断的近似国家；VPN 或运营商出口可能影响结果";
   const code = document.createElement("code");
   code.textContent = event.fen;
   code.title = event.fen;
@@ -79,6 +77,7 @@ function eventRow(event) {
   const duration = document.createElement("span");
   duration.className = "duration";
   duration.textContent = `${number.format(event.duration_ms)} ms`;
+  duration.title = "图片到达服务端后的视觉识别耗时；不含上传网络和 NNUE 出招计算";
   const actions = document.createElement("div");
   actions.className = "feed-actions";
   const copy = document.createElement("button");
