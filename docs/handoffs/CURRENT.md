@@ -1,13 +1,14 @@
 # RakuXQ 当前交接状态
 
-基线时间：`2026-10-06T17:58:14+08:00`
-当前生产稳定版本：`v0.5.1-alpha.1`
+基线时间：`2026-10-06T18:41:43+08:00`
+当前生产稳定版本：`v0.5.1-alpha.2`
 当前源码开发版本：`v0.5.1-alpha.2`
 
 ## 最近完成
 
-- v0.5.1-alpha.2 将公开地理粒度由国家/地区/城市降级为仅国家：真实公网记录把运营商或 VPN 出口标成 `Jinrongjie (Xicheng District)`，这种子城市精度容易被误解为用户真实位置。新版本不再保存或公开地区、城市和坐标，并在数据库初始化时清空旧明细中的这些字段；国家级聚合继续为未来分布图提供基础。
-- v0.5.1-alpha.2 将首页“耗时”明确为视觉识别耗时：从图片字节读入完成之后开始，覆盖解码、棋盘定位、90 格分类与后处理，不包含客户端上传、鉴权、响应发送或 NNUE 出招搜索。
+- v0.5.1-alpha.2 已发布，将公开地理粒度由国家/地区/城市降级为仅国家：真实公网记录把运营商或 VPN 出口标成 `Jinrongjie (Xicheng District)`，这种子城市精度容易被误解为用户真实位置。新版本不再保存或公开地区、城市和坐标，并已在生产统计库中清空旧明细的这些字段；国家级聚合继续为未来分布图提供基础。
+- v0.5.1-alpha.2 将首页“耗时”明确为视觉识别耗时：从图片字节读入完成之后开始，覆盖解码、棋盘定位、90 格分类与后处理，不包含客户端上传、鉴权、响应发送或 NNUE 出招搜索。两个公网入口均返回 `version=0.5.1a2`，服务 `active`、`NRestarts=0`。完整记录见 `docs/deployments/20261006-184143-v0.5.1-alpha.2.md`。
+- v0.5.1-alpha.2 本地门禁通过：Python 111 项、Web 9 项、Ruff、Mypy（32 个源文件）、前端语法、ONNX 清单和 wheel 构建全部成功；wheel SHA-256 为 `ed2a07c704052d9df8a7ae1fe688d9556eee86a067688e0b0fba05e8740f0650`。
 
 - v0.5.1-alpha.1 已发布：公开匿名明细升级为最多 720 小时且最多 100,000 条，增加不透明游标分页、本地 DB-IP City Lite 国家/城市解析、匿名城市聚合与 30 天每日趋势。原始 IP 仅在请求内存中参与本地查询后丢弃，原图 12 小时政策保持不变；旧 SQLite 原地迁移并保留 2,092 条明细与 2,297 次历史累计成功交互。两个公网入口均返回 `version=0.5.1a1`、`geoip_ready=true`，保留定时器和 Nginx 验收通过。完整记录见 `docs/deployments/20261006-175814-v0.5.1-alpha.1.md`。
 - v0.5.1-alpha.1 本地门禁通过：Python 110 项、Web 9 项、Ruff、Mypy、前端语法、部署脚本语法、ONNX 清单和 wheel 构建全部成功；wheel SHA-256 为 `7b5a68623e08b0b458a050036bc7607e69ede3c53a37b53213319cffa7142ec5`。
@@ -127,7 +128,7 @@
 - 新增三例用户人工核验：横置实体棋盘的 `accepted` FEN `CR1akab2/5R3/6n2/p1p1p3p/3r2p2/2P3P2/P7P/2NC5/4A4/2B1KAr2 w - - 0 1` 全部正确；稀疏实体残局的候选 FEN `4k4/4a4/4P4/9/9/9/9/9/9/5K3 w - - 0 1` 全部正确；被弹窗遮挡关键内容的案例正确返回 `review_required`，没有作为可直接消费的 FEN 自动通过。这些历史图片未进入项目或训练集；官方托管自 `v0.1.2-alpha.1` 起仅对有效 Key 调用启用 12 小时短期留存。
 - `scripts/check-document-governance.ps1`：RakuXQ 无错误；工作区其他遗留项目仍有 8 条既有迁移警告。
 - 生产公网验收：健康检查返回 `status=ok`；无 Key 返回 HTTP `401` / `API_KEY_REQUIRED`；有效 Key + 真实基准图片返回 `accepted` 和正确 FEN `3k5/9/9/9/9/9/3p5/2pANR3/3KNR3/3ACC3 w - - 0 1`。
-- 生产运行状态：服务器发布标识为 `b059f48e320c19bc2e01b9f3939c2765298529f5`；服务 `active`、`NRestarts=0`，两个公网健康检查均返回 `version=0.5.1a1`、`provider_ready=true`、`engine_ready=true`、`geoip_ready=true`。
+- 生产运行状态：服务器发布标识为 `5a69c396a40c263bd25c95c70fbd24c9e3f12cde`；服务 `active`、`NRestarts=0`，两个公网健康检查均返回 `version=0.5.1a2`、`provider_ready=true`、`engine_ready=true`、`geoip_ready=true`。
 - 生产短期审计验收：公网上传后的服务器原图 SHA-256 与本地原图完全一致；有效 Key 的 `422` 参数错误被完整记录，无 Key 请求不留存；13 小时测试记录被清理。完整记录见 `docs/deployments/20260917-180422-v0.1.2-alpha.1.md`。
 - 生产 URL 别名验收：以真实图片和字面值 `%20w` 调用成功完成模型推理，响应规范化为 `side_to_move=red`，FEN 使用 `w`；健康检查报告 `version=0.1.2a2`。完整记录见 `docs/deployments/20260917-181607-v0.1.2-alpha.2.md`。
 - 生产简化 FEN 验收：真实图片响应的 `fen` 只包含布局与 `w`，`full_fen` 保留完整形式；健康检查报告 `version=0.1.2a3`。完整记录见 `docs/deployments/20260917-183215-v0.1.2-alpha.3.md`。
