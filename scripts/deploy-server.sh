@@ -284,7 +284,7 @@ systemctl start rakuxq-audit-retention.service
 healthy=0
 for _ in {1..30}; do
   if curl --fail --silent "http://127.0.0.1:${PORT}/healthz" \
-    | "${venv}/bin/python" -c 'import json, sys; data = json.load(sys.stdin); raise SystemExit(0 if data.get("status") == "ok" and data.get("geoip_ready") is True else 1)'; then
+    | "${RELEASE_DIR}/.venv/bin/python" -c 'import json, sys; data = json.load(sys.stdin); raise SystemExit(0 if data.get("status") == "ok" and data.get("geoip_ready") is True else 1)'; then
     healthy=1
     break
   fi
