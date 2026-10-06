@@ -1,12 +1,12 @@
 # RakuXQ 当前交接状态
 
-基线时间：`2026-10-06T00:00:00+08:00`
-当前生产稳定版本：`v0.5.0-alpha.6`
+基线时间：`2026-10-06T17:58:14+08:00`
+当前生产稳定版本：`v0.5.1-alpha.1`
 当前源码开发版本：`v0.5.1-alpha.1`
 
 ## 最近完成
 
-- v0.5.1-alpha.1 将公开匿名明细升级为最多 720 小时且最多 100,000 条，增加不透明游标分页、本地 DB-IP City Lite 国家/城市解析、匿名城市聚合与 30 天每日趋势。原始 IP 仅在请求内存中参与本地查询后丢弃，原图 12 小时政策保持不变；旧 SQLite 会原地迁移，不清空历史累计数字。
+- v0.5.1-alpha.1 已发布：公开匿名明细升级为最多 720 小时且最多 100,000 条，增加不透明游标分页、本地 DB-IP City Lite 国家/城市解析、匿名城市聚合与 30 天每日趋势。原始 IP 仅在请求内存中参与本地查询后丢弃，原图 12 小时政策保持不变；旧 SQLite 原地迁移并保留 2,092 条明细与 2,297 次历史累计成功交互。两个公网入口均返回 `version=0.5.1a1`、`geoip_ready=true`，保留定时器和 Nginx 验收通过。完整记录见 `docs/deployments/20261006-175814-v0.5.1-alpha.1.md`。
 - v0.5.1-alpha.1 本地门禁通过：Python 110 项、Web 9 项、Ruff、Mypy、前端语法、部署脚本语法、ONNX 清单和 wheel 构建全部成功；wheel SHA-256 为 `7b5a68623e08b0b458a050036bc7607e69ede3c53a37b53213319cffa7142ec5`。
 
 - 维护者个人非商业引擎基线已原子升级至 Pikafish `1c66b9b2`（2026-10-01）及匹配的 `master-net`。程序在 Rocky Linux 9 容器构建以兼容 OpenCloudOS 9，程序/网络 SHA-256 分别为 `0d7ff804...dfb9` 与 `6b74ac7b...ba29`；五局 3 秒串行 A/B 全部正常，经典杀局保持 `前炮进二 红方 KO(2)`，引擎计算由约 90 ms 降至 24 ms。生产切换保留旧引擎和环境备份，`xq`、`xq-fast`、回环健康检查均返回新引擎身份，服务 `active`、`NRestarts=0`、Swap 为 0。完整记录见 `docs/deployments/20261005-233306-pikafish-master-1c66b9b2.md`。
@@ -124,7 +124,7 @@
 - 新增三例用户人工核验：横置实体棋盘的 `accepted` FEN `CR1akab2/5R3/6n2/p1p1p3p/3r2p2/2P3P2/P7P/2NC5/4A4/2B1KAr2 w - - 0 1` 全部正确；稀疏实体残局的候选 FEN `4k4/4a4/4P4/9/9/9/9/9/9/5K3 w - - 0 1` 全部正确；被弹窗遮挡关键内容的案例正确返回 `review_required`，没有作为可直接消费的 FEN 自动通过。这些历史图片未进入项目或训练集；官方托管自 `v0.1.2-alpha.1` 起仅对有效 Key 调用启用 12 小时短期留存。
 - `scripts/check-document-governance.ps1`：RakuXQ 无错误；工作区其他遗留项目仍有 8 条既有迁移警告。
 - 生产公网验收：健康检查返回 `status=ok`；无 Key 返回 HTTP `401` / `API_KEY_REQUIRED`；有效 Key + 真实基准图片返回 `accepted` 和正确 FEN `3k5/9/9/9/9/9/3p5/2pANR3/3KNR3/3ACC3 w - - 0 1`。
-- 生产运行状态：服务器发布标识为 `cdcc269d60efecb5cbb9b9b0709460a36b70ae8e`；服务 `active`、`NRestarts=0`，两个公网健康检查均返回 `version=0.5.0a6`、`provider_ready=true`、`engine_ready=true`。
+- 生产运行状态：服务器发布标识为 `b059f48e320c19bc2e01b9f3939c2765298529f5`；服务 `active`、`NRestarts=0`，两个公网健康检查均返回 `version=0.5.1a1`、`provider_ready=true`、`engine_ready=true`、`geoip_ready=true`。
 - 生产短期审计验收：公网上传后的服务器原图 SHA-256 与本地原图完全一致；有效 Key 的 `422` 参数错误被完整记录，无 Key 请求不留存；13 小时测试记录被清理。完整记录见 `docs/deployments/20260917-180422-v0.1.2-alpha.1.md`。
 - 生产 URL 别名验收：以真实图片和字面值 `%20w` 调用成功完成模型推理，响应规范化为 `side_to_move=red`，FEN 使用 `w`；健康检查报告 `version=0.1.2a2`。完整记录见 `docs/deployments/20260917-181607-v0.1.2-alpha.2.md`。
 - 生产简化 FEN 验收：真实图片响应的 `fen` 只包含布局与 `w`，`full_fen` 保留完整形式；健康检查报告 `version=0.1.2a3`。完整记录见 `docs/deployments/20260917-183215-v0.1.2-alpha.3.md`。
