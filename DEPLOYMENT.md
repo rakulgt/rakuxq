@@ -39,6 +39,10 @@ Git、永久样本集或自动训练集。模型只读保存在 `/opt/raku/porta
 `rakuxq-metrics-retention.timer` 每小时独立执行一次双重上限清理，因此即使没有新请求或官网访问，
 过期明细也不会无限滞留。
 
+包含推荐招法字段的升级会为 `public_events` 增加可空 `recommended_move TEXT`，并从短期审计
+成功响应按原记录与相同 FEN 补齐已有答案，不增加累计计数。发布前使用 SQLite 在线备份保存
+匿名统计库；这是向后兼容的增量迁移，回滚旧应用时可以保留该列，不删除或重建数据库。
+
 部署脚本从 DB-IP 官方 HTTPS 地址独立下载月度 City Lite MMDB，并在本地解析请求 IP。统计库只写入
 近似国家代码与名称，不写入地区、城市或坐标；原始 IP 不落库，也不会发送给在线定位服务。City Lite 使用
 CC BY 4.0，官网必须保留 `IP Geolocation by DB-IP` 链接；数据库过期超过 32 天时，后续部署会尝试

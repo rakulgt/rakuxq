@@ -46,6 +46,7 @@ def test_public_metrics_keep_lifetime_totals_and_prune_event_details(tmp_path):
             "occurred_at": "2026-09-17T09:00:00.000Z",
             "status": "accepted",
             "fen": "9/9/9/9/9/9/9/9/9/9 w",
+            "recommended_move": None,
             "confidence": 0.88,
             "duration_ms": 0,
             "location": None,
@@ -191,6 +192,7 @@ def test_public_metrics_migrate_existing_database_with_location_columns(tmp_path
         columns = {row[1] for row in connection.execute("PRAGMA table_info(public_events)")}
     assert {"country_code", "country_name", "region_name", "city_name"} <= columns
     assert {"latitude", "longitude"} <= columns
+    assert "recommended_move" in columns
 
 
 def test_public_metrics_redact_legacy_city_detail_to_country_only(tmp_path):
@@ -237,3 +239,68 @@ def test_public_metrics_redact_legacy_city_detail_to_country_only(tmp_path):
             """
         ).fetchone()
     assert details == (None, None, None, None)
+
+
+def test_recommendation_is_linked_to_exact_event_without_incrementing_totals(tmp_path):
+    store = PublicMetricsStore(tmp_path / "public.sqlite3")
+    store.initialize()
+    result = _result("private-source", RecognitionStatus.ACCEPTED)
+    store.record(result)
+
+    assert not store.record_best_move("missing-source", result.fen, "炮二平五")
+    assert not store.record_best_move("private-source", result.fen.replace(" w", " b"), "炮二平五")
+    assert not store.record_best_move("private-source", result.fen, "炮二平五 红优 186")
+    assert not store.record_best_move("private-source", result.fen, "前炮进二 红方 KO(2)")
+    assert store.record_best_move("private-source", result.full_fen, "炮二平五")
+    assert not store.record_best_move("private-source", result.full_fen, "炮二平五")
+
+    snapshot = store.snapshot()
+    assert snapshot["lifetime"]["successful"] == 1
+    assert snapshot["events"][0]["recommended_move"] == "炮二平五"
+    assert store.event_page()["events"][0]["recommended_move"] == "炮二平五"
+    assert "private-source" not in str(snapshot)
+
+
+def test_recommendations_are_not_attached_to_review_required_events(tmp_path):
+    store = PublicMetricsStore(tmp_path / "public.sqlite3")
+    store.initialize()
+    result = _result("review", RecognitionStatus.REVIEW_REQUIRED)
+    store.record(result)
+    assert not store.record_best_move("review", result.fen, "马8进7")
+    assert store.event_page()["events"][0]["recommended_move"] is None
+
+
+def test_existing_audit_backfills_only_matching_completed_move_without_new_events(tmp_path):
+    store = PublicMetricsStore(tmp_path / "public.sqlite3")
+    store.initialize()
+    result = _result("backfill-source", RecognitionStatus.ACCEPTED)
+    store.record(result)
+    folder = tmp_path / "audits" / "record"
+    folder.mkdir(parents=True)
+    (folder / "interaction.json").write_text(json.dumps({
+        "received_at": datetime.now(UTC).isoformat(), "duration_ms": 420,
+        "response": {"request_id": result.request_id, "recognition_status": "accepted",
+                     "fen": result.fen, "confidence": .9},
+    }), encoding="utf-8")
+    payload = {"analysis": {"status": "completed", "fen": result.full_fen,
+                            "best_move": {"notation": "马8进7"},
+                            "display_text": "马8进7 黑方 KO(3)"}}
+    (folder / "response.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    assert store.import_audit_directory(tmp_path / "audits") == 0
+    assert store.import_audit_directory(tmp_path / "audits") == 0
+    assert store.event_page()["events"][0]["recommended_move"] == "马8进7"
+    assert store.snapshot()["lifetime"]["successful"] == 1
+
+
+def test_recommendation_survives_reinitialization_and_retention_remains_shared(tmp_path):
+    store = PublicMetricsStore(tmp_path / "public.sqlite3", max_events=1)
+    store.initialize()
+    result = _result("first", RecognitionStatus.ACCEPTED)
+    store.record(result)
+    store.record_best_move(result.request_id, result.fen, "前炮进二")
+    store.initialize()
+    assert store.event_page()["events"][0]["recommended_move"] == "前炮进二"
+    store.record(_result("newer", RecognitionStatus.ACCEPTED))
+    assert store.event_page()["events"][0]["recommended_move"] is None
+    assert store.snapshot()["lifetime"]["successful"] == 2

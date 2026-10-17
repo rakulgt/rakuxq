@@ -4,6 +4,20 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.5.3-alpha.2] - 2026-10-17
+
+### 中文
+
+- 首页“最近成功交互”在简化 FEN 后新增“推荐招法”，只显示中文最佳着法，不显示优势、评分或 KO；没有已计算答案时显示“—”。
+- 将融合接口已有最佳着法关联到原匿名记录，分页和 30 天/10 万条保留规则同步适用；不会额外调用引擎或重复累计交互。
+- 从仍在 12 小时短期审计池中的成功融合响应补齐近期招法，旧记录和累计统计保留；桌面新增列，手机以紧凑卡片显示。
+
+### English
+
+- Added a move-only recommendation after FEN in the public feed; absent answers show a dash, with no score, advantage or KO label.
+- Attach already-computed fused answers to their exact anonymous event, with shared pagination/retention and no extra searches or interaction counts.
+- Backfill completed recommendations from retained 12-hour audits; preserve historical counters and use a compact mobile layout.
+
 ## [0.5.3-alpha.1] - 2026-10-17
 
 ### 中文

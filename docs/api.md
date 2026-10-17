@@ -58,7 +58,7 @@ IP，只保存服务器秘密加盐后的不可逆 HMAC 指纹。使用测试 Ke
 ## `GET /api/public/stats`
 
 无需 API Key。返回历史累计成功交互数、自动通过数、最近 720 小时汇总、30 天每日趋势、匿名
-国家聚合和第一页事件。事件只包含 `occurred_at`、`status`、`location`、`fen`、`confidence`、
+国家聚合和第一页事件。事件只包含 `occurred_at`、`status`、`location`、`fen`、`recommended_move`、`confidence`、
 `duration_ms`；不包含原图、Key/Key ID、原始 IP、文件名、请求 ID 或设备信息。单条事件最多
 保留 720 小时且总量最多 100,000 条，历史累计数字继续保留。
 
@@ -70,6 +70,11 @@ IP，只保存服务器秘密加盐后的不可逆 HMAC 指纹。使用测试 Ke
 只包含 `country_code` 和 `country`，不包含原始 IP、地区、城市或坐标，无法定位时为 `null`。
 VPN 与运营商出口可能影响国家判断。`duration_ms` 只表示图片到达应用后的视觉识别阶段：图像解码、
 棋盘定位、90 格分类和后处理；不包含客户端上传、鉴权、响应发送或 NNUE 出招计算。
+
+`recommended_move` 是该次成功融合调用已算出的中文最佳着法，例如 `炮二平五` 或 `马8进7`，
+不含优势、评分和 KO。仅识别、解题失败、已终局和缺少历史答案的记录为 `null`；它不是新增的
+免费解题入口。服务端将招法关联到同一条 FEN 记录，不增加交互计数、不额外运行引擎，保留期
+与该行一致。升级会从仍在 12 小时审计池中的匹配成功响应补齐答案，不重新计算老局面。
 
 ## `POST /api/public/trial-keys`
 

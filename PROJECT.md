@@ -1,11 +1,11 @@
 ---
 document_type: living-project-cognitive-baseline
 project_id: rakuxq
-baseline_revision: "33"
-parent_revision: "32"
+baseline_revision: "34"
+parent_revision: "33"
 change_operation: UPDATE
 status: active
-updated_at: "2026-10-17T22:51:33+08:00"
+updated_at: "2026-10-17T23:02:32+08:00"
 ---
 
 # RakuXQ
@@ -53,6 +53,7 @@ RakuXQ 是同时面向普通象棋爱好者、开发者、自动化用户和中�
 - 官网提供 Apple 快捷指令下载入口，但公开快捷指令不得内置或泄露任何客户 API Key；下载链接作为服务器配置管理，不写死在页面源码。
 - 官网提供面向开发者的调用教程与 6 分钟临时 Key。临时 Key 明文只显示一次、不可续期，同一匿名来源在有效期内只签发一个；服务端只保存加盐不可逆来源指纹，不保存领取者原始 IP。临时 Key 的识别调用仍遵循 12 小时原图审计规则，生产用途继续使用独立年度 Key。
 - 匿名交互流的每个有效 FEN 同时提供“复制 FEN”和“在 xiangqiai.com 打开局面”操作；跳转 URL 使用简化 FEN，并将行棋方前的空格编码为 `%20`。
+- 首页匿名交互流在简化 FEN 后显示“推荐招法”：只公开该次融合调用已计算出的中文最佳着法，不在本列显示优势、评分或 KO。无答案、解题失败和终局显示空占位，不为展示记录另行运行引擎；招法随原记录共同受 30 天/10 万条保留限制。
 - 首页示例棋盘是 RakuXQ 原生交互式局面研究器：由 FEN 初始化，允许查看合法落点、走子、吃子、悔棋、重置、复制当前 FEN 和跳转外部研究；不得通过裁剪第三方 iframe 维持核心交互。
 
 ## 架构意图

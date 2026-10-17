@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import sqlite3
 import threading
 from datetime import UTC, datetime, timedelta
@@ -41,6 +42,7 @@ class PublicMetricsStore:
                     fen TEXT NOT NULL,
                     confidence REAL NOT NULL,
                     duration_ms INTEGER NOT NULL,
+                    recommended_move TEXT,
                     country_code TEXT,
                     country_name TEXT,
                     region_name TEXT,
@@ -133,9 +135,46 @@ class PublicMetricsStore:
                     location=None,
                 ):
                     imported += 1
+                # Reuse only an already completed analysis of this exact FEN.
+                # Never run an engine while rendering/importing public events.
+                response_path = metadata_path.parent / "response.json"
+                if status == "accepted" and response_path.is_file():
+                    payload = json.loads(response_path.read_text(encoding="utf-8"))
+                    analysis = payload.get("analysis") if isinstance(payload, dict) else None
+                    if (
+                        isinstance(analysis, dict)
+                        and analysis.get("status") == "completed"
+                        and self._simplified_fen(str(analysis.get("fen", "")))
+                        == self._simplified_fen(fen)
+                        and isinstance(analysis.get("best_move"), dict)
+                    ):
+                        self.record_best_move(
+                            source_id, fen, analysis["best_move"].get("notation")
+                        )
             except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError):
                 continue
         return imported
+
+    def record_best_move(self, source_id: str, fen: str, notation: str | None) -> bool:
+        """Attach a computed move to its accepted event without adding another event."""
+        # Accept only Chinese move notation, not display_text, scores or KO labels.
+        if not isinstance(notation, str) or not re.fullmatch(
+            r"(?:[帅仕相马车炮兵将士象卒][一二三四五六七八九1-9]|"
+            r"[前中后一二三四五六七八九1-9][帅仕相马车炮兵将士象卒])"
+            r"[进退平][一二三四五六七八九1-9]",
+            notation,
+        ):
+            return False
+        with self._lock, self._connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE public_events SET recommended_move = ?
+                WHERE source_id = ? AND fen = ? AND status = 'accepted'
+                  AND recommended_move IS NULL
+                """,
+                (notation, source_id, self._simplified_fen(fen)),
+            )
+            return cursor.rowcount == 1
 
     def _record_values(
         self,
@@ -217,7 +256,7 @@ class PublicMetricsStore:
             ).fetchone()
             rows = connection.execute(
                 """
-                SELECT occurred_at, status, fen, confidence, duration_ms,
+                SELECT occurred_at, status, fen, confidence, duration_ms, recommended_move,
                        country_code, country_name
                 FROM public_events
                 WHERE occurred_at >= ?
@@ -308,7 +347,7 @@ class PublicMetricsStore:
             self._prune_connection(connection, current)
             rows = connection.execute(
                 """
-                SELECT occurred_at, status, fen, confidence, duration_ms,
+                SELECT occurred_at, status, fen, confidence, duration_ms, recommended_move,
                        country_code, country_name
                 FROM public_events
                 WHERE occurred_at >= ? AND occurred_at <= ?
@@ -365,6 +404,7 @@ class PublicMetricsStore:
             for row in connection.execute("PRAGMA table_info(public_events)").fetchall()
         }
         additions = {
+            "recommended_move": "TEXT",
             "country_code": "TEXT",
             "country_name": "TEXT",
             "region_name": "TEXT",
@@ -420,6 +460,7 @@ class PublicMetricsStore:
             "occurred_at": row["occurred_at"],
             "status": row["status"],
             "fen": row["fen"],
+            "recommended_move": row["recommended_move"],
             "confidence": row["confidence"],
             "duration_ms": row["duration_ms"],
             "location": location,

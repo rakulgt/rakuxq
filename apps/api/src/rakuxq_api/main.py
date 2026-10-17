@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import sqlite3
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from datetime import UTC, datetime
@@ -645,6 +646,13 @@ async def solve(
             "error": {"code": code, "message": display, "http_status": exc.status_code},
         }
     analysis_payload = analysis_to_dict(analysis)
+    if public_metrics_store is not None and analysis.best_move is not None:
+        try:
+            public_metrics_store.record_best_move(
+                recognition.request_id, analysis.fen, analysis.best_move.notation
+            )
+        except (OSError, sqlite3.Error):
+            logger.warning("Unable to attach recommendation to anonymous event")
     return {
         "status": recognition.status,
         "fen": recognition.fen,

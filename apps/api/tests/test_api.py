@@ -16,6 +16,7 @@ from rakuxq_api.engines.base import (
 from rakuxq_api.engines.pikafish import PikafishEngine
 from rakuxq_api.engines.rules import grid_from_fen
 from rakuxq_api.main import app
+from rakuxq_api.metrics import PublicMetricsStore
 from rakuxq_api.providers.base import RecognitionProvider
 from rakuxq_api.service import RecognitionService
 
@@ -116,7 +117,8 @@ def test_public_homepage_and_empty_metrics_are_available_without_api_key():
     assert "让现实中的每一个" in homepage.text
     assert "3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 w" in homepage.text
     assert homepage.text.count('<use href="#star') == 14
-    assert "/static/styles.css?v=0.5.2a2" in homepage.text
+    assert "/static/styles.css?v=0.5.3a2" in homepage.text
+    assert "<span>简化 FEN</span><span>推荐招法</span>" in homepage.text
     assert "拍下棋局 · 读懂局面 · 推荐好棋" in homepage.text
     assert "仅供非商业研究与娱乐，请勿用于赌棋" in homepage.text
     assert "简洁 FEN" not in homepage.text
@@ -461,6 +463,41 @@ def test_solve_endpoint_combines_recognition_and_engine_analysis():
     assert payload["analysis"]["best_move"]["iccs"] == "h2e2"
     assert payload["analysis"]["score"]["display"] == "红优 186"
     assert payload["display_text"] == "炮二平五 红优 186"
+
+
+def test_solve_saves_only_move_notation_to_the_public_event(tmp_path):
+    store = PublicMetricsStore(tmp_path / "metrics.sqlite3")
+    store.initialize()
+    with (
+        patch("rakuxq_api.main.service", RecognitionService(FixedProvider())),
+        patch("rakuxq_api.main.analysis_engine", FixedAnalysisEngine()),
+        patch("rakuxq_api.main.public_metrics_store", store),
+    ):
+        response = client.post(
+            "/v1/solve", files={"image": ("board.png", b"image", "image/png")},
+            data={"side_to_move": "red"},
+        )
+    assert response.status_code == 200
+    event = store.event_page()["events"][0]
+    assert event["recommended_move"] == "炮二平五"
+    assert store.snapshot()["lifetime"]["successful"] == 1
+
+
+def test_recommendation_storage_failure_does_not_discard_the_solve_response(tmp_path):
+    store = PublicMetricsStore(tmp_path / "metrics.sqlite3")
+    store.initialize()
+    with (
+        patch("rakuxq_api.main.service", RecognitionService(FixedProvider())),
+        patch("rakuxq_api.main.analysis_engine", FixedAnalysisEngine()),
+        patch("rakuxq_api.main.public_metrics_store", store),
+        patch.object(store, "record_best_move", side_effect=OSError("unavailable")),
+    ):
+        response = client.post(
+            "/v1/solve", files={"image": ("board.png", b"image", "image/png")},
+            data={"side_to_move": "red"},
+        )
+    assert response.status_code == 200
+    assert response.json()["display_text"] == "炮二平五 红优 186"
 
 
 def test_solve_endpoint_always_returns_display_text_when_review_is_required():

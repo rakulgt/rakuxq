@@ -20,7 +20,7 @@ RakuXQ 是由 **rakulgt / Raku Intelligence（罗酷智能）** 发起的开源�
 高水平参考着法，用于复盘、研究和学习；开发者可以使用“棋盘图片 → FEN”和
 “FEN → solution”HTTP API 接入自己的工具。公开服务仅供非商业研究与娱乐，请勿用于赌棋。
 
-> 当前源码版本：`v0.5.3-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
+> 当前源码版本：`v0.5.3-alpha.2`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
 > Pikafish UCI 适配器与中文着法用于非商业研究。RakuXQ Lab 在网站内永久免费、无需 Key；
 > 面向程序的远程引擎 API 仍不向临时 Key 或普通客户 Key 提供受限 NNUE 能力。
 
@@ -247,7 +247,7 @@ screenshots, web boards, physical-board photos, perspective distortion, cropping
 noise, and partial occlusion. Version `0.5` adds a product-level FEN-to-solution endpoint with
 Chinese best-move notation, fixed-red-perspective scores, and principal variations.
 
-> Current source release: `v0.5.3-alpha.1`. The vision pipeline works on a growing set of real
+> Current source release: `v0.5.3-alpha.2`. The vision pipeline works on a growing set of real
 > screenshots and physical-board photos. The Pikafish UCI adapter is undergoing non-commercial
 > interoperability validation. The on-site RakuXQ Lab is free and requires no key; the separate
 > remote engine API remains restricted to the maintainer's key, and trial or ordinary customer

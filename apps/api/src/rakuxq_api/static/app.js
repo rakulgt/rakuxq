@@ -71,6 +71,9 @@ function eventRow(event) {
   const code = document.createElement("code");
   code.textContent = event.fen;
   code.title = event.fen;
+  const recommendation = document.createElement("span");
+  recommendation.className = "event-recommendation";
+  recommendation.textContent = event.recommended_move || "—";
   const confidence = document.createElement("span");
   confidence.className = "confidence";
   confidence.textContent = `${Math.round(event.confidence * 100)}%`;
@@ -100,7 +103,7 @@ function eventRow(event) {
   open.rel = "noreferrer";
   open.textContent = "打开局面 ↗";
   actions.append(copy, open);
-  row.append(time, status, location, code, confidence, duration, actions);
+  row.append(time, status, location, code, recommendation, confidence, duration, actions);
   return row;
 }
 
