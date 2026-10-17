@@ -28,6 +28,7 @@ from .engines import (
     InvalidEnginePosition,
     PikafishEngine,
     analysis_to_dict,
+    normalize_engine_fen,
 )
 from .geo import GeoIPCityResolver, GeoLocation
 from .metrics import InvalidEventCursor, PublicMetricsStore
@@ -349,6 +350,7 @@ def _solution_payload(result, requested_time_ms: int | None) -> dict[str, object
     payload = analysis_to_dict(result)
     full_fen = result.fen
     payload["status"] = "accepted"
+    payload["analysis_status"] = result.status
     payload["fen"] = " ".join(full_fen.split()[:2])
     payload["full_fen"] = full_fen
     payload["side_to_move"] = "red" if full_fen.split()[1] == "w" else "black"
@@ -363,11 +365,12 @@ def _solution_payload(result, requested_time_ms: int | None) -> dict[str, object
 
 def _run_analysis(fen_value: str, movetime_ms: int | None):
     try:
-        return analysis_engine.analyze(fen_value, _analysis_time(movetime_ms))
+        normalized_fen = normalize_engine_fen(fen_value)
+        return analysis_engine.analyze(normalized_fen, _analysis_time(movetime_ms))
     except InvalidEnginePosition as exc:
         raise HTTPException(
             status_code=422,
-            detail={"code": "INVALID_XIANGQI_FEN", "message": str(exc)},
+            detail={"code": exc.code, "message": str(exc)},
         ) from exc
     except EngineNotConfigured as exc:
         raise HTTPException(
@@ -611,12 +614,36 @@ async def solve(
             "display_text": "局面需要复核，请重新拍照。",
             "recognition": recognition_payload,
             "analysis": None,
+            "analysis_status": "not_started",
         }
-    analysis = await run_in_threadpool(
-        _run_analysis,
-        recognition.full_fen,
-        movetime_ms,
-    )
+    # Invalid request parameters still use HTTP 422. Once recognition succeeds,
+    # analysis failures retain that result for Shortcuts and the audit trail.
+    _analysis_time(movetime_ms)
+    try:
+        analysis = await run_in_threadpool(
+            _run_analysis,
+            recognition.full_fen,
+            movetime_ms,
+        )
+    except HTTPException as exc:
+        detail: dict[str, object] = exc.detail if isinstance(exc.detail, dict) else {}
+        code = str(detail.get("code", "ENGINE_ANALYSIS_FAILED"))
+        invalid = exc.status_code == 422
+        if code == "SIDE_TO_MOVE_CONFLICT":
+            display = "局面已识别，但行棋方与将军状态冲突。请核对轮到谁走及棋子位置。"
+        elif invalid:
+            display = "局面已识别，但暂不符合解题条件。请核对棋子位置与行棋方。"
+        else:
+            display = "局面已识别，解题暂未完成。请使用返回的 FEN 重试分析。"
+        return {
+            "status": "review_required" if invalid else "partial_success",
+            "fen": recognition.fen,
+            "display_text": display,
+            "recognition": recognition_payload,
+            "analysis": None,
+            "analysis_status": "invalid_position" if invalid else "failed",
+            "error": {"code": code, "message": display, "http_status": exc.status_code},
+        }
     analysis_payload = analysis_to_dict(analysis)
     return {
         "status": recognition.status,
@@ -624,6 +651,7 @@ async def solve(
         "display_text": analysis_payload["display_text"],
         "recognition": recognition_payload,
         "analysis": analysis_payload,
+        "analysis_status": analysis.status,
     }
 
 

@@ -100,6 +100,25 @@ curl -X POST http://127.0.0.1:8000/v1/solve \
 
 The engine is never invoked when recognition returns `review_required` or `rejected`.
 
+### Check, terminal positions and partial results
+
+Before UCI, the server rejects positions where the non-moving king is in check with
+`SIDE_TO_MOVE_CONFLICT`. Being in check on the moving side is valid, including a position with
+only one legal evasion. Forced-mate scores do not mean the game is already over. The server
+enumerates legal moves to distinguish checkmate from Xiangqi stalemate (both losses for the mover);
+terminal results have `status=terminal`, `best_move=null`, `score=null`, explicit winner/reason in
+`position`, and a readable `display_text`. The product solution wrapper retains `status=accepted`
+and adds `analysis_status=terminal` or `completed`.
+
+Once image recognition succeeds, `/v1/solve` returns HTTP 200 even if analysis fails, preserving
+the original FEN and full `recognition`. A position conflict uses `status=review_required` and
+`analysis_status=invalid_position`; a runtime analysis failure uses `status=partial_success` and
+`analysis_status=failed`. Both include `analysis=null`, `display_text`, and `error` with `code`,
+`message`, and the original analysis `http_status`. Callers must inspect the business status.
+FEN-only endpoints retain their non-2xx error contract. No path silently changes the supplied mover.
+See [`api.md`](api.md) for the full response matrix. Run `npm run test:engine-rules` to compare the
+server checks against the pinned browser rules on a deterministic 724-position corpus.
+
 ## Browser lab
 
 Open `http://127.0.0.1:8000/lab` after starting the configured service. A standard position can be

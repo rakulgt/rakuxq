@@ -208,7 +208,16 @@ class InteractionAuditStore:
                 "body_truncated": response_truncated,
                 "stored_as": response_name,
                 "request_id": self._nested(parsed_response, "request_id"),
-                "recognition_status": self._nested(parsed_response, "status"),
+                "recognition_status": self._nested(
+                    parsed_response.get("recognition", parsed_response)
+                    if parsed_response is not None else None,
+                    "status",
+                ),
+                "analysis_status": (parsed_response or {}).get("analysis_status"),
+                "analysis_error_code": self._nested(
+                    (parsed_response or {}).get("error") or (parsed_response or {}).get("detail"),
+                    "code",
+                ),
                 "fen": self._nested(parsed_response, "fen"),
                 "full_fen": self._nested(parsed_response, "full_fen"),
                 "confidence": self._nested(parsed_response, "confidence"),
@@ -258,8 +267,8 @@ class InteractionAuditStore:
         }.get(content_type or "", ".bin")
 
     @staticmethod
-    def _nested(response: dict[str, Any] | None, key: str) -> Any:
-        if response is None:
+    def _nested(response: Any, key: str) -> Any:
+        if not isinstance(response, dict):
             return None
         if key in response:
             return response[key]

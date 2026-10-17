@@ -2,9 +2,12 @@
 
 基线时间：`2026-10-06T20:44:48+08:00`
 当前生产稳定版本：`v0.5.2-alpha.2`
-当前源码开发版本：`v0.5.2-alpha.2`
+当前源码开发版本：`v0.5.3-alpha.1`
 
 ## 最近完成
+
+- v0.5.3-alpha.1 本地修复已验证，待生产发布：引擎前检查行棋方与将军状态；被将军/唯一应招继续解题，零合法着法才区分将死与困毙。融合接口解题失败保留原识别、FEN 与可读提示，新增 `analysis_status`、错误码和分阶段审计；不自动换边。
+- 本地门禁：145 项 Python、37 项 unittest、12 项 Web、Ruff、Mypy（22 个源文件）通过；Python 安全规则与固定版本 `xiangqi.js` 在 724 个确定性局面上逐一一致。真实本地 Pikafish 已通过唯一解将、强制杀棋、将死、困毙及冲突后继续正常搜索。
 
 - v0.5.2-alpha.2 已发布：RakuXQ Lab 网站内永久免费且无需 Key，页面移除 Key 输入与凭据门控，改用不进入 OpenAPI 的同源专用分析入口；单次搜索最多 3 秒，Nginx 独立限制每 IP 每分钟 60 次、突发 8 次和并发 1 次。`/v1/solutions`、`/v1/analyses` 与 `/v1/solve` 的远程 Key 鉴权及引擎白名单保持不变。两个公网入口的免 Key Lab 分析均返回 `前炮进二 红方 KO(2)`，而无 Key `/v1/analyses` 保持 `401`。完整记录见 `docs/deployments/20261006-204448-v0.5.2-alpha.2.md`。
 - v0.5.2-alpha.2 本地门禁通过：Python 114 项、Web 12 项、Ruff、Mypy（21 个源文件）、前端语法、ONNX 清单和 wheel 构建全部成功；浏览器确认 Lab 不含 Key 控件并显示永久免费边界。生产服务 `active`、`NRestarts=0`，Nginx 校验通过，两个健康端点均返回 `version=0.5.2a2`、`status=ok`、`engine_ready=true`。

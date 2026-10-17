@@ -4,6 +4,22 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.5.3-alpha.1] - 2026-10-17
+
+### 中文
+
+- 引擎调用前检查行棋方与将军状态；非行棋方正在被将军时返回 `SIDE_TO_MOVE_CONFLICT`，保留原行棋方，不再触发 Pikafish 的致命局面错误。
+- 被将军、只剩唯一解将和临近绝杀均正常分析；确无合法着法时区分将死与困毙并返回明确胜方。
+- 图片融合接口的解题失败保留 `fen`、完整 `recognition` 和可读 `display_text`，新增独立 `analysis_status` 与机器错误码；不再丢失已完成的识别结果。
+- 短期审计分别记录识别状态、解题状态与解题错误码；新增与固定版本浏览器规则的 724 局面一致性验证。
+
+### English
+
+- Validate the mover against check before invoking UCI, reporting `SIDE_TO_MOVE_CONFLICT` without changing sides or triggering Pikafish's fatal position error.
+- Keep analyzing check evasions, single-move escapes and forced-mate positions; explicitly distinguish checkmate from Xiangqi stalemate when no legal move exists.
+- Preserve the image recognition result, FEN and readable message on analysis failures, with independent `analysis_status` and error fields.
+- Record recognition/analysis stages separately in short-lived audits; compare the Python safety rules with pinned browser rules on 724 deterministic positions.
+
 ## [0.5.2-alpha.2] - 2026-10-06
 
 ### 中文

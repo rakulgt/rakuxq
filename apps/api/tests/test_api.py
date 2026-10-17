@@ -1,14 +1,20 @@
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from rakuxq_api.domain import BoardPrediction, CellPrediction, Orientation
 from rakuxq_api.engines.base import (
     AnalysisResult,
+    EngineAnalysisError,
     EngineIdentity,
     EngineMove,
+    EngineNotConfigured,
     EngineScore,
+    EngineTimeout,
 )
+from rakuxq_api.engines.pikafish import PikafishEngine
+from rakuxq_api.engines.rules import grid_from_fen
 from rakuxq_api.main import app
 from rakuxq_api.providers.base import RecognitionProvider
 from rakuxq_api.service import RecognitionService
@@ -480,3 +486,94 @@ def test_solve_endpoint_always_returns_display_text_when_review_is_required():
     assert payload["status"] == "review_required"
     assert payload["analysis"] is None
     assert payload["display_text"] == "局面需要复核，请重新拍照。"
+
+
+@pytest.mark.parametrize("side", ["black", "auto", "", None])
+def test_solve_keeps_recognition_on_mover_conflict_without_switching_sides(side):
+    class CheckedProvider(FixedProvider):
+        def recognize(self, image, orientation):
+            result = super().recognize(image, orientation)
+            result.grid = grid_from_fen("5k3/9/9/9/9/9/4r4/9/9/4K4 b")
+            result.cells = [
+                CellPrediction(r, f, s, 0.999)
+                for r, row in enumerate(result.grid) for f, s in enumerate(row)
+            ]
+            result.metadata["projected_king_centers"] = [
+                {"symbol": "k", "rank": 0, "file": 5, "x": 5.0, "y": 9.0},
+                {"symbol": "K", "rank": 9, "file": 4, "x": 4.0, "y": 0.0},
+            ]
+            return result
+
+    with (
+        patch("rakuxq_api.main.service", RecognitionService(CheckedProvider())),
+        patch.object(FixedAnalysisEngine, "analyze") as analyze,
+        patch("rakuxq_api.main.analysis_engine", FixedAnalysisEngine()),
+    ):
+        response = client.post(
+            "/v1/solve", files={"image": ("board.png", b"image", "image/png")},
+            data={} if side is None else {"side_to_move": side},
+        )
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["status"] == "review_required"
+    assert payload["recognition"]["status"] == "accepted"
+    assert payload["recognition"]["grid"]
+    assert payload["fen"].endswith(" b")
+    assert payload["analysis"] is None
+    assert payload["analysis_status"] == "invalid_position"
+    assert payload["error"]["code"] == "SIDE_TO_MOVE_CONFLICT"
+    assert "行棋方与将军状态冲突" in payload["display_text"]
+    analyze.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "failure,code,http_status",
+    [(EngineAnalysisError("failed"), "ENGINE_ANALYSIS_FAILED", 502),
+     (EngineTimeout("timeout"), "ENGINE_TIMEOUT", 504),
+     (EngineNotConfigured("missing"), "ENGINE_NOT_CONFIGURED", 503)],
+)
+def test_solve_retains_fen_and_readable_message_when_analysis_fails(failure, code, http_status):
+    with (
+        patch("rakuxq_api.main.service", RecognitionService(FixedProvider())),
+        patch.object(FixedAnalysisEngine, "analyze", side_effect=failure),
+        patch("rakuxq_api.main.analysis_engine", FixedAnalysisEngine()),
+    ):
+        response = client.post(
+            "/v1/solve", files={"image": ("board.png", b"image", "image/png")},
+            data={"side_to_move": "red"},
+        )
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["status"] == "partial_success"
+    assert payload["fen"] == START_FEN
+    assert payload["recognition"]["status"] == "accepted"
+    assert payload["analysis"] is None
+    assert payload["error"] == {
+        "code": code, "http_status": http_status, "message": payload["display_text"],
+    }
+    assert "局面已识别" in payload["display_text"]
+
+
+def test_fen_solution_conflict_returns_422_with_a_specific_code():
+    response = client.post(
+        "/v1/solutions", json={"fen": "5k3/9/9/9/9/9/4r4/9/9/4K4 b"},
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "SIDE_TO_MOVE_CONFLICT"
+
+
+@pytest.mark.parametrize("route", ["/v1/solutions", "/v1/analyses", "/api/lab/analyses"])
+def test_terminal_results_have_a_winner_and_display_text(route):
+    with patch("rakuxq_api.main.analysis_engine", PikafishEngine("", "")):
+        response = client.post(
+            route,
+            headers={"Origin": "http://testserver"},
+            json={"fen": "4k4/3RR4/9/9/9/9/9/9/9/5K3 b"},
+        )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["best_move"] is None
+    assert payload["position"]["terminal_reason"] == "checkmate"
+    assert payload["position"]["winner"] == "red"
+    assert payload["display_text"] == "黑方已将死，红方获胜。"
+    assert payload["status"] == ("accepted" if route == "/v1/solutions" else "terminal")

@@ -21,6 +21,7 @@ from .base import (
     score_from_side_to_move,
 )
 from .notation import chinese_move_notation, chinese_principal_variation
+from .rules import inspect_position
 
 
 @dataclass(slots=True)
@@ -257,6 +258,13 @@ class PikafishEngine:
     def analyze(self, fen: str, movetime_ms: int) -> AnalysisResult:
         normalized_fen = normalize_engine_fen(fen)
         active_color = normalized_fen.split()[1]
+        position, legal = inspect_position(normalized_fen)
+        if position.terminal_reason:
+            return AnalysisResult(
+                status="terminal", fen=normalized_fen, best_move=None, ponder=None,
+                score=None, depth=0, seldepth=None, nodes=0, time_ms=0, nps=None,
+                engine=self.identity, position=position,
+            )
         with self._lock:
             if not self.ready:
                 # start() owns the same lock, so perform startup before entering analysis.
@@ -299,6 +307,11 @@ class PikafishEngine:
                         if index + 1 < len(parts):
                             ponder = parts[index + 1]
 
+            if best_move_value not in legal:
+                raise EngineAnalysisError(
+                    "引擎未返回可执行的合法着法；当前局面仍有合法着法，请重试分析。"
+                )
+
             score: EngineScore | None = None
             if latest.score_type is not None and latest.score_value is not None:
                 score = score_from_side_to_move(
@@ -331,4 +344,5 @@ class PikafishEngine:
                 pv=pv,
                 pv_notation=chinese_principal_variation(normalized_fen, pv),
                 engine=self._identity,
+                position=position,
             )

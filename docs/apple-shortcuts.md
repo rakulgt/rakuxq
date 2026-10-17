@@ -44,4 +44,11 @@ https://xiangqiai.com/#/<piece_placement>%20w
 
 ## 错误处理
 
+使用融合接口 `/v1/solve` 时，直接显示或推送顶层 `display_text`。它在正常出招、真正终局和
+解题未完成时都有明确文本。只有 `status=accepted` 且 `analysis_status=completed` 才表示
+已得到推荐着法；`analysis_status=terminal` 表示棋局已结束，没有下一招。
+`review_required/invalid_position` 表示需要核对行棋方或局面，`partial_success/failed` 表示
+识别已完成但解题失败；这两类响应保留 `fen` 和 `recognition`，不能把空的 `analysis` 当作答案。
+`auto` 下方规则不会因行棋方冲突而被自动改成另一方；截图应在轮到我方走时提交，或手动选红/黑。
+
 当接口返回非 2xx 状态时，快捷指令应显示响应中的 `detail`。常见情况包括 API Key 缺失、无效或过期，模型未就绪、棋盘未找到、图片过大或格式不支持。`review_required` 是成功的 JSON 响应但不应自动消费 FEN。

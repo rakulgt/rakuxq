@@ -224,6 +224,15 @@ else:
 同类棋子自动使用“前、后、中”等消歧。引擎提前确认绝杀或无合法变化时可以早于时间预算返回，
 因此 `actual_time_ms` 不一定等于 `effective_time_ms`。
 
+被将军、临近绝杀或只有唯一合法着法均会继续计算。`position` 给出 `side_to_move`、`in_check`、
+`legal_move_count`、`terminal_reason` 和 `winner`；仅当没有合法着法时，`terminal_reason` 为
+`checkmate`（将死）或 `stalemate`（象棋困毙，同样判负）。此时 `best_move=null`、`score=null`，
+`display_text` 明确说明胜方，`analysis_status=terminal`；它不是引擎故障。正常搜索为
+`analysis_status=completed`。`/v1/analyses` 的底层 `status` 相应为 `terminal` 或 `completed`。
+
+非行棋方的将帅已被将军时，FEN 解题接口返回 `422 SIDE_TO_MOVE_CONFLICT`。这表示行棋方与
+局面不一致，也可能源于错识棋子，不等于棋局已结束；系统不自动交换行棋方。
+
 ## `POST /v1/solve`
 
 参数是在 `/v1/recognitions` 基础上增加 `movetime_ms`。服务先执行真实视觉识别；只有结果为
@@ -233,9 +242,26 @@ else:
 - `recognition`：完整、可审计的原识别结果；
 - `analysis`：最佳着法、红方视角整数评分、PV 和可复现引擎信息。
 
-识别需要复核或被拒绝时，`analysis` 为 `null`，不得静默对不可靠局面给出着法。无个人引擎权限
-返回 `403 ENGINE_ACCESS_DENIED`，未配置引擎返回 `503 ENGINE_NOT_CONFIGURED`；非法 FEN、
-分析超时和引擎异常分别返回明确的机器错误码。
+所有已完成识别的融合响应均提供顶层 `display_text` 和独立 `analysis_status`。快捷指令可以直接
+显示 `display_text`；仅当 `status=accepted` 且 `analysis_status=completed` 时执行推荐着法。
+
+| 情况 | HTTP | 顶层 `status` | `analysis_status` | `analysis` |
+|---|---|---|---|---|
+| 识别通过且正常出招 | 200 | `accepted` | `completed` | 着法、评分等 |
+| 识别通过且确认终局 | 200 | `accepted` | `terminal` | 终局状态，`best_move=null` |
+| 视觉需要复核/拒识 | 200 | 原识别状态 | `not_started` | `null` |
+| 识别通过但行棋方/局面冲突 | 200 | `review_required` | `invalid_position` | `null` |
+| 识别通过但引擎不可用/超时/失败 | 200 | `partial_success` | `failed` | `null` |
+
+后两种情况保留原 `fen` 和完整 `recognition`（其中 `status` 仍为 `accepted`），并返回
+`error: {code, message, http_status}`；`http_status` 记录分析阶段原来的 422/502/503/504，
+融合响应本身为 200。`code` 分别为 `SIDE_TO_MOVE_CONFLICT`、`INVALID_XIANGQI_FEN`、
+`ENGINE_NOT_CONFIGURED`、`ENGINE_TIMEOUT` 或 `ENGINE_ANALYSIS_FAILED`。不能把 HTTP 200
+单独视为解题成功，也不能把保留的 FEN 当作已通过引擎合法性验证。
+
+`auto` 继续按原图下方确定我方；行棋方冲突时提示核对当前轮次和棋子位置，不自动换边。
+鉴权/引擎权限、图片输入、搜索预算错误仍使用原非 2xx 响应；无个人引擎权限返回
+`403 ENGINE_ACCESS_DENIED`。单独的 FEN 解题接口保留原 422/502/503/504 HTTP 错误契约。
 
 ## 官方托管短期审计
 

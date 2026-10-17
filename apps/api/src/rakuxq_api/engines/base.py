@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Protocol
 
 from ..validation import validate_position
+from .rules import PositionState, in_check
 
 
 class EngineAnalysisError(RuntimeError):
@@ -20,6 +21,10 @@ class EngineTimeout(EngineAnalysisError):
 
 class InvalidEnginePosition(ValueError):
     """The supplied Xiangqi FEN is not safe to send to a strict engine."""
+
+    def __init__(self, message: str, *, code: str = "INVALID_XIANGQI_FEN") -> None:
+        super().__init__(message)
+        self.code = code
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +67,7 @@ class AnalysisResult:
     pv: list[str] = field(default_factory=list)
     pv_notation: list[str] = field(default_factory=list)
     engine: EngineIdentity | None = None
+    position: PositionState | None = None
 
 
 class AnalysisEngine(Protocol):
@@ -93,6 +99,13 @@ def analysis_to_dict(result: AnalysisResult) -> dict[str, object]:
     payload["display_text"] = " ".join(
         value for value in (notation, score_display) if isinstance(value, str) and value
     )
+    if result.position is not None and result.position.terminal_reason:
+        loser = "红方" if result.position.side_to_move == "red" else "黑方"
+        winner = "黑方" if result.position.winner == "black" else "红方"
+        reason = (
+            "已将死" if result.position.terminal_reason == "checkmate" else "无合法着法（困毙）"
+        )
+        payload["display_text"] = f"{loser}{reason}，{winner}获胜。"
     return payload
 
 
@@ -159,6 +172,14 @@ def normalize_engine_fen(fen: str) -> str:
     if blocking_warnings:
         raise InvalidEnginePosition(
             "position failed Xiangqi validation: " + ", ".join(blocking_warnings)
+        )
+
+    # Being in check is legal for the mover. The side which just moved cannot
+    # have left its own king in check; Pikafish rejects that state fatally.
+    if in_check(grid, red=active == "b"):
+        raise InvalidEnginePosition(
+            "行棋方与将军状态冲突：非行棋方的将帅正在被将军。请核对轮到谁走及棋子位置。",
+            code="SIDE_TO_MOVE_CONFLICT",
         )
 
     return " ".join(fields)

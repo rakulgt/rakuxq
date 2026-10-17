@@ -26,6 +26,8 @@ jobs:
           git diff --exit-code -- apps/api/src/rakuxq_api/static/vendor
       - name: Test interactive board rules
         run: npm run test:web
+      - name: Compare server rules with pinned browser rules
+        run: npm run test:engine-rules
       - name: Check browser JavaScript syntax
         run: |
           node --check apps/api/src/rakuxq_api/static/app.js

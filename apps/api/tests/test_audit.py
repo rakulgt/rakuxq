@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from rakuxq_api.api_keys import APIKeyStore
 from rakuxq_api.audit import AUDITED_PATHS, InteractionAuditMiddleware, InteractionAuditStore
 from rakuxq_api.domain import BoardPrediction, CellPrediction, Orientation
+from rakuxq_api.engines import EngineTimeout
 from rakuxq_api.main import app
 from rakuxq_api.providers.base import RecognitionProvider
 from rakuxq_api.service import RecognitionService
@@ -125,6 +126,27 @@ def test_solve_uploads_are_audited_and_nested_recognition_fields_are_visible():
     payload = {"recognition": {"request_id": "rec_nested", "full_fen": "4k4/9 w"}}
     assert InteractionAuditStore._nested(payload, "request_id") == "rec_nested"
     assert InteractionAuditStore._nested(payload, "full_fen") == "4k4/9 w"
+
+
+def test_solve_audit_keeps_recognition_and_analysis_status_separate(tmp_path):
+    store = InteractionAuditStore(tmp_path, retention_hours=12, max_total_bytes=10_000_000)
+    with (
+        patch("rakuxq_api.main.audit_store", store),
+        patch("rakuxq_api.main.service", RecognitionService(AuditProvider())),
+        patch("rakuxq_api.main.analysis_engine.analyze", side_effect=EngineTimeout("timeout")),
+    ):
+        response = client.post(
+            "/v1/solve", files={"image": ("board.png", b"original", "image/png")},
+            data={"side_to_move": "red"},
+        )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "partial_success"
+    metadata = json.loads((_records(tmp_path)[0] / "interaction.json").read_text("utf-8"))
+    assert metadata["response"]["recognition_status"] == "accepted"
+    assert metadata["response"]["analysis_status"] == "failed"
+    assert metadata["response"]["analysis_error_code"] == "ENGINE_TIMEOUT"
+    assert metadata["response"]["fen"] == payload["fen"]
 
 
 def test_secured_audit_keeps_only_active_key_requests(tmp_path):
