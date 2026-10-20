@@ -105,7 +105,55 @@ class FixedAnalysisEngine:
         )
 
 
+class TwoCandidateEngine(FixedAnalysisEngine):
+    def analyze(self, fen, movetime_ms):
+        from dataclasses import replace
+
+        from rakuxq_api.engines.base import MoveRecommendation
+
+        result = super().analyze(fen, movetime_ms)
+        return replace(result, recommendations=[
+            MoveRecommendation(result.best_move, result.score, result.depth),
+            MoveRecommendation(
+                EngineMove("b2e2", "b2", "e2", "炮八平五"),
+                EngineScore("cp", 100, "red", "红优 100"), result.depth,
+            ),
+        ])
+
+
 client = TestClient(app)
+
+
+@pytest.mark.parametrize("path,time_field,headers", [
+    ("/v1/analyses", "movetime_ms", {}),
+    ("/v1/solutions", "time_ms", {}),
+    ("/api/lab/analyses", "movetime_ms", {"Origin": "http://testserver"}),
+])
+def test_analysis_routes_preserve_best_move_and_add_two_candidate_text(path, time_field, headers):
+    with patch("rakuxq_api.main.analysis_engine", TwoCandidateEngine()):
+        response = client.post(path, headers=headers, json={"fen": START_FEN, time_field: 3000})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["best_move"]["iccs"] == "h2e2"
+    assert len(payload["recommendations"]) == 2
+    assert payload["recommendations"][1]["move"]["notation"] == "炮八平五"
+    assert payload["display_text"] == "首选：炮二平五 红优 186；备选：炮八平五 红优 100"
+
+
+def test_fused_solve_returns_two_candidates_in_the_existing_shortcut_text():
+    with (
+        patch("rakuxq_api.main.service", RecognitionService(FixedProvider())),
+        patch("rakuxq_api.main.analysis_engine", TwoCandidateEngine()),
+    ):
+        response = client.post(
+            "/v1/solve", files={"image": ("board.png", b"image", "image/png")},
+            data={"side_to_move": "red"},
+        )
+    payload = response.json()
+    assert response.status_code == 200 and payload["analysis_status"] == "completed"
+    assert payload["display_text"] == payload["analysis"]["display_text"]
+    assert "首选：炮二平五" in payload["display_text"]
+    assert "备选：炮八平五" in payload["display_text"]
 
 
 def test_public_homepage_and_empty_metrics_are_available_without_api_key():

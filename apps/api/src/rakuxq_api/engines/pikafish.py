@@ -17,6 +17,7 @@ from .base import (
     EngineNotConfigured,
     EngineScore,
     EngineTimeout,
+    MoveRecommendation,
     normalize_engine_fen,
     score_from_side_to_move,
 )
@@ -26,6 +27,7 @@ from .rules import inspect_position
 
 @dataclass(slots=True)
 class _InfoLine:
+    multipv: int = 1
     depth: int = 0
     seldepth: int | None = None
     nodes: int | None = None
@@ -49,10 +51,11 @@ def parse_uci_info(line: str) -> _InfoLine | None:
     if not tokens or tokens[0] != "info":
         return None
     multipv = _integer_after(tokens, "multipv")
-    if multipv not in {None, 1}:
+    if multipv is not None and multipv not in {1, 2}:
         return None
 
     parsed = _InfoLine(
+        multipv=multipv or 1,
         depth=_integer_after(tokens, "depth") or 0,
         seldepth=_integer_after(tokens, "seldepth"),
         nodes=_integer_after(tokens, "nodes"),
@@ -78,6 +81,29 @@ def parse_uci_info(line: str) -> _InfoLine | None:
     return parsed
 
 
+def alternative_omission_reason(
+    primary: _InfoLine, alternative: _InfoLine, max_loss_cp: int,
+) -> str | None:
+    """Compare exact, same-depth scores in the engine's mover perspective."""
+    if (
+        primary.depth != alternative.depth or primary.depth < 1
+        or primary.score_bound is not None or alternative.score_bound is not None
+        or primary.score_value is None or alternative.score_value is None
+    ):
+        return "insufficient_search"
+    first, second = primary.score_value, alternative.score_value
+    if primary.score_type == alternative.score_type == "cp":
+        # A reversed ranking is not a trustworthy pair either.
+        return None if 0 <= first - second <= max_loss_cp else "score_gap"
+    if primary.score_type == alternative.score_type == "mate":
+        if first > 0 and second > 0:
+            return None if second >= first else "insufficient_search"
+        if first < 0 and second < 0:
+            # Do not suggest a line which substantially hastens a known loss.
+            return None if abs(second) >= abs(first) else "mate_outcome"
+    return "mate_outcome"
+
+
 class PikafishEngine:
     """Persistent Pikafish subprocess controlled through the UCI protocol."""
 
@@ -90,6 +116,7 @@ class PikafishEngine:
         hash_mb: int = 64,
         command_timeout_ms: int = 5_000,
         version: str = "unknown",
+        candidate_max_loss_cp: int = 150,
     ) -> None:
         self.executable = Path(executable).expanduser() if executable else None
         self.network = Path(network).expanduser() if network else None
@@ -97,6 +124,7 @@ class PikafishEngine:
         self.hash_mb = max(16, hash_mb)
         self.command_timeout_ms = max(1_000, command_timeout_ms)
         self.version = version
+        self.candidate_max_loss_cp = max(0, candidate_max_loss_cp)
         self._process: subprocess.Popen[str] | None = None
         self._reader: threading.Thread | None = None
         self._lines: queue.Queue[str | None] = queue.Queue()
@@ -275,6 +303,9 @@ class PikafishEngine:
         with self._lock:
             started = time.monotonic()
             try:
+                # One shared budget, not two sequential searches. Reset per search
+                # so a forced single evasion cannot leak MultiPV state.
+                self._send(f"setoption name MultiPV value {min(2, len(legal))}")
                 self._send(f"position fen {normalized_fen}")
                 self._send(f"go movetime {movetime_ms}")
                 timeout_ms = max(self.command_timeout_ms, movetime_ms + 2_000)
@@ -283,7 +314,9 @@ class PikafishEngine:
                 self._recover_after_failure()
                 raise
 
-            latest = _InfoLine()
+            primary_lines: list[_InfoLine] = []
+            iterations: dict[int, dict[int, _InfoLine]] = {}
+            reported_time_ms = 0
             best_move_value: str | None = None
             ponder: str | None = None
             for line in lines:
@@ -291,13 +324,12 @@ class PikafishEngine:
                 if (
                     parsed is not None
                     and parsed.score_value is not None
-                    and parsed.pv is not None
-                    and (
-                    parsed.depth > latest.depth
-                    or (parsed.depth == latest.depth and parsed.pv is not None)
-                    )
+                    and parsed.pv
                 ):
-                    latest = parsed
+                    reported_time_ms = max(reported_time_ms, parsed.time_ms)
+                    iterations.setdefault(parsed.depth, {})[parsed.multipv] = parsed
+                    if parsed.multipv == 1:
+                        primary_lines.append(parsed)
                 if line.startswith("bestmove"):
                     parts = line.split()
                     if len(parts) >= 2 and parts[1] not in {"(none)", "0000"}:
@@ -311,6 +343,27 @@ class PikafishEngine:
                 raise EngineAnalysisError(
                     "引擎未返回可执行的合法着法；当前局面仍有合法着法，请重试分析。"
                 )
+
+            # Never attach a stale score/PV to a different bestmove when the last
+            # search iteration is incomplete. Candidate scores must be comparable.
+            matching = [p for p in primary_lines if p.pv and p.pv[0] == best_move_value]
+            latest = max(matching, key=lambda p: p.depth, default=_InfoLine())
+            paired: tuple[_InfoLine, _InfoLine] | None = None
+            for depth in sorted(iterations, reverse=True):
+                iteration = iterations[depth]
+                first, second = iteration.get(1), iteration.get(2)
+                if (
+                    first and second and first.pv and second.pv
+                    and first.pv[0] == best_move_value
+                    and second.pv[0] in legal and second.pv[0] != best_move_value
+                    and first.score_bound is None and second.score_bound is None
+                    # Reject pairs older than a newer complete, changed result.
+                    and not any(p.depth > depth and p.score_bound is None
+                                and p.pv and p.pv[0] != best_move_value for p in primary_lines)
+                ):
+                    paired = first, second
+                    latest = first
+                    break
 
             score: EngineScore | None = None
             if latest.score_type is not None and latest.score_value is not None:
@@ -329,7 +382,31 @@ class PikafishEngine:
                     notation=chinese_move_notation(normalized_fen, best_move_value),
                 )
             pv = latest.pv or []
-            elapsed_ms = max(latest.time_ms, round((time.monotonic() - started) * 1000))
+            recommendations: list[MoveRecommendation] = []
+            if best_move is not None:
+                recommendations.append(MoveRecommendation(
+                    move=best_move, score=score, depth=latest.depth, pv=pv,
+                    pv_notation=chinese_principal_variation(normalized_fen, pv),
+                ))
+            omission: str | None = (
+                "only_legal_move" if len(legal) == 1 else "insufficient_search"
+            )
+            if paired is not None and len(legal) > 1:
+                omission = alternative_omission_reason(*paired, self.candidate_max_loss_cp)
+                if omission is None:
+                    second = paired[1]
+                    assert second.pv and second.score_type and second.score_value is not None
+                    iccs = second.pv[0]
+                    recommendations.append(MoveRecommendation(
+                        move=EngineMove(iccs, iccs[:2], iccs[2:4],
+                                        chinese_move_notation(normalized_fen, iccs)),
+                        score=score_from_side_to_move(
+                            second.score_type, second.score_value, active_color,
+                        ),
+                        depth=second.depth, pv=second.pv,
+                        pv_notation=chinese_principal_variation(normalized_fen, second.pv),
+                    ))
+            elapsed_ms = max(reported_time_ms, round((time.monotonic() - started) * 1000))
             return AnalysisResult(
                 status="completed",
                 fen=normalized_fen,
@@ -345,4 +422,6 @@ class PikafishEngine:
                 pv_notation=chinese_principal_variation(normalized_fen, pv),
                 engine=self._identity,
                 position=position,
+                recommendations=recommendations,
+                alternative_omitted_reason=omission,
             )

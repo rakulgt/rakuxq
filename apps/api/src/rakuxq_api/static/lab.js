@@ -12,7 +12,7 @@ import {
   toPublicFen,
   validateImportedTree,
 } from "/static/lab-core.js?v=0.4.2a1";
-import { engineTurnAction, terminalOutcome } from "/static/lab-auto.js?v=0.5.2a2";
+import { engineTurnAction, recommendationSummary, terminalOutcome } from "/static/lab-auto.js?v=0.5.4a1";
 
 const svgNamespace = "http://www.w3.org/2000/svg";
 const files = "abcdefghi";
@@ -243,7 +243,7 @@ function renderAnalysis() {
   byId("analysis-score").textContent = analysis.score?.display || "—";
   byId("analysis-state").textContent = "评分始终采用红方固定视角";
   const mode = currentAssistMode();
-  byId("analysis-best").textContent = mode === "score" ? "仅评分模式" : (analysis.best_move?.notation || analysis.best_move?.iccs || "无合法着法");
+  byId("analysis-best").textContent = mode === "score" ? "仅评分模式" : recommendationSummary(analysis);
   byId("analysis-pv").textContent = analysis.pv_notation?.length ? analysis.pv_notation.join("  ") : (analysis.pv?.length ? analysis.pv.join("  ") : "引擎未返回主要变化");
   byId("analysis-depth").textContent = analysis.depth ?? "—";
   byId("analysis-nodes").textContent = analysis.nodes == null ? "—" : new Intl.NumberFormat("zh-CN").format(analysis.nodes);

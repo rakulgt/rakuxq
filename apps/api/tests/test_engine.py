@@ -86,8 +86,10 @@ def test_parse_pikafish_principal_variation_info():
     assert parsed.pv == ["h2e2", "h9g7"]
 
 
-def test_parse_pikafish_ignores_non_primary_multipv():
-    assert parse_uci_info("info depth 12 multipv 2 score cp 10 pv a0a1") is None
+def test_parse_pikafish_preserves_second_candidate_rank():
+    parsed = parse_uci_info("info depth 12 multipv 2 score cp 10 pv a0a1")
+    assert parsed is not None and parsed.multipv == 2
+    assert parse_uci_info("info depth 12 multipv 3 score cp 0 pv a0a1") is None
 
 
 def test_public_move_fields_use_from_and_to_names():

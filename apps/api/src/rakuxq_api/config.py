@@ -93,6 +93,9 @@ class Settings:
     )
     engine_threads: int = int(os.getenv("RAKUXQ_ENGINE_THREADS", "1"))
     engine_hash_mb: int = int(os.getenv("RAKUXQ_ENGINE_HASH_MB", "64"))
+    engine_candidate_max_loss_cp: int = int(
+        os.getenv("RAKUXQ_ENGINE_CANDIDATE_MAX_LOSS_CP", "150")
+    )
     engine_default_movetime_ms: int = int(
         os.getenv("RAKUXQ_ENGINE_DEFAULT_MOVETIME_MS", "3000")
     )

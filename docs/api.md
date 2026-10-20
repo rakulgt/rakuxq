@@ -177,6 +177,17 @@ else:
 `movetime_ms` 默认 3000，当前允许 50–10000 毫秒。接口返回 ICCS 最佳着法、ponder、主要变化、
 深度、节点、耗时和引擎/权重身份。
 
+所有引擎入口默认在同一搜索预算内计算首选和备选（不是连续两步）。新增
+`recommendations: [{move: {iccs, from, to, notation}, score, depth, pv, pv_notation}]`，最多两项，
+终局为空；原 `best_move`、`score` 和 PV 始终指首选。备选须是另一合法着法，具有同深度精确评分，
+默认与首选相差不超过 150 个引擎评分点，并通过杀棋结果筛选。无可靠备选时只有一项；
+`alternative_omitted_reason` 解释为 `only_legal_move`（唯一合法）、`score_gap`（差距过大）、
+`mate_outcome`（杀棋结果退化）或 `insufficient_search`（比较证据不足）；有两招及终局时为空。
+`display_text` 在两招时为 `首选：… 红优 N；备选：… 红优 M`，单招保持原格式。融合接口的
+`analysis.recommendations` 与顶层 `display_text` 同步包含该信息，快捷指令无需增加字段解析。
+固定时间下深度可能下降，提前确认杀棋的搜索可能用满预算；当前 FEN 不含走棋历史，因此这不是
+长将/长捉判罚或避免重复的完整实现。详见 [候选规则](engine.md#candidate-moves)。
+
 评分始终以红方为固定视角，与当前行棋方无关：`score.value` 的正整数表示红优，负整数表示黑优，`0` 表示近似
 均衡。面向人的 `score.display` 使用 `红优 186`、`黑优 243`、`均势 0`；强制杀棋使用 `红方 KO(N)` 或
 `黑方 KO(N)`。`value` 始终保留带正负号语义的整数，便于程序比较，显示层则不要求用户解释正负号。

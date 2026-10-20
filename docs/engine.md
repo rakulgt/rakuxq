@@ -65,6 +65,37 @@ one-thread/64-MiB defaults protect the vision process on a small host. Supported
 - `RAKUXQ_ENGINE_DEFAULT_MOVETIME_MS`: default search budget, initially `3000`.
 - `RAKUXQ_ENGINE_MAX_MOVETIME_MS`: public request ceiling, initially `10000`.
 - `RAKUXQ_ENGINE_COMMAND_TIMEOUT_MS`: protocol/startup timeout, initially `5000`.
+- `RAKUXQ_ENGINE_CANDIDATE_MAX_LOSS_CP`: maximum exact-score loss for an alternative,
+  initially `150` engine score points (not a calibrated win-probability threshold).
+
+## Candidate moves
+
+The default is a single `MultiPV=2` search within the existing shared time budget (3000 ms unless
+overridden), not two sequential searches. One legal evasion uses `MultiPV=1`. `best_move`, `score`,
+and `pv` still describe the first choice; automatic play never executes both suggestions.
+`recommendations` contains one or two sibling moves, each with `move`, fixed-red `score`, `depth`,
+`pv`, and `pv_notation`. A terminal position has an empty list. The Lab displays both when present;
+the anonymous homepage feed continues to publish only the primary notation.
+
+An alternative requires a distinct legal root, a same-depth pair of exact (not bound) scores, and
+at most a 150-point loss in mover perspective. It cannot replace a known winning mate with an
+unproven/mated line, nor introduce a forced loss where the first line has none. Two proven winning
+mates can both be shown, even if the second is longer. With two losing mate lines, an earlier loss
+is suppressed. These are bounded-search heuristics, not guaranteed game-theoretic evaluations.
+Only one move is returned if a trustworthy pair is unavailable. `alternative_omitted_reason` is
+`only_legal_move`, `score_gap`, `mate_outcome`, or `insufficient_search`; it is null when two moves
+are included (and for terminal results). Incomplete iterations may fall back to a completed pair
+at a reported lower depth matching the actual bestmove; no score from a different root is reused.
+
+`display_text` retains its old format for one move; for two it becomes, for example,
+`首选：炮二平五 红优 80；备选：炮八平五 红优 50`. Both are choices for the current mover, not
+consecutive plies. Existing Shortcuts reading this field need no changes.
+
+At fixed wall time, MultiPV trades some depth for breadth and does not guarantee unchanged strength.
+Early mate searches that previously finished immediately may now consume the full budget. Upload,
+queueing and response transport remain outside the engine budget. This API sends only the current
+FEN, not prior moves: two choices do **not** implement perpetual-check/chase adjudication or guarantee
+avoidance of repetition. History-aware rules remain separate work.
 
 ## HTTP flow
 

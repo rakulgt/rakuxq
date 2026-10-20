@@ -20,7 +20,7 @@ RakuXQ 是由 **rakulgt / Raku Intelligence（罗酷智能）** 发起的开源�
 高水平参考着法，用于复盘、研究和学习；开发者可以使用“棋盘图片 → FEN”和
 “FEN → solution”HTTP API 接入自己的工具。公开服务仅供非商业研究与娱乐，请勿用于赌棋。
 
-> 当前源码版本：`v0.5.3-alpha.2`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
+> 当前源码版本：`v0.5.4-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
 > Pikafish UCI 适配器与中文着法用于非商业研究。RakuXQ Lab 在网站内永久免费、无需 Key；
 > 面向程序的远程引擎 API 仍不向临时 Key 或普通客户 Key 提供受限 NNUE 能力。
 
@@ -58,6 +58,7 @@ RakuXQ 的发起人是 **李国泰（rakulgt，<lgt@rakubank.com>）**。这个�
 - **可运营托管**：官方服务支持每客户独立 API Key、到期、续费和吊销。
 - **视觉与解题解耦**：引擎只消费稳定 FEN 契约，可替换而不影响识别 provider。
 - **三条解题路径**：`/v1/solutions` 提供稳定的 FEN 解题契约，`/v1/analyses` 保留底层分析兼容，`/v1/solve` 串联自动通过的图片局面。
+- **首选与备选**：在同一个默认 3 秒搜索预算内尽量返回两种走法；唯一合法着法、备选明显较差或缺少可靠对比分数时只给首选。快捷指令继续读取 `display_text` 即可。固定时间下深度可能下降，部分原可提前结束的杀棋搜索可能用满预算；单张图片不含历史，不能据此保证避免长将/长捉。
 - **公开运行面板**：官网匿名展示最近 30 天、最多 10 万条交互与历史累计统计，可连续翻页并只显示近似国家；原始 IP、地区、城市、坐标、原图和客户标识均不公开。
 - **即领即试**：公开开发文档可领取明文只显示一次、6 分钟失效的临时测试 Key。
 - **交互局面研究器**：首页经典残局支持合法落点、走子、吃子、悔棋、重置、实时 FEN 与外部深入研究。
@@ -247,11 +248,17 @@ screenshots, web boards, physical-board photos, perspective distortion, cropping
 noise, and partial occlusion. Version `0.5` adds a product-level FEN-to-solution endpoint with
 Chinese best-move notation, fixed-red-perspective scores, and principal variations.
 
-> Current source release: `v0.5.3-alpha.2`. The vision pipeline works on a growing set of real
+> Current source release: `v0.5.4-alpha.1`. The vision pipeline works on a growing set of real
 > screenshots and physical-board photos. The Pikafish UCI adapter is undergoing non-commercial
 > interoperability validation. The on-site RakuXQ Lab is free and requires no key; the separate
 > remote engine API remains restricted to the maintainer's key, and trial or ordinary customer
 > keys cannot use the restricted NNUE network.
+
+Engine answers now offer a first choice and, when sufficiently competitive, an alternative within
+one shared default three-second budget. Existing `best_move` clients remain compatible; Shortcuts
+can keep displaying `display_text`. Fixed-time MultiPV may reduce depth, and previously early
+mate searches may consume the full budget. A single FEN has no move history, so this does not
+guarantee prevention of perpetual check or chase. See [engine policy](docs/engine.md#candidate-moves).
 
 ### From lgtXQ to RakuXQ
 

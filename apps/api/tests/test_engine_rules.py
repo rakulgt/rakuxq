@@ -88,7 +88,10 @@ def test_engine_returns_the_only_legal_evasion_instead_of_a_terminal_result():
     assert result.status == "completed"
     assert result.position.in_check
     assert analysis_to_dict(result)["display_text"] == "帅五平六 黑方 KO(8)"
-    assert len(engine.commands) == 2
+    assert engine.commands[0] == "setoption name MultiPV value 1"
+    assert len(engine.commands) == 3
+    assert len(result.recommendations) == 1
+    assert result.alternative_omitted_reason == "only_legal_move"
 
 
 @pytest.mark.parametrize("bestmove", ["(none)", "0000", "e0e1"])

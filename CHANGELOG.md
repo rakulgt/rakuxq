@@ -4,6 +4,25 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.5.4-alpha.1] - 2026-10-20
+
+### 中文
+
+- 单进程、单线程、同一时间预算内搜索两种候选着法；默认尽量展示首选与备选，不增加第二轮串行搜索。
+- 备选须为另一合法着法、同一搜索深度的非边界评分，默认分差不超过 150 个引擎评分点；不推荐丢掉已找到杀棋或转入被杀的方案。唯一合法应招和证据不足时只返回首选。
+- 新增 `recommendations` 和 `alternative_omitted_reason`；保留 `best_move`、首选评分/PV 与自动代走行为。快捷指令原 `display_text` 自动包含两招，Lab 同步显示首选/备选，首页匿名列仍仅显示首选。
+- 明确性能和规则边界：固定时间的双候选可能降低深度，快速杀棋可能用满预算；当前单 FEN 输入不含历史，不能保证解决长将/长捉。
+
+### English
+
+- Search two alternatives with one serialized MultiPV search and the existing shared time budget.
+- Filter alternatives using legal, distinct roots, comparable exact scores, a default 150-point gap,
+  and conservative mate-outcome checks; never invent a second move.
+- Add structured recommendations and omission reasons while preserving primary-move clients and
+  automatic play. Shortcuts' existing text and the Lab show both choices when qualified.
+- Document reduced fixed-time depth, potentially longer early-mate searches, and the absence of
+  historical repetition adjudication in single-FEN requests.
+
 ## [0.5.3-alpha.2] - 2026-10-17
 
 ### 中文

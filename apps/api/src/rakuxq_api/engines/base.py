@@ -53,6 +53,15 @@ class EngineIdentity:
 
 
 @dataclass(frozen=True, slots=True)
+class MoveRecommendation:
+    move: EngineMove
+    score: EngineScore | None
+    depth: int
+    pv: list[str] = field(default_factory=list)
+    pv_notation: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True, slots=True)
 class AnalysisResult:
     status: str
     fen: str
@@ -68,6 +77,8 @@ class AnalysisResult:
     pv_notation: list[str] = field(default_factory=list)
     engine: EngineIdentity | None = None
     position: PositionState | None = None
+    recommendations: list[MoveRecommendation] = field(default_factory=list)
+    alternative_omitted_reason: str | None = None
 
 
 class AnalysisEngine(Protocol):
@@ -93,12 +104,26 @@ def analysis_to_dict(result: AnalysisResult) -> dict[str, object]:
         move["to"] = move.pop("to_square")
         if move.get("notation") is None:
             move.pop("notation")
+    for recommendation in payload["recommendations"]:
+        candidate_move = recommendation["move"]
+        candidate_move["from"] = candidate_move.pop("from_square")
+        candidate_move["to"] = candidate_move.pop("to_square")
+        if candidate_move.get("notation") is None:
+            candidate_move.pop("notation")
     score = payload.get("score")
     notation = move.get("notation") if isinstance(move, dict) else None
     score_display = score.get("display") if isinstance(score, dict) else None
     payload["display_text"] = " ".join(
         value for value in (notation, score_display) if isinstance(value, str) and value
     )
+    if len(result.recommendations) == 2:
+        first, second = result.recommendations
+        payload["display_text"] = (
+            f"首选：{first.move.notation or first.move.iccs} "
+            f"{first.score.display if first.score else ''}；"
+            f"备选：{second.move.notation or second.move.iccs} "
+            f"{second.score.display if second.score else ''}"
+        ).strip()
     if result.position is not None and result.position.terminal_reason:
         loser = "红方" if result.position.side_to_move == "red" else "黑方"
         winner = "黑方" if result.position.winner == "black" else "红方"

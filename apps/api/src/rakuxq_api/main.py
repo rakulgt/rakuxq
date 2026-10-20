@@ -96,6 +96,7 @@ analysis_engine = PikafishEngine(
     hash_mb=settings.engine_hash_mb,
     command_timeout_ms=settings.engine_command_timeout_ms,
     version=settings.engine_version,
+    candidate_max_loss_cp=settings.engine_candidate_max_loss_cp,
 )
 static_root = Path(__file__).with_name("static")
 
