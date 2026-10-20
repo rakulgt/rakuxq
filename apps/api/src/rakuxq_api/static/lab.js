@@ -506,7 +506,7 @@ function friendlyEngineError(status, payload) {
   const code = payload?.detail?.code;
   if (status === 429) return "当前使用人数较多，请稍候再试。";
   if (code === "LAB_SAME_ORIGIN_REQUIRED") return "请直接在 RakuXQ Lab 页面内使用免费引擎。";
-  if (code === "LAB_ANALYSIS_TIME_INVALID") return "免费 Lab 的单次思考时间为 50 毫秒至 3 秒。";
+  if (code === "LAB_ANALYSIS_TIME_INVALID") return "首选时间输入范围为 50–10000 毫秒；实际单招最多 9 秒，双招首选最多 8 秒。";
   if (status === 403) return "当前请求未通过 Lab 的网页访问校验，请刷新页面后重试。";
   if (status === 503) return "当前服务没有配置可用的解题引擎。";
   return payload?.detail?.message || payload?.detail || `引擎请求失败（HTTP ${status}）`;
@@ -516,7 +516,7 @@ function updateEngineControls() {
   const button = byId("analysis-run");
   button.disabled = !engineAvailable;
   button.textContent = engineAvailable ? "分析当前局面" : "托管引擎尚未开放";
-  ["red-assist", "black-assist", "engine-time"].forEach((id) => {
+  ["red-assist", "black-assist", "engine-time", "engine-candidates"].forEach((id) => {
     byId(id).disabled = !engineAvailable;
   });
   renderEngineToolbar();
@@ -542,7 +542,7 @@ async function analyzeCurrent({ manual = false } = {}) {
     const response = await fetch("/api/lab/analyses", {
       method: "POST",
       headers: headersForEngine(),
-      body: JSON.stringify({ fen: targetFen, movetime_ms: Number(byId("engine-time").value) }),
+      body: JSON.stringify({ fen: targetFen, movetime_ms: Number(byId("engine-time").value), max_candidates: byId("engine-candidates").value }),
       signal: analysisController.signal,
     });
     const payload = await response.json().catch(() => ({}));
@@ -926,7 +926,7 @@ function bindEvents() {
   byId("lab-copy-fen").addEventListener("click", (event) => flashCopy(event.currentTarget, currentFen()));
   byId("lab-copy-link").addEventListener("click", (event) => flashCopy(event.currentTarget, `${location.origin}${canonicalFenPath(currentFen())}`));
   byId("analysis-run").addEventListener("click", () => analyzeCurrent({ manual: true }));
-  ["red-assist", "black-assist", "engine-time"].forEach((id) => byId(id).addEventListener("change", () => { render(); maybeAssist(); }));
+  ["red-assist", "black-assist", "engine-time", "engine-candidates"].forEach((id) => byId(id).addEventListener("change", () => { clearPendingAnalysis(); render(); maybeAssist(); }));
   byId("lab-import").addEventListener("click", () => { byId("import-error").hidden = true; byId("import-dialog").showModal(); });
   byId("lab-export").addEventListener("click", () => byId("export-dialog").showModal());
   byId("import-file").addEventListener("change", async (event) => {

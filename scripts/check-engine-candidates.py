@@ -18,10 +18,6 @@ def main():
     from rakuxq_api.engines import PikafishEngine, analysis_to_dict
     from rakuxq_api.engines.rules import inspect_position
 
-    class SinglePVBaseline(PikafishEngine):
-        def analyze(self, fen, movetime_ms):
-            return self._analyze_once(fen, min(3000, movetime_ms), candidate_count=1)
-
     start = "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR"
     positions = {
         "opening_red": start + " w",
@@ -31,16 +27,18 @@ def main():
     results = []
     for name, fen in positions.items():
         # Separate processes, strictly serial, equal cold hashes and thread limits.
-        for mode, factory in (("single", SinglePVBaseline), ("two", PikafishEngine)):
-            engine = factory(args.engine, args.network, threads=1, hash_mb=64)
+        for mode, count in (("single", 1), ("two", 2)):
+            engine = PikafishEngine(args.engine, args.network, threads=1, hash_mb=64)
             try:
                 engine.start()
                 began = time.monotonic()
-                result = engine.analyze(fen, args.time_ms)
+                result = engine.analyze(fen, args.time_ms, count)
                 wall_ms = round((time.monotonic() - began) * 1000)
                 _, legal = inspect_position(fen)
                 assert result.best_move.iccs in legal
-                assert wall_ms < min(3000, args.time_ms) + 1200, (name, mode, wall_ms)
+                assert wall_ms < min(9000, args.time_ms + (1000 if count == 2 else 0)) + 500, (
+                    name, mode, wall_ms,
+                )
                 assert len(result.recommendations) in {1, 2}
                 assert all(r.move.iccs in legal for r in result.recommendations)
                 results.append({

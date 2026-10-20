@@ -64,17 +64,21 @@ one-thread/64-MiB defaults protect the vision process on a small host. Supported
 
 - `RAKUXQ_ENGINE_DEFAULT_MOVETIME_MS`: default primary budget, initially `3000`.
 - `RAKUXQ_ENGINE_MAX_MOVETIME_MS`: legacy input validation ceiling, initially `10000`;
-  the effective primary budget is always capped at `3000` under the four-second policy.
+  effective primary time is capped at `9000` for one move or `8000` for two.
 - `RAKUXQ_ENGINE_COMMAND_TIMEOUT_MS`: protocol/startup timeout, initially `5000`.
 - `RAKUXQ_ENGINE_CANDIDATE_MAX_LOSS_CP`: maximum exact-score loss for an alternative,
   initially `150` engine score points (not a calibrated win-probability threshold).
 
 ## Candidate moves
 
-The default is a `MultiPV=1` primary search of up to 3000 ms, followed by an optional verification
-stage of up to 1000 ms. The primary result is frozen before verification and never replaced by it.
+`max_candidates` defaults to `auto`, equivalent to `1`: only a `MultiPV=1` primary search,
+defaulting to 3000 ms and capped at 9000 ms, with no alternative work. Explicit `2` enables a
+primary search capped at 8000 ms followed by an optional verification stage of up to 1000 ms.
+JSON and multipart forms accept 1/2 or their string forms; missing/null/empty/auto means one.
+Other values (including booleans, fractions and counts above two) return 422. No depth or pro flag
+is exposed. The primary result is frozen before verification and never replaced by it.
 Both stages reuse the same hash and hold one engine lock, with no interleaved requests or additional
-processes. A single monotonic deadline caps their total budget at 4000 ms; 25 ms is reserved for
+processes. A single monotonic deadline caps their total search budget at 9000 ms; 25 ms is reserved for
 protocol/scheduling completion before the optional stage. Short primary requests allocate one-third
 as much optional time (up to 1000 ms); a stage with less than 50 ms usable time is skipped. Unused
 primary time is not converted into a longer alternative search. A unique legal move or terminal
@@ -94,12 +98,12 @@ shown if the alternative is not shorter than the primary's known mate distance; 
 loss is not offered. These are bounded-search heuristics, not game-theoretic guarantees.
 Only one move is returned if a trustworthy pair is unavailable. `alternative_omitted_reason` is
 `only_legal_move`, `score_gap`, `mate_outcome`, `insufficient_search`, `budget_exhausted`, or
-`alternative_failed`; it is null when two moves are included (and for terminal results).
+`alternative_failed`; `not_requested` means single-move mode. It is null when two moves are included (and for terminal results).
 An optional failure still returns the completed primary result, never a full solve failure.
 Incomplete verification iterations can fall back to a completed matching pair at most one ply
 below the latest matching verification depth. No score from a different root is reused.
 
-`search` exposes `strategy=primary_then_alternative`, `primary_budget_ms`, `alternative_budget_ms`,
+`search` exposes `strategy=primary_only` or `primary_then_alternative`, `primary_budget_ms`, `alternative_budget_ms`,
 `total_budget_ms`, both stage `*_time_ms`, `alternative_status`, `comparison_depth` and
 `comparison_primary_score`. The comparison reference is from the short stage; top-level `score`
 remains the deeper primary's score. Each recommendation reports its own depth and score.
@@ -110,19 +114,20 @@ total reserved budget, and `primary_budget_capped` discloses when an old larger 
 `首选：炮二平五 红优 80；备选：炮八平五 红优 50`. Both are choices for the current mover, not
 consecutive plies. Existing Shortcuts reading this field need no changes.
 
-The primary no longer shares its 3-second budget with another candidate, but wall-clock scheduling
+The primary does not share its requested budget with another candidate, but wall-clock scheduling
 and hash state can still vary; identical depth or Elo is not promised. Early primary mates may
 still add up to one second of optional work. Upload, vision, queueing and response transport remain
 outside the engine budget; this is not a millisecond-precise end-to-end response-time guarantee.
-The API returns one final JSON response, not a streamed primary at 3 seconds and another message
-at 4 seconds. This API sends only the current
+The API returns one final JSON response, not separate streamed results. Single-stage protocol
+completion has 250 ms headroom beyond the search budget to receive UCI bestmove; this does not
+extend the engine's go movetime. This API sends only the current
 FEN, not prior moves: two choices do **not** implement perpetual-check/chase adjudication or guarantee
 avoidance of repetition. History-aware rules remain separate work.
 
 ## HTTP flow
 
 The product-level FEN-to-solution endpoint uses `time_ms`, an optional primary budget defaulting to
-three seconds, with up to one additional second for an alternative:
+three seconds. Add `"max_candidates":2` only when an alternative is wanted:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/v1/solutions \
@@ -182,8 +187,9 @@ http://127.0.0.1:8000/fen/3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4%20w
 ```
 
 Red and black assistance are independent: off, score only, best-move hint, or automatic play.
-Analysis metadata is stored with the corresponding local variation-tree node. A key entered in the
-lab is kept in page memory only and is never exported or written to browser-local storage.
+Analysis metadata is stored with the corresponding local variation-tree node. Lab requires no key.
+Its settings expose primary time and one/two recommendations using the same nine-second search cap;
+same-origin validation and existing frequency/concurrency protections remain in force.
 
 ## Stable score semantics
 

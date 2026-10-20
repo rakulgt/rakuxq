@@ -307,26 +307,33 @@ class PikafishEngine:
     def _recover_after_failure(self) -> None:
         self._terminate()
 
-    def analyze(self, fen: str, movetime_ms: int) -> AnalysisResult:
-        primary_budget, alternative_budget = search_budgets(movetime_ms)
+    def analyze(self, fen: str, movetime_ms: int, max_candidates: int = 1) -> AnalysisResult:
+        primary_budget, alternative_budget = search_budgets(movetime_ms, max_candidates)
         # Hold the same lock across both stages: never interleave another user's
         # position, and never start a second concurrent engine.
         with self._lock:
             started = time.monotonic()
             deadline = started + (primary_budget + alternative_budget) / 1000
             primary = self._analyze_once(
-                fen, primary_budget, candidate_count=1, deadline=deadline,
+                fen, primary_budget, candidate_count=1,
+                # A single-stage UCI bestmove needs small protocol headroom;
+                # search budget is not a hard network/OS response deadline.
+                deadline=deadline + (0.25 if alternative_budget == 0 else 0),
             )
             details = SearchDetails(
                 primary_budget, alternative_budget, primary_budget + alternative_budget,
-                primary.time_ms,
+                primary.time_ms, max_candidates=2 if alternative_budget else 1,
             )
             if primary.best_move is None or (
                 primary.position is not None and primary.position.legal_move_count == 1
             ):
                 return replace(primary, search=replace(
                     details, alternative_budget_ms=0, total_budget_ms=primary_budget,
+                    strategy="primary_only" if alternative_budget == 0 else details.strategy,
                 ))
+            if alternative_budget == 0:
+                return replace(primary, alternative_omitted_reason="not_requested",
+                               search=replace(details, strategy="primary_only"))
 
             # Reserve protocol/Python scheduling headroom rather than spend the
             # full deadline on UCI and wait beyond it for bestmove.

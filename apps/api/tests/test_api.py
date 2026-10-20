@@ -86,7 +86,7 @@ class FixedAnalysisEngine:
     ready = True
     identity = EngineIdentity("Pikafish test", "test", "test", "abc123")
 
-    def analyze(self, fen, movetime_ms):
+    def analyze(self, fen, movetime_ms, max_candidates=1):
         normalized_fen = fen if len(fen.split()) == 6 else f"{fen} - - 0 1"
         return AnalysisResult(
             status="completed",
@@ -106,7 +106,7 @@ class FixedAnalysisEngine:
 
 
 class TwoCandidateEngine(FixedAnalysisEngine):
-    def analyze(self, fen, movetime_ms):
+    def analyze(self, fen, movetime_ms, max_candidates=1):
         from dataclasses import replace
 
         from rakuxq_api.engines.base import MoveRecommendation
@@ -131,7 +131,9 @@ client = TestClient(app)
 ])
 def test_analysis_routes_preserve_best_move_and_add_two_candidate_text(path, time_field, headers):
     with patch("rakuxq_api.main.analysis_engine", TwoCandidateEngine()):
-        response = client.post(path, headers=headers, json={"fen": START_FEN, time_field: 3000})
+        response = client.post(path, headers=headers, json={
+            "fen": START_FEN, time_field: 3000, "max_candidates": 2,
+        })
     assert response.status_code == 200
     payload = response.json()
     assert payload["best_move"]["iccs"] == "h2e2"
@@ -147,7 +149,7 @@ def test_fused_solve_returns_two_candidates_in_the_existing_shortcut_text():
     ):
         response = client.post(
             "/v1/solve", files={"image": ("board.png", b"image", "image/png")},
-            data={"side_to_move": "red"},
+            data={"side_to_move": "red", "max_candidates": "2"},
         )
     payload = response.json()
     assert response.status_code == 200 and payload["analysis_status"] == "completed"
@@ -428,11 +430,11 @@ def test_lab_analysis_rejects_non_browser_and_cross_origin_requests():
         assert response.json()["detail"]["code"] == "LAB_SAME_ORIGIN_REQUIRED"
 
 
-def test_lab_analysis_caps_free_search_at_three_seconds():
+def test_lab_analysis_rejects_requests_outside_compatibility_range():
     response = client.post(
         "/api/lab/analyses",
         headers={"Origin": "http://testserver", "Sec-Fetch-Site": "same-origin"},
-        json={"fen": START_FEN, "movetime_ms": 3001},
+        json={"fen": START_FEN, "movetime_ms": 10001},
     )
 
     assert response.status_code == 422
@@ -458,13 +460,14 @@ def test_solution_endpoint_defaults_to_three_seconds_and_returns_display_text():
     assert payload["display_text"] == "炮二平五 红优 186"
     assert payload["search"] == {
         "primary_budget_ms": 3000,
-        "alternative_budget_ms": 1000,
-        "total_budget_ms": 4000,
+        "alternative_budget_ms": 0,
+        "total_budget_ms": 3000,
         "requested_time_ms": None,
-        "effective_time_ms": 4000,
+        "effective_time_ms": 3000,
         "primary_budget_capped": False,
         "default_applied": True,
         "actual_time_ms": 3000,
+        "max_candidates": 1,
     }
 
 
@@ -479,9 +482,9 @@ def test_solution_endpoint_accepts_custom_search_time():
     assert response.status_code == 200
     payload = response.json()
     assert payload["side_to_move"] == "black"
-    assert payload["search"]["effective_time_ms"] == 4000
-    assert payload["search"]["primary_budget_ms"] == 3000
-    assert payload["search"]["primary_budget_capped"] is True
+    assert payload["search"]["effective_time_ms"] == 5000
+    assert payload["search"]["primary_budget_ms"] == 5000
+    assert payload["search"]["primary_budget_capped"] is False
     assert payload["search"]["default_applied"] is False
 
 
@@ -489,7 +492,7 @@ def test_solution_serializes_both_real_engine_stages_without_losing_the_primary(
     from test_engine_staged import StagedEngine, pair, primary
 
     with patch("rakuxq_api.main.analysis_engine", StagedEngine([primary(), pair()])):
-        response = client.post("/v1/solutions", json={"fen": START_FEN})
+        response = client.post("/v1/solutions", json={"fen": START_FEN, "max_candidates": 2})
     payload = response.json()
     assert response.status_code == 200
     assert payload["depth"] == 25 and payload["score"]["value"] == 80

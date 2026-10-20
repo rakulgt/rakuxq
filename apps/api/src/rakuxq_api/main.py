@@ -14,7 +14,7 @@ from urllib.parse import urlsplit
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, BeforeValidator, WithJsonSchema
 from starlette.concurrency import run_in_threadpool
 
 from . import __version__
@@ -31,7 +31,7 @@ from .engines import (
     analysis_to_dict,
     normalize_engine_fen,
 )
-from .engines.base import search_budgets
+from .engines.base import parse_max_candidates, search_budgets
 from .geo import GeoIPCityResolver, GeoLocation
 from .metrics import InvalidEventCursor, PublicMetricsStore
 from .providers import OnnxRecognitionProvider, ProviderNotReady
@@ -102,17 +102,29 @@ analysis_engine = PikafishEngine(
 static_root = Path(__file__).with_name("static")
 
 
+CandidateCount = Annotated[
+    int, BeforeValidator(parse_max_candidates),
+    WithJsonSchema({
+        "anyOf": [{"type": "integer", "enum": [1, 2]},
+                  {"type": "string", "enum": ["auto", "1", "2", ""]}, {"type": "null"}],
+        "description": "Omit or auto for primary only; 2 requests an optional alternative.",
+    }),
+]
+
+
 class AnalysisRequest(BaseModel):
     fen: str
     movetime_ms: int | None = None
+    max_candidates: CandidateCount = 1
 
 
 class SolutionRequest(BaseModel):
     fen: str
     time_ms: int | None = None
+    max_candidates: CandidateCount = 1
 
 
-LAB_MAX_MOVETIME_MS = 3_000
+LAB_MAX_MOVETIME_MS = 10_000
 
 
 def _renewal_detail() -> dict[str, object]:
@@ -336,7 +348,7 @@ def _normalize_side_to_move(value: str) -> SideToMove:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-def _analysis_time(requested: int | None) -> int:
+def _analysis_time(requested: int | None, max_candidates: int = 1) -> int:
     value = settings.engine_default_movetime_ms if requested is None else requested
     if value < 50 or value > settings.engine_max_movetime_ms:
         raise HTTPException(
@@ -346,10 +358,12 @@ def _analysis_time(requested: int | None) -> int:
                 f"{settings.engine_max_movetime_ms} milliseconds"
             ),
         )
-    return search_budgets(value)[0]
+    return search_budgets(value, max_candidates)[0]
 
 
-def _solution_payload(result, requested_time_ms: int | None) -> dict[str, object]:
+def _solution_payload(
+    result, requested_time_ms: int | None, max_candidates: int = 1,
+) -> dict[str, object]:
     payload = analysis_to_dict(result)
     full_fen = result.fen
     payload["status"] = "accepted"
@@ -357,7 +371,9 @@ def _solution_payload(result, requested_time_ms: int | None) -> dict[str, object
     payload["fen"] = " ".join(full_fen.split()[:2])
     payload["full_fen"] = full_fen
     payload["side_to_move"] = "red" if full_fen.split()[1] == "w" else "black"
-    primary_budget, alternative_budget = search_budgets(_analysis_time(requested_time_ms))
+    primary_budget, alternative_budget = search_budgets(
+        _analysis_time(requested_time_ms, max_candidates), max_candidates,
+    )
     search = payload.get("search")
     search_details = search if isinstance(search, dict) else {
         "primary_budget_ms": primary_budget,
@@ -373,14 +389,17 @@ def _solution_payload(result, requested_time_ms: int | None) -> dict[str, object
         ),
         "default_applied": requested_time_ms is None,
         "actual_time_ms": result.time_ms,
+        "max_candidates": max_candidates,
     }
     return payload
 
 
-def _run_analysis(fen_value: str, movetime_ms: int | None):
+def _run_analysis(fen_value: str, movetime_ms: int | None, max_candidates: int = 1):
     try:
         normalized_fen = normalize_engine_fen(fen_value)
-        return analysis_engine.analyze(normalized_fen, _analysis_time(movetime_ms))
+        return analysis_engine.analyze(
+            normalized_fen, _analysis_time(movetime_ms, max_candidates), max_candidates,
+        )
     except InvalidEnginePosition as exc:
         raise HTTPException(
             status_code=422,
@@ -580,7 +599,7 @@ def analyze_position(
     payload: AnalysisRequest,
     _api_key: Annotated[APIKeyValidation, Depends(require_engine_api_key)],
 ):
-    return analysis_to_dict(_run_analysis(payload.fen, payload.movetime_ms))
+    return analysis_to_dict(_run_analysis(payload.fen, payload.movetime_ms, payload.max_candidates))
 
 
 @app.post("/api/lab/analyses", include_in_schema=False)
@@ -588,7 +607,9 @@ def analyze_lab_position(
     payload: AnalysisRequest,
     _same_origin: Annotated[None, Depends(require_lab_same_origin)],
 ):
-    result = _run_analysis(payload.fen, _lab_analysis_time(payload.movetime_ms))
+    result = _run_analysis(
+        payload.fen, _lab_analysis_time(payload.movetime_ms), payload.max_candidates,
+    )
     return JSONResponse(
         analysis_to_dict(result),
         headers={"Cache-Control": "no-store, max-age=0"},
@@ -600,8 +621,8 @@ def solve_position(
     payload: SolutionRequest,
     _api_key: Annotated[APIKeyValidation, Depends(require_engine_api_key)],
 ):
-    result = _run_analysis(payload.fen, payload.time_ms)
-    return _solution_payload(result, payload.time_ms)
+    result = _run_analysis(payload.fen, payload.time_ms, payload.max_candidates)
+    return _solution_payload(result, payload.time_ms, payload.max_candidates)
 
 
 @app.post("/v1/solve")
@@ -612,7 +633,13 @@ async def solve(
     side_to_move: Annotated[str, Form()] = SideToMove.AUTO.value,
     orientation: Annotated[Orientation, Form()] = Orientation.AUTO,
     movetime_ms: Annotated[int | None, Form()] = None,
+    max_candidates: Annotated[str | None, Form()] = None,
 ):
+    try:
+        count = parse_max_candidates(max_candidates)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    _analysis_time(movetime_ms, count)
     data = await _read_image(image)
     recognition = _run(
         data,
@@ -632,12 +659,12 @@ async def solve(
         }
     # Invalid request parameters still use HTTP 422. Once recognition succeeds,
     # analysis failures retain that result for Shortcuts and the audit trail.
-    _analysis_time(movetime_ms)
     try:
         analysis = await run_in_threadpool(
             _run_analysis,
             recognition.full_fen,
             movetime_ms,
+            count,
         )
     except HTTPException as exc:
         detail: dict[str, object] = exc.detail if isinstance(exc.detail, dict) else {}

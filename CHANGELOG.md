@@ -4,6 +4,13 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.5.6-alpha.1] - 2026-10-20
+
+- 新增 `max_candidates`，缺省/`auto`/`1` 只搜索首选，明确 `2` 才核验备选；无效值返回 422，不自动扩大候选数。
+- 默认首选 3000 ms；单招最多 9000 ms，双招首选最多 8000 ms＋备选最多 1000 ms，短预算继续按 3:1 缩短备选。首选冻结、质量过滤、可读文字与原鉴权边界保持不变。
+- 图片、FEN 和免费 Lab 共享参数规则；Lab 增加招数选择及 6/9 秒时间选项。未新增深度或 pro 参数。
+- Added opt-in alternatives: missing/auto means one move. Time-only search caps are 9s single or 8s+1s pair; default single search remains 3s. Existing clients need no edits to retain their primary move.
+
 ## [0.5.5-alpha.1] - 2026-10-20
 
 ### 中文

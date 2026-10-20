@@ -61,10 +61,26 @@ class MoveRecommendation:
     pv_notation: list[str] = field(default_factory=list)
 
 
-def search_budgets(requested_primary_ms: int) -> tuple[int, int]:
-    """Cap the primary at 3s and reserve up to 1s (3:1 for shorter requests)."""
-    primary = max(1, min(3_000, requested_primary_ms))
-    return primary, min(1_000, primary // 3)
+def parse_max_candidates(value: object) -> int:
+    """Normalize form/JSON controls without accepting booleans or fractional counts."""
+    if value is None:
+        return 1
+    if isinstance(value, str):
+        value = value.strip().lower()
+        if value in {"", "auto"}:
+            return 1
+        if value in {"1", "2"}:
+            return int(value)
+    elif type(value) is int and value in (1, 2):
+        return value
+    raise ValueError("max_candidates must be auto, 1 or 2")
+
+
+def search_budgets(requested_primary_ms: int, max_candidates: int = 1) -> tuple[int, int]:
+    """Time-only policy: single <=9s; explicit pair <=8s + <=1s."""
+    count = parse_max_candidates(max_candidates)
+    primary = max(1, min(9_000 if count == 1 else 8_000, requested_primary_ms))
+    return primary, min(1_000, primary // 3) if count == 2 else 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +94,7 @@ class SearchDetails:
     comparison_depth: int | None = None
     comparison_primary_score: EngineScore | None = None
     strategy: str = "primary_then_alternative"
+    max_candidates: int = 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,7 +129,7 @@ class AnalysisEngine(Protocol):
 
     def close(self) -> None: ...
 
-    def analyze(self, fen: str, movetime_ms: int) -> AnalysisResult: ...
+    def analyze(self, fen: str, movetime_ms: int, max_candidates: int = 1) -> AnalysisResult: ...
 
 
 def analysis_to_dict(result: AnalysisResult) -> dict[str, object]:

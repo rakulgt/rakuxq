@@ -113,7 +113,7 @@ console.log(result.status === "accepted" ? result.fen : null);</code></pre></art
         <article class="panel endpoint-panel">
           <span class="kicker">ENGINE PREVIEW</span>
           <h2><span class="method">POST</span> /v1/solutions</h2>
-          <p>把已经确认的两字段或六字段中国象棋 FEN 转换成最佳着法和局面评分。<code>time_ms</code> 可省略，默认搜索 3000 毫秒。</p>
+          <p>把已经确认的两字段或六字段中国象棋 FEN 转换成最佳着法和局面评分。<code>time_ms</code> 可省略，默认只搜索首选 3000 毫秒；单招最多 9000 毫秒。<code>max_candidates</code> 不填或填 <code>auto</code> 等同于 <code>1</code>，只有填 <code>2</code> 才搜索备选：首选最多 8000 毫秒，备选最多另用 1000 毫秒，总搜索预算最多 9000 毫秒。不可靠的备选不会返回。</p>
           <pre><code>curl -X POST https://xq.rakubank.com/v1/solutions \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -121,6 +121,7 @@ console.log(result.status === "accepted" ? result.fen : null);</code></pre></art
         </article>
         <article class="panel">
           <span class="kicker">SOLUTION</span><h2>适合直接展示的结果</h2>
+          <p>图片直接解题使用 <code>POST /v1/solve</code>，表单为：<code>image</code>（必填文件）、<code>side_to_move=auto</code>、<code>orientation=auto</code>、<code>movetime_ms=3000</code>、<code>max_candidates=auto</code>。只有图片必填；后三类解题入口共享候选策略。<code>/v1/solutions</code> 使用 JSON 的 <code>time_ms</code>，不要与图片接口的 <code>movetime_ms</code> 混用。上传、识别、排队和传输不属于搜索预算。</p>
           <pre><code>{
   "status": "accepted",
   "best_move": {

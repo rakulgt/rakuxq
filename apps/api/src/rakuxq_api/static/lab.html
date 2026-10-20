@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="/static/styles.css?v=0.4.2a1" />
     <link rel="stylesheet" href="/static/lab.css?v=0.5.2a2" />
     <script src="/static/vendor/xiangqi.min.js?v=f9019ac" defer></script>
-    <script type="module" src="/static/lab.js?v=0.5.4a1"></script>
+    <script type="module" src="/static/lab.js?v=0.5.6a1"></script>
   </head>
   <body class="lab-body">
     <div class="ambient ambient-one"></div>
@@ -211,9 +211,12 @@
               </select>
             </label>
             <label class="lab-field">首选思考时间
-              <select id="engine-time"><option value="100">100 ms</option><option value="500">500 ms</option><option value="1000">1 秒</option><option value="3000" selected>3 秒</option></select>
+              <select id="engine-time"><option value="100">100 ms</option><option value="500">500 ms</option><option value="1000">1 秒</option><option value="3000" selected>3 秒</option><option value="6000">6 秒</option><option value="9000">9 秒</option></select>
             </label>
-            <p class="lab-help"><strong>网站内研究永久免费，无需 API Key。</strong> 首选最多 3 秒，备选最多另用 1 秒，总搜索预算最多 4 秒；短预算按比例缩短备选。上传、识别、排队及传输不计入搜索预算，并设有公平使用限流；面向程序、快捷指令和第三方系统的远程 API 是独立服务，继续使用 Key 鉴权。</p>
+            <label class="lab-field">推荐招数
+              <select id="engine-candidates"><option value="auto" selected>自动（只给首选）</option><option value="1">1 招</option><option value="2">最多 2 招</option></select>
+            </label>
+            <p class="lab-help"><strong>网站内研究永久免费，无需 API Key。</strong> 默认只算首选 3 秒；单招最多 9 秒。选择两招时首选最多 8 秒、备选最多另用 1 秒，总搜索预算最多 9 秒；备选不可靠时只给首选。上传、识别、排队及传输不计入搜索预算，并设有公平使用限流；远程 API 继续独立鉴权。</p>
           </section>
         </aside>
 

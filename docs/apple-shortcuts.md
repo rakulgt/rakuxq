@@ -44,6 +44,14 @@ https://xiangqiai.com/#/<piece_placement>%20w
 
 ## 错误处理
 
+需要图片直接出招时，把 URL 改为 `/v1/solve`（远程引擎仍仅对白名单维护者 Key 开放）。
+表单最多五项：`image` 文件必填；`side_to_move=auto`、`orientation=auto`、
+`movetime_ms=3000`、`max_candidates=auto` 均可省略。`max_candidates` 不填/`auto`/`1`
+只算首选，不搜索备选；明确填 `2` 才尽量给两招。默认单招 3 秒，默认双招为首选 3 秒加备选最多 1 秒。
+单招首选最多 9 秒；双招首选最多 8 秒、备选最多 1 秒。无需添加深度或 pro 设置。
+预算不包含上传、识别、排队和返回传输。FEN 解题 `/v1/solutions` 使用 JSON 的 `time_ms` 字段，
+候选规则相同；它与图片接口的 `movetime_ms` 名称不同。
+
 使用融合接口 `/v1/solve` 时，直接显示或推送顶层 `display_text`。它在正常出招、真正终局和
 解题未完成时都有明确文本。只有 `status=accepted` 且 `analysis_status=completed` 才表示
 已得到推荐着法；`analysis_status=terminal` 表示棋局已结束，没有下一招。
