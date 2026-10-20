@@ -33,6 +33,8 @@ jobs:
           node --check apps/api/src/rakuxq_api/static/app.js
           node --check apps/api/src/rakuxq_api/static/developers.js
           node --check apps/api/src/rakuxq_api/static/position-board.js
+          node --check apps/api/src/rakuxq_api/static/legal-consent.js
+          node --check apps/api/src/rakuxq_api/static/lab.js
 
   api:
     runs-on: ubuntu-latest

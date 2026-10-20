@@ -1,0 +1,9 @@
+[Unit]
+Description=Run RakuXQ legal receipt expiry cleanup
+
+[Timer]
+OnCalendar=*-*-* *:*:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

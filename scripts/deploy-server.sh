@@ -27,6 +27,7 @@ SECRET_DIR=/opt/raku/secrets/rakuxq
 LOG_DIR=/opt/raku/logs/rakuxq
 AUDIT_DIR=${LOG_DIR}/interactions
 METRICS_DIR=${LOG_DIR}/public-metrics
+LEGAL_DIR=${LOG_DIR}/legal
 METRICS_BACKUP_DIR=/opt/raku/backups/rakuxq/metrics
 BACKUP_DIR="/opt/raku/backups/rakuxq/$(date +%Y%m%d-%H%M%S)-${REVISION}"
 ARCHIVE="/tmp/rakuxq-${REVISION}.tar.gz"
@@ -42,6 +43,8 @@ METRICS_BACKUP_SERVICE=/etc/systemd/system/rakuxq-metrics-backup.service
 METRICS_BACKUP_TIMER=/etc/systemd/system/rakuxq-metrics-backup.timer
 METRICS_RETENTION_SERVICE=/etc/systemd/system/rakuxq-metrics-retention.service
 METRICS_RETENTION_TIMER=/etc/systemd/system/rakuxq-metrics-retention.timer
+LEGAL_RETENTION_SERVICE=/etc/systemd/system/rakuxq-legal-retention.service
+LEGAL_RETENTION_TIMER=/etc/systemd/system/rakuxq-legal-retention.timer
 LOGROTATE_CONF=/etc/logrotate.d/rakuxq
 PREVIOUS_RELEASE=""
 
@@ -64,6 +67,7 @@ mkdir -p \
   "${LOG_DIR}" \
   "${AUDIT_DIR}" \
   "${METRICS_DIR}" \
+  "${LEGAL_DIR}" \
   "${METRICS_BACKUP_DIR}" \
   "${BACKUP_DIR}"
 if ! getent passwd rakuxq >/dev/null; then
@@ -76,6 +80,8 @@ fi
 setfacl -m u:rakuxq:--x /opt/raku/secrets
 chown rakuxq:rakuxq "${SECRET_DIR}" "${LOG_DIR}" "${AUDIT_DIR}" "${METRICS_DIR}"
 chown rakuxq:rakuxq "${METRICS_BACKUP_DIR}"
+chown rakuxq:rakuxq "${LEGAL_DIR}"
+chmod 700 "${LEGAL_DIR}"
 chown root:rakuxq "${GEOIP_DIR}"
 chmod 700 "${SECRET_DIR}"
 chmod 750 "${LOG_DIR}"
@@ -169,6 +175,7 @@ if [[ -f "${SECRET_DIR}/api.env" ]]; then
   fi
 fi
 
+if [[ ! -f "${SECRET_DIR}/api.env" ]]; then
 cat >"${SECRET_DIR}/api.env" <<EOF
 RAKUXQ_POSE_MODEL=${MODELS_DIR}/pose.onnx
 RAKUXQ_LAYOUT_MODEL=${MODELS_DIR}/layout.onnx
@@ -200,6 +207,7 @@ RAKUXQ_ENGINE_DEFAULT_MOVETIME_MS=3000
 RAKUXQ_ENGINE_MAX_MOVETIME_MS=10000
 RAKUXQ_ENGINE_COMMAND_TIMEOUT_MS=5000
 EOF
+fi
 chown root:rakuxq "${SECRET_DIR}/api.env"
 chmod 0640 "${SECRET_DIR}/api.env"
 
@@ -220,6 +228,8 @@ for managed in \
   "${METRICS_BACKUP_TIMER}" \
   "${METRICS_RETENTION_SERVICE}" \
   "${METRICS_RETENTION_TIMER}" \
+  "${LEGAL_RETENTION_SERVICE}" \
+  "${LEGAL_RETENTION_TIMER}" \
   "${LOGROTATE_CONF}"; do
   if [[ -f "${managed}" ]]; then
     cp -a "${managed}" "${BACKUP_DIR}/$(basename "${managed}")"
@@ -239,6 +249,10 @@ install -o root -g root -m 0644 \
 install -o root -g root -m 0644 \
   "${RELEASE_DIR}/infra/rakuxq-metrics-retention.timer" "${METRICS_RETENTION_TIMER}"
 install -o root -g root -m 0644 \
+  "${RELEASE_DIR}/infra/rakuxq-legal-retention.service" "${LEGAL_RETENTION_SERVICE}"
+install -o root -g root -m 0644 \
+  "${RELEASE_DIR}/infra/rakuxq-legal-retention.timer" "${LEGAL_RETENTION_TIMER}"
+install -o root -g root -m 0644 \
   "${RELEASE_DIR}/infra/rakuxq-logrotate.conf" "${LOGROTATE_CONF}"
 install -o root -g root -m 0644 "${RELEASE_DIR}/infra/xq-rakubank-routes.conf" "${NGINX_ROUTES}"
 if [[ -f /etc/letsencrypt/live/xq.rakubank.com/fullchain.pem && -f /etc/letsencrypt/live/xq.rakubank.com/privkey.pem ]]; then
@@ -254,8 +268,23 @@ systemd-analyze verify \
   "${METRICS_BACKUP_SERVICE}" \
   "${METRICS_BACKUP_TIMER}" \
   "${METRICS_RETENTION_SERVICE}" \
-  "${METRICS_RETENTION_TIMER}"
+  "${METRICS_RETENTION_TIMER}" \
+  "${LEGAL_RETENTION_SERVICE}" \
+  "${LEGAL_RETENTION_TIMER}"
 /usr/sbin/logrotate --debug "${LOGROTATE_CONF}" >/dev/null
+
+restore_project_release() {
+  if [[ -n "${PREVIOUS_RELEASE}" ]]; then
+    ln -sfn "${PREVIOUS_RELEASE}" "${BASE}/current"
+  fi
+  for config in "${SERVICE_CONF}" "${NGINX_CONF}" "${NGINX_ROUTES}"; do
+    local saved="${BACKUP_DIR}/$(basename "${config}")"
+    if [[ -f "${saved}" ]]; then
+      cp -a "${saved}" "${config}"
+    fi
+  done
+  systemctl daemon-reload
+}
 
 ln -sfn "${RELEASE_DIR}" "${BASE}/current"
 systemctl daemon-reload
@@ -264,6 +293,7 @@ systemctl enable --now rakuxq-audit-retention.timer >/dev/null
 systemctl enable --now rakuxq-metrics-backup.timer >/dev/null
 systemctl enable --now rakuxq-metrics-retention.timer >/dev/null
 if ! nginx -t; then
+  restore_project_release
   if [[ -f "${BACKUP_DIR}/xq-rakubank.conf" ]]; then
     cp -a "${BACKUP_DIR}/xq-rakubank.conf" "${NGINX_CONF}"
   else
@@ -282,15 +312,33 @@ systemctl restart rakuxq-api.service
 systemctl start rakuxq-audit-retention.service
 
 healthy=0
+EXPECTED_VERSION="$("${RELEASE_DIR}/.venv/bin/python" -c 'from rakuxq_api import __version__; print(__version__)')"
 for _ in {1..30}; do
   if curl --fail --silent "http://127.0.0.1:${PORT}/healthz" \
-    | "${RELEASE_DIR}/.venv/bin/python" -c 'import json, sys; data = json.load(sys.stdin); raise SystemExit(0 if data.get("status") == "ok" and data.get("geoip_ready") is True else 1)'; then
+    | "${RELEASE_DIR}/.venv/bin/python" -c 'import json, sys; data = json.load(sys.stdin); raise SystemExit(0 if data.get("status") == "ok" and data.get("geoip_ready") is True and data.get("version") == sys.argv[1] else 1)' "${EXPECTED_VERSION}"; then
     healthy=1
     break
   fi
   sleep 2
 done
+if [[ "${healthy}" -eq 1 ]]; then
+  if ! "${RELEASE_DIR}/.venv/bin/python" -c '
+import json, urllib.request
+root="http://127.0.0.1:8040"
+for path in ("/terms", "/privacy", "/legal/versions", "/legal/1.0/terms.txt", "/legal/1.0/privacy.txt"):
+    with urllib.request.urlopen(root+path, timeout=5) as response:
+        assert response.status == 200 and response.read()
+with urllib.request.urlopen(root+"/api/legal/status", timeout=5) as response:
+    status=json.load(response)
+assert status["version"] == "1.0" and status["acceptance_available"] is True
+assert status["training_collection_enabled"] is False
+'; then
+    healthy=0
+  fi
+fi
 if [[ "${healthy}" -ne 1 ]]; then
+  restore_project_release
+  nginx -t && systemctl reload nginx || true
   if [[ -n "${PREVIOUS_RELEASE}" ]]; then
     ln -sfn "${PREVIOUS_RELEASE}" "${BASE}/current"
     systemctl restart rakuxq-api.service || true
@@ -302,6 +350,8 @@ fi
 
 systemctl start rakuxq-metrics-backup.service
 systemctl start rakuxq-metrics-retention.service
+systemctl start rakuxq-legal-retention.service
+systemctl enable --now rakuxq-legal-retention.timer >/dev/null
 
 rm -f "${ARCHIVE}" "${POSE_UPLOAD}" "${LAYOUT_UPLOAD}" "${KEY_DB_UPLOAD}"
 echo "deployed ${REVISION} to ${DOMAIN} on 127.0.0.1:${PORT}"

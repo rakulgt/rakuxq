@@ -157,7 +157,7 @@ h1 em { color: var(--gold); font-style: normal; font-family: "STKaiti", "KaiTi",
 .road-card { border-radius: 14px; padding: 26px; min-height: 250px; display: flex; flex-direction: column; }
 .road-card > span { color: var(--cyan); font-size: 10px; letter-spacing: .16em; }.road-card h3 { font-size: 23px; margin: 18px 0 8px; }.road-card p { color: var(--muted); }.road-card b { margin-top: auto; color: #7489a0; font-size: 11px; }.road-card.active { border-color: rgba(82,227,194,.32); background: linear-gradient(145deg, rgba(33,81,78,.42), var(--surface)); }.road-card.active b { color: var(--cyan); }
 .privacy-strip { margin: 20px 0 90px; padding: 26px 30px; border: 1px solid rgba(242,187,100,.2); border-radius: 14px; background: rgba(90,61,27,.12); display: flex; align-items: center; justify-content: space-between; gap: 30px; }.privacy-strip span, .privacy-strip strong { display: block; }.privacy-strip span { color: var(--gold); font-size: 10px; letter-spacing: .15em; }.privacy-strip p { max-width: 780px; margin: 0; color: #a8b5c4; font-size: 13px; }
-footer { min-height: 110px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 12px; }footer > div { display: flex; gap: 18px; }footer strong { color: var(--text); }
+footer { min-height: 110px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 24px; color: var(--muted); font-size: 12px; }footer > div { display: flex; flex-wrap: wrap; gap: 18px; }footer strong { color: var(--text); }
 
 .docs-main { padding-bottom: 80px; }
 .docs-hero { max-width: 900px; padding: 90px 0 60px; }

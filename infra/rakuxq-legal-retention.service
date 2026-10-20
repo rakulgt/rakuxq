@@ -1,0 +1,14 @@
+[Unit]
+Description=Expire RakuXQ minimal legal acceptance records
+
+[Service]
+Type=oneshot
+User=rakuxq
+Group=rakuxq
+UMask=0077
+ExecStart=/opt/raku/portable/rakuxq/current/.venv/bin/python -m rakuxq_api.legal_cli --database /opt/raku/logs/rakuxq/legal/acceptances.sqlite3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/raku/logs/rakuxq/legal

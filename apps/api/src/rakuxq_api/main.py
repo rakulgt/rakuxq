@@ -12,9 +12,9 @@ from typing import Annotated
 from urllib.parse import urlsplit
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, BeforeValidator, WithJsonSchema
+from pydantic import BaseModel, BeforeValidator, ConfigDict, StrictBool, WithJsonSchema
 from starlette.concurrency import run_in_threadpool
 
 from . import __version__
@@ -33,6 +33,9 @@ from .engines import (
 )
 from .engines.base import parse_max_candidates, search_budgets
 from .geo import GeoIPCityResolver, GeoLocation
+from .legal import COOKIE_NAME, DOCUMENTS, HASHES, RECEIPT_SECONDS, VERSION, ConsentStore
+from .legal import document_html as legal_document_html
+from .legal import metadata as legal_metadata
 from .metrics import InvalidEventCursor, PublicMetricsStore
 from .providers import OnnxRecognitionProvider, ProviderNotReady
 from .providers.base import RecognitionFailed
@@ -90,6 +93,7 @@ public_metrics_store = (
     else None
 )
 geoip_resolver = GeoIPCityResolver(settings.geoip_city_db)
+legal_store = ConsentStore(settings.legal_consents_db) if settings.legal_consents_db else None
 analysis_engine = PikafishEngine(
     settings.engine_path,
     settings.engine_network,
@@ -122,6 +126,15 @@ class SolutionRequest(BaseModel):
     fen: str
     time_ms: int | None = None
     max_candidates: CandidateCount = 1
+
+
+class LegalAcceptanceRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    version: str
+    terms_sha256: str
+    privacy_sha256: str
+    accepted: StrictBool
+    training_license: StrictBool
 
 
 LAB_MAX_MOVETIME_MS = 10_000
@@ -464,6 +477,109 @@ def fen_position(fen_value: str) -> FileResponse:
 @app.get("/developers", include_in_schema=False)
 def developer_guide() -> FileResponse:
     return FileResponse(static_root / "developers.html", media_type="text/html")
+
+
+def _legal_page(name: str) -> HTMLResponse:
+    return HTMLResponse(legal_document_html(name), headers={
+        "Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'self'; frame-ancestors 'none'; base-uri 'none'",
+        "Referrer-Policy": "no-referrer",
+    })
+
+
+@app.get("/terms", include_in_schema=False)
+@app.get("/legal/1.0/terms", include_in_schema=False)
+def terms_page() -> HTMLResponse:
+    return _legal_page("terms")
+
+
+@app.get("/privacy", include_in_schema=False)
+@app.get("/legal/1.0/privacy", include_in_schema=False)
+def privacy_page() -> HTMLResponse:
+    return _legal_page("privacy")
+
+
+@app.get("/legal/versions", include_in_schema=False)
+def legal_versions() -> HTMLResponse:
+    return HTMLResponse(
+        '<!doctype html><html lang="zh-CN"><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        '<title>协议历史版本 · RakuXQ</title>'
+        '<link rel="icon" href="/static/favicon.svg">'
+        '<link rel="stylesheet" href="/static/legal.css?v=0.5.7a1">'
+        '<body class="legal-page"><main class="legal-document"><h1>协议历史版本</h1>'
+        '<p>版本1.0 · 2026年10月21日生效；不追溯取得未确认用户的训练授权。</p>'
+        '<ul class="legal-version-list"><li><a href="/legal/1.0/terms">服务与训练授权</a>'
+        ' · <a href="/legal/1.0/privacy">隐私与数据说明</a></li></ul>'
+        '<a href="/">返回首页</a></main></body></html>',
+        headers={"Cache-Control": "no-cache"},
+    )
+
+
+@app.get("/legal/1.0/{name}.txt", include_in_schema=False)
+def legal_text(name: str) -> PlainTextResponse:
+    if name not in DOCUMENTS:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return PlainTextResponse(DOCUMENTS[name], headers={
+        "Cache-Control": "public, max-age=3600", "X-Content-Type-Options": "nosniff",
+        "Content-Disposition": f'attachment; filename="rakuxq-{name}-1.0.txt"',
+    })
+
+
+@app.get("/api/legal/status", include_in_schema=False)
+def legal_status(request: Request) -> JSONResponse:
+    accepted = False
+    try:
+        if legal_store is not None:
+            accepted = legal_store.accepted(request.cookies.get(COOKIE_NAME))
+    except sqlite3.Error as exc:
+        raise HTTPException(status_code=503, detail="Legal confirmation unavailable") from exc
+    return JSONResponse({**legal_metadata(), "accepted": accepted,
+                         "acceptance_required": settings.require_api_key or legal_store is not None,
+                         "acceptance_available": legal_store is not None},
+                        headers={"Cache-Control": "no-store", "Vary": "Cookie"})
+
+
+def _save_legal_acceptance(
+    payload: LegalAcceptanceRequest, request: Request, key_id: str | None = None,
+) -> JSONResponse:
+    if not payload.accepted or not payload.training_license:
+        raise HTTPException(status_code=422, detail="Explicit acceptance is required")
+    if (payload.version != VERSION or payload.terms_sha256 != HASHES["terms"]
+            or payload.privacy_sha256 != HASHES["privacy"]):
+        raise HTTPException(status_code=409, detail="Policy changed; read the current version")
+    if legal_store is None:
+        raise HTTPException(status_code=503, detail="Legal confirmation unavailable")
+    previous = request.cookies.get(COOKIE_NAME)
+    try:
+        token = previous if key_id is None and legal_store.accepted(previous) else None
+        if token is None:
+            token = legal_store.accept(key_id)
+    except (sqlite3.Error, ValueError) as exc:
+        raise HTTPException(status_code=503, detail="Legal confirmation unavailable") from exc
+    response = JSONResponse({**legal_metadata(), "accepted": True}, headers={
+        "Cache-Control": "no-store", "Referrer-Policy": "no-referrer",
+    })
+    response.set_cookie(COOKIE_NAME, token, max_age=RECEIPT_SECONDS, httponly=True,
+                        secure=settings.require_api_key or request.url.scheme == "https",
+                        samesite="strict", path="/")
+    return response
+
+
+@app.post("/api/legal/acceptances", include_in_schema=False)
+def accept_browser_terms(
+    payload: LegalAcceptanceRequest, request: Request,
+    _same_origin: Annotated[None, Depends(require_lab_same_origin)],
+) -> JSONResponse:
+    return _save_legal_acceptance(payload, request)
+
+
+@app.post("/v1/legal/acceptance", include_in_schema=False)
+def accept_api_terms(
+    payload: LegalAcceptanceRequest, request: Request,
+    validation: Annotated[APIKeyValidation, Depends(require_api_key)],
+) -> JSONResponse:
+    return _save_legal_acceptance(payload, request, validation.key_id)
 
 
 @app.get("/api/public/stats", include_in_schema=False)

@@ -48,6 +48,16 @@ Git、永久样本集或自动训练集。模型只读保存在 `/opt/raku/porta
 CC BY 4.0，官网必须保留 `IP Geolocation by DB-IP` 链接；数据库过期超过 32 天时，后续部署会尝试
 更新，下载失败且已有可读数据库时保留旧版，首次安装失败则中止发布。
 
+## 法律正文与最小确认凭据
+
+官网 `/terms`、`/privacy` 使用随版本打包的不可变 UTF-8 正文；`/legal/versions` 提供归档。版本、正文摘要和实际发布日期必须一致，已发布正文不得原地改写。协议运营主体及通讯资料只维护在正式正文，不在部署日志复制。
+
+独立凭据库为 `/opt/raku/logs/rakuxq/legal/acceptances.sqlite3`，目录权限 0700、文件 0600；systemd 通过非秘密 `RAKUXQ_LEGAL_CONSENTS_DB` 指向它。只记录随机凭据摘要、可选 Key 内部标识摘要、版本、正文摘要及时间，不保存原图、FEN、原始 IP 或明文 Key，不进入 Git，不随版本清空。
+
+`rakuxq-legal-retention.timer` 每分钟独立清理自确认日起已满三年的记录；普通浏览不重置期限。`/api/legal/` 受同源校验、小请求体限制与既有网页入口限流保护。训练采集仍为关闭；本次没有建立或启用长期训练库。
+
+部署必须保留既有 `api.env` 和密钥库，不因默认模板覆盖当前搜索预算或引擎权限。除健康版本外，验收 `/terms`、`/privacy`、归档正文和 `/api/legal/status`，确认凭据库可用且训练开关为 false；回滚旧版本时保留独立凭据库，并恢复备份中的本项目 Nginx/systemd 配置。
+
 ## 首次与后续发布
 
 本地必须使用已验证的 ONNX 权重、干净的 Git 工作区和已登记 SSH 别名：

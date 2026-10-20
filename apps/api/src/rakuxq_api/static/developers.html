@@ -8,7 +8,9 @@
     <title>RakuXQ 开发者文档 · 识图与解题 API</title>
     <link rel="icon" href="/static/favicon.svg?v=0.4.0a1" type="image/svg+xml" />
     <link rel="stylesheet" href="/static/styles.css?v=0.4.0a1" />
-    <script src="/static/developers.js?v=0.4.0a1" defer></script>
+    <script src="/static/developers.js?v=0.5.7a1" defer></script>
+    <link rel="stylesheet" href="/static/legal.css?v=0.5.7a1" />
+    <script src="/static/legal-consent.js?v=0.5.7a1" defer></script>
   </head>
   <body>
     <div class="ambient ambient-one"></div>
@@ -31,6 +33,7 @@
         <article class="panel trial-panel">
           <div class="panel-title"><div><span>TRY IT NOW</span><h3>领取 6 分钟临时 Key</h3></div><span id="trial-countdown">尚未领取</span></div>
           <p>同一网络在一个有效期内只能领取一个。Key 明文只显示一次、不可续期，适合调试，不适合生产。</p>
+          <div class="legal-notice">首次领取前请明确接受<a href="/terms">服务与棋局训练授权</a>及<a href="/privacy">隐私说明</a>。确认覆盖后续有权提交的棋局，不逐局弹窗；原图最多12小时，授权训练样本最多3年。训练采集尚未启用。<a href="/legal/versions">版本记录</a></div>
           <div class="trial-actions">
             <button id="trial-button" class="button primary" type="button">随机生成临时 Key</button>
             <button id="copy-key" class="button secondary" type="button" disabled>复制 Key</button>
@@ -139,6 +142,6 @@ console.log(result.status === "accepted" ? result.fen : null);</code></pre></art
         </article>
       </section>
     </main>
-    <footer><div><strong>RakuXQ</strong><span>MIT Open Source</span></div><div><a href="/">首页</a><a href="/docs">OpenAPI</a><a href="https://github.com/rakulgt/rakuxq">GitHub</a></div></footer>
+    <footer><div><strong>RakuXQ</strong><span>MIT Open Source</span></div><div><a href="/">首页</a><a href="/terms">服务协议</a><a href="/privacy">隐私与数据使用</a><a href="/docs">OpenAPI</a><a href="https://github.com/rakulgt/rakuxq">GitHub</a></div></footer>
   </body>
 </html>

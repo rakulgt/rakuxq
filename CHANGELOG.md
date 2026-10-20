@@ -4,6 +4,13 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.5.7-alpha.1] - 2026-10-21
+
+- 发布服务与棋局训练授权协议、隐私说明及不可变版本归档；首页、Lab、开发者页提供清晰入口。
+- 新增提交前主动确认、最小化哈希凭据、三年到期清理与开发者确认接口；不追溯旧上传，不修改现有快捷指令参数。
+- 原图仍最多 12 小时，未来合法训练样本最多 3 年；本次不启用训练采集，不调整价格、视觉模型或引擎许可。
+- Published versioned service/training terms and privacy notice, explicit browser/API acceptance, and a separate minimal expiring receipt ledger. Training collection remains disabled; existing clients and engine permissions are unchanged.
+
 ## [0.5.6-alpha.1] - 2026-10-20
 
 - 新增 `max_candidates`，缺省/`auto`/`1` 只搜索首选，明确 `2` 才核验备选；无效值返回 422，不自动扩大候选数。

@@ -5,6 +5,20 @@
 研究永久免费且无需 Key；面向程序的 `/v1/solutions`、`/v1/analyses` 与 `/v1/solve` 仍是
 独立鉴权的远程接口，六分钟临时 Key 和普通识别 Key 当前返回 `403 ENGINE_ACCESS_DENIED`。
 
+## 协议与显式确认
+
+正式规则见 `/terms`、`/privacy`；`/legal/versions` 列出不可变历史版本，`/legal/1.0/terms.txt` 与 `privacy.txt` 提供正文下载。浏览不产生接受记录。
+
+`GET /api/legal/status` 返回版本、正文 SHA-256、是否已确认和训练采集开关。官网在首次服务器分析或领取测试 Key 前显示未预勾选的确认框；取消不发送棋局，本地走棋仍可使用。确认凭据为 HttpOnly Cookie，不包含原图、FEN 或明文 Key。
+
+程序调用者可在明确向实际使用者展示并获得确认后，以有效 Key 调用 `POST /v1/legal/acceptance`，JSON 字段如下；版本及哈希必须来自最新状态接口，不可硬编码旧正文：
+
+```json
+{"version":"1.0","terms_sha256":"<status 中的值>","privacy_sha256":"<status 中的值>","accepted":true,"training_license":true}
+```
+
+这不是以程序代替使用者作出同意。旧 Key 和历史调用不被自动视为接受；现有识别/解题接口不新增必填参数，也不扩大 Key 权限。当前 `training_collection_enabled=false`，没有启动训练采集。授权凭据与短期审计、公开统计独立保存，最长三年；原图仍最多十二小时。
+
 ## 标准 FEN 网页入口
 
 任何两字段或六字段中国象棋 FEN 都可以直接拼接到固定前缀，打开 RakuXQ Lab：

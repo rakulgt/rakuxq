@@ -529,6 +529,17 @@ async function analyzeCurrent({ manual = false } = {}) {
     return null;
   }
   if (game.in_checkmate() || game.in_draw() || game.in_stalemate()) return null;
+  try {
+    if (!window.RakuXQLegal || !await window.RakuXQLegal.ensure()) {
+      transientMessage = "本次尚未向服务器提交棋局，本地打谱仍可继续。";
+      render();
+      return null;
+    }
+  } catch (error) {
+    transientMessage = error.message;
+    showAlert(error.message);
+    return null;
+  }
   clearPendingAnalysis();
   const generation = analysisGeneration;
   const targetNode = tree.current_node_id;

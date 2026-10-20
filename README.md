@@ -20,7 +20,7 @@ RakuXQ 是由 **rakulgt / Raku Intelligence（罗酷智能）** 发起的开源�
 高水平参考着法，用于复盘、研究和学习；开发者可以使用“棋盘图片 → FEN”和
 “FEN → solution”HTTP API 接入自己的工具。公开服务仅供非商业研究与娱乐，请勿用于赌棋。
 
-> 当前源码版本：`v0.5.6-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
+> 当前源码版本：`v0.5.7-alpha.1`。视觉链路已经在多组真实截图和实体棋盘照片上跑通；
 > Pikafish UCI 适配器与中文着法用于非商业研究。RakuXQ Lab 在网站内永久免费、无需 Key；
 > 面向程序的远程引擎 API 仍不向临时 Key 或普通客户 Key 提供受限 NNUE 能力。
 
@@ -209,6 +209,7 @@ npm run test:engine-rules
 
 ### 隐私与模型
 
+- 官方服务规则：[服务与棋局训练授权协议](https://xq.rakubank.com/terms)、[隐私与数据使用](https://xq.rakubank.com/privacy)。一次主动确认覆盖后续有权上传的棋局，不追溯历史提交；当前训练采集未启用。未来经授权并筛除无关信息的独立训练样本最多保存 3 年，不改变原图 12 小时上限。
 - 自托管默认只在内存中处理图片。官方托管服务为早期质量分析保存已鉴权调用的原图、请求和响应，最长 12 小时后自动删除。
 - 短期审计图片不会自动进入长期样本集或训练集；API Key 明文永不写入审计日志。
 - 官网公开记录只包含时间、状态、近似国家、简化 FEN、置信度与视觉识别耗时；明细最多保留 30 天且不超过 10 万条，累计层只保留汇总数字。原始 IP 仅在内存中供本地库查询，随后立即丢弃；地区、城市和坐标不保存。
@@ -248,7 +249,7 @@ screenshots, web boards, physical-board photos, perspective distortion, cropping
 noise, and partial occlusion. Version `0.5` adds a product-level FEN-to-solution endpoint with
 Chinese best-move notation, fixed-red-perspective scores, and principal variations.
 
-> Current source release: `v0.5.6-alpha.1`. The vision pipeline works on a growing set of real
+> Current source release: `v0.5.7-alpha.1`. The vision pipeline works on a growing set of real
 > screenshots and physical-board photos. The Pikafish UCI adapter is undergoing non-commercial
 > interoperability validation. The on-site RakuXQ Lab is free and requires no key; the separate
 > remote engine API remains restricted to the maintainer's key, and trial or ordinary customer
@@ -416,6 +417,8 @@ matching `master-net`. The website requires no key; the remote engine API remain
 trial, ordinary, and customer keys.
 
 ### Quality, privacy, and model provenance
+
+Hosted-service rules: [Service and training terms](https://xq.rakubank.com/terms) and [Privacy notice](https://xq.rakubank.com/privacy) (Chinese). Explicit acceptance covers subsequent entitled submissions, not historical uploads. Training collection remains disabled. Future authorized, screened training samples have a three-year maximum; full originals still expire within 12 hours.
 
 RakuXQ optimizes for **exact-board accuracy**, not merely per-cell accuracy. Future public
 benchmarks will report auto-accept coverage, precision of auto-accepted boards, abstention, and

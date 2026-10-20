@@ -51,6 +51,11 @@ document.getElementById("trial-button").addEventListener("click", async (event) 
   button.disabled = true;
   button.textContent = "正在生成…";
   try {
+    if (!window.RakuXQLegal || !await window.RakuXQLegal.ensure()) {
+      button.disabled = false;
+      button.textContent = "随机生成临时 Key";
+      return;
+    }
     const response = await fetch("/api/public/trial-keys", { method: "POST", cache: "no-store" });
     const data = await response.json();
     if (!response.ok) {
