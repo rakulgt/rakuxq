@@ -357,9 +357,9 @@ class PikafishEngine:
                     and first.pv[0] == best_move_value
                     and second.pv[0] in legal and second.pv[0] != best_move_value
                     and first.score_bound is None and second.score_bound is None
-                    # Reject pairs older than a newer complete, changed result.
-                    and not any(p.depth > depth and p.score_bound is None
-                                and p.pv and p.pv[0] != best_move_value for p in primary_lines)
+                    # A trial root can change in the interrupted last iteration.
+                    # Trust bestmove but do not fall back to a much shallower pair.
+                    and depth >= latest.depth - 1
                 ):
                     paired = first, second
                     latest = first

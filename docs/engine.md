@@ -85,7 +85,8 @@ is suppressed. These are bounded-search heuristics, not guaranteed game-theoreti
 Only one move is returned if a trustworthy pair is unavailable. `alternative_omitted_reason` is
 `only_legal_move`, `score_gap`, `mate_outcome`, or `insufficient_search`; it is null when two moves
 are included (and for terminal results). Incomplete iterations may fall back to a completed pair
-at a reported lower depth matching the actual bestmove; no score from a different root is reused.
+at a reported lower depth matching the actual bestmove (at most one ply below that move's latest
+reported depth); no score from a different root is reused.
 
 `display_text` retains its old format for one move; for two it becomes, for example,
 `首选：炮二平五 红优 80；备选：炮八平五 红优 50`. Both are choices for the current mover, not

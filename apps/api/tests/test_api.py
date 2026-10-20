@@ -211,7 +211,7 @@ def test_lab_and_fixed_prefix_fen_url_are_publicly_accessible():
     assert 'id="engine-key-apply"' not in lab.text
     lab_script = client.get("/static/lab.js").text
     assert "/static/lab-core.js" in lab_script
-    assert "/static/lab-auto.js?v=0.5.2a2" in lab_script
+    assert "/static/lab-auto.js?v=0.5.4a1" in lab_script
     assert 'fetch("/api/lab/analyses"' in lab_script
     assert 'byId("lab-new").addEventListener("click", () => startNewGame(START_FEN' in lab_script
     assert "new-game-dialog" not in lab_script

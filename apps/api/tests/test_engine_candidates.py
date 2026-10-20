@@ -97,11 +97,19 @@ def test_stale_score_never_attaches_to_changed_bestmove():
     assert len(result.recommendations) == 1
 
 
-def test_newer_changed_primary_does_not_reuse_an_old_pair():
+def test_interrupted_trial_root_can_use_a_completed_pair_matching_actual_bestmove():
     result = analyze([
         info(1), info(2), info(1, depth=13, move="b2e2"),
     ])
+    assert len(result.recommendations) == 2
+    assert result.depth == 12
+    assert all(r.depth == 12 for r in result.recommendations)
+
+
+def test_completed_pair_must_not_be_much_shallower_than_the_primary_search():
+    result = analyze([info(1), info(2), info(1, depth=16)])
     assert len(result.recommendations) == 1
+    assert result.depth == 16
 
 
 def test_forced_single_search_does_not_leak_multipv_into_the_next_search():
