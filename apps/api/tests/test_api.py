@@ -457,8 +457,12 @@ def test_solution_endpoint_defaults_to_three_seconds_and_returns_display_text():
     assert payload["score"]["value"] == 186
     assert payload["display_text"] == "炮二平五 红优 186"
     assert payload["search"] == {
+        "primary_budget_ms": 3000,
+        "alternative_budget_ms": 1000,
+        "total_budget_ms": 4000,
         "requested_time_ms": None,
-        "effective_time_ms": 3000,
+        "effective_time_ms": 4000,
+        "primary_budget_capped": False,
         "default_applied": True,
         "actual_time_ms": 3000,
     }
@@ -475,8 +479,26 @@ def test_solution_endpoint_accepts_custom_search_time():
     assert response.status_code == 200
     payload = response.json()
     assert payload["side_to_move"] == "black"
-    assert payload["search"]["effective_time_ms"] == 5000
+    assert payload["search"]["effective_time_ms"] == 4000
+    assert payload["search"]["primary_budget_ms"] == 3000
+    assert payload["search"]["primary_budget_capped"] is True
     assert payload["search"]["default_applied"] is False
+
+
+def test_solution_serializes_both_real_engine_stages_without_losing_the_primary():
+    from test_engine_staged import StagedEngine, pair, primary
+
+    with patch("rakuxq_api.main.analysis_engine", StagedEngine([primary(), pair()])):
+        response = client.post("/v1/solutions", json={"fen": START_FEN})
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["depth"] == 25 and payload["score"]["value"] == 80
+    assert payload["search"]["strategy"] == "primary_then_alternative"
+    assert payload["search"]["primary_budget_ms"] == 3000
+    assert payload["search"]["total_budget_ms"] == 4000
+    assert payload["search"]["comparison_primary_score"]["value"] == 75
+    assert payload["search"]["actual_time_ms"] >= 200
+    assert [r["depth"] for r in payload["recommendations"]] == [25, 17]
 
 
 def test_solution_endpoint_rejects_search_time_over_limit():

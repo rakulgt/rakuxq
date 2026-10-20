@@ -22,7 +22,7 @@ https://xq.rakubank.com/fen/3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4%20w
 
 访问 [`/lab`](https://xq.rakubank.com/lab) 可以免费走棋、打谱、复盘、请求最佳着法或开启红黑方
 自动行棋，不收费且不要求 Key。浏览器内部使用不进入 OpenAPI 的 `POST /api/lab/analyses`：只接受
-同源网页请求，单次思考最多 3000 毫秒，并受独立 IP 频率和并发保护。该入口不承诺远程 API 的
+同源网页请求，首选最多 3000 毫秒、备选最多另用 1000 毫秒，总搜索预算最多 4000 毫秒，并受独立 IP 频率和并发保护。该入口不承诺远程 API 的
 稳定调用契约，不应用于脚本、快捷指令或第三方系统。
 
 程序化调用继续使用 `/v1/*` 并按本页“鉴权与有效期”传 Key。未来可能收费的只是这些远程托管
@@ -174,18 +174,23 @@ else:
 ```
 
 `fen` 可以使用 RakuXQ 两字段简化形式或六字段形式；服务端发送给引擎前统一转换为六字段。
-`movetime_ms` 默认 3000，当前允许 50–10000 毫秒。接口返回 ICCS 最佳着法、ponder、主要变化、
+`movetime_ms` 是首选预算，默认 3000；保留 50–10000 毫秒输入兼容范围，但实际首选一律最多 3000。
+备选预留首选预算的三分之一且最多 1000 毫秒，总搜索预算不超过 4000。接口返回 ICCS 最佳着法、ponder、主要变化、
 深度、节点、耗时和引擎/权重身份。
 
-所有引擎入口默认在同一搜索预算内计算首选和备选（不是连续两步）。新增
+所有引擎入口先完成单招搜索并冻结首选，再用短阶段核验备选（不是连续两步）。
 `recommendations: [{move: {iccs, from, to, notation}, score, depth, pv, pv_notation}]`，最多两项，
-终局为空；原 `best_move`、`score` 和 PV 始终指首选。备选须是另一合法着法，具有同深度精确评分，
-默认与首选相差不超过 150 个引擎评分点，并通过杀棋结果筛选。无可靠备选时只有一项；
+终局为空；原 `best_move`、`score`、`depth`、节点与 PV 始终指第一轮首选，`time_ms` 表示两阶段总耗时。
+备选须是另一合法着法，短阶段必须找到包含首选的同深度精确比较对，分差默认不超过 150 个引擎评分点；
+还会与更深首选作保守的分差与杀棋检查。两轮的搜索深度并不相同，每项独立披露 `depth`，不能当作同等精度。无可靠备选时只有一项；
 `alternative_omitted_reason` 解释为 `only_legal_move`（唯一合法）、`score_gap`（差距过大）、
-`mate_outcome`（杀棋结果退化）或 `insufficient_search`（比较证据不足）；有两招及终局时为空。
+`mate_outcome`（杀棋结果退化）、`insufficient_search`（比较证据不足）、`budget_exhausted`（备选预算不足）
+或 `alternative_failed`（备选失败但首选保留）；有两招及终局时为空。
 `display_text` 在两招时为 `首选：… 红优 N；备选：… 红优 M`，单招保持原格式。融合接口的
 `analysis.recommendations` 与顶层 `display_text` 同步包含该信息，快捷指令无需增加字段解析。
-固定时间下深度可能下降，提前确认杀棋的搜索可能用满预算；当前 FEN 不含走棋历史，因此这不是
+`search` 披露两阶段预算和实际耗时，以及短阶段的 `comparison_depth`、`comparison_primary_score`；
+顶层首选评分仍来自较深的第一轮。上传、识别、排队和传输不属于 4 秒搜索预算；极端调度/故障也不是
+毫秒级硬截止保证。一次请求仍只返回一个最终 JSON，不会在第 3 秒、第 4 秒分别推送。当前 FEN 不含走棋历史，因此这不是
 长将/长捉判罚或避免重复的完整实现。详见 [候选规则](engine.md#candidate-moves)。
 
 评分始终以红方为固定视角，与当前行棋方无关：`score.value` 的正整数表示红优，负整数表示黑优，`0` 表示近似
@@ -203,7 +208,9 @@ else:
 }
 ```
 
-`time_ms` 是可选变量；不传时默认 3000 毫秒，允许 50–10000 毫秒。正常响应示例：
+`time_ms` 是可选首选预算；不传时默认 3000 毫秒，兼容范围为 50–10000，但实际首选上限为 3000。
+备选最多另用 1000 毫秒。旧的更大请求会披露 `primary_budget_capped=true`；
+`search.effective_time_ms` 表示两阶段预留的总预算，而不再仅表示首选预算。正常响应示例：
 
 ```json
 {
@@ -229,9 +236,13 @@ else:
   "pv_notation": ["前炮进二", "士6进5", "帅五平四"],
   "search": {
     "requested_time_ms": null,
-    "effective_time_ms": 3000,
+    "effective_time_ms": 4000,
+    "primary_budget_ms": 3000,
+    "alternative_budget_ms": 1000,
+    "total_budget_ms": 4000,
+    "primary_budget_capped": false,
     "default_applied": true,
-    "actual_time_ms": 82
+    "actual_time_ms": 1090
   }
 }
 ```

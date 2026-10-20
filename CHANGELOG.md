@@ -4,6 +4,24 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.5.5-alpha.1] - 2026-10-20
+
+### 中文
+
+- 默认先用完整 3 秒单招搜索首选，再用最多 1 秒核验备选，总搜索预算最多 4 秒；不再把首选算力分摊给双候选。第一轮答案被冻结，第二轮不能改变首选招法、评分、深度或 PV。
+- 复用缓存、单引擎锁覆盖两阶段；使用单一单调时钟截止并为协议收尾预留余量。唯一应招、终局或预算不足直接跳过备选；备选超时/失败仍返回有效首选。
+- 新增分阶段预算、耗时和比较基准。第二阶段内部使用同深度评分比较，再与较深首选作保守检查；不把两轮深度当作相同精度。快捷指令 `display_text` 与旧最佳招法字段保持兼容。
+- `time_ms/movetime_ms` 明确为首选预算，默认和生效上限为 3000；兼容范围内旧的更大输入会被收敛并披露，短预算按 3:1 缩短备选。搜索预算不含识别、上传、排队和传输，也非毫秒级端到端硬截止。
+
+### English
+
+- Preserve a full default three-second single-PV primary search, followed by at most one second
+  for optional verification, with a total search budget capped at four seconds.
+- Freeze the primary move, evaluation and PV; reuse the hash and serialize both stages.
+  Optional timeout/failure cannot discard the primary answer.
+- Expose stage budgets/timings and the same-depth comparison reference. Cap legacy larger primary
+  requests at three seconds; retain the existing display and primary-move contracts.
+
 ## [0.5.4-alpha.1] - 2026-10-20
 
 ### 中文

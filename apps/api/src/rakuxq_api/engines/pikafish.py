@@ -6,7 +6,7 @@ import queue
 import subprocess
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from .base import (
@@ -18,8 +18,10 @@ from .base import (
     EngineScore,
     EngineTimeout,
     MoveRecommendation,
+    SearchDetails,
     normalize_engine_fen,
     score_from_side_to_move,
+    search_budgets,
 )
 from .notation import chinese_move_notation, chinese_principal_variation
 from .rules import inspect_position
@@ -104,6 +106,28 @@ def alternative_omission_reason(
     return "mate_outcome"
 
 
+def cross_stage_omission_reason(
+    primary: EngineScore | None, alternative: EngineScore | None,
+    active_color: str, max_loss_cp: int,
+) -> str | None:
+    """Additional conservative sanity check; these scores have unequal depths."""
+    if primary is None or alternative is None or primary.bound or alternative.bound:
+        return "insufficient_search"
+    sign = 1 if active_color == "w" else -1
+    first, second = primary.value * sign, alternative.value * sign
+    if primary.type == alternative.type == "cp":
+        if first - second > max_loss_cp:
+            return "score_gap"
+        # A huge apparent improvement in a shallower search is not reliable proof.
+        return "insufficient_search" if second - first > max_loss_cp else None
+    if primary.type == alternative.type == "mate":
+        if first > 0 and second > 0 and second >= first:
+            return None
+        if first < 0 and second < 0 and abs(second) >= abs(first):
+            return None
+    return "mate_outcome"
+
+
 class PikafishEngine:
     """Persistent Pikafish subprocess controlled through the UCI protocol."""
 
@@ -128,7 +152,7 @@ class PikafishEngine:
         self._process: subprocess.Popen[str] | None = None
         self._reader: threading.Thread | None = None
         self._lines: queue.Queue[str | None] = queue.Queue()
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._identity: EngineIdentity | None = None
 
     @property
@@ -284,6 +308,84 @@ class PikafishEngine:
         self._terminate()
 
     def analyze(self, fen: str, movetime_ms: int) -> AnalysisResult:
+        primary_budget, alternative_budget = search_budgets(movetime_ms)
+        # Hold the same lock across both stages: never interleave another user's
+        # position, and never start a second concurrent engine.
+        with self._lock:
+            started = time.monotonic()
+            deadline = started + (primary_budget + alternative_budget) / 1000
+            primary = self._analyze_once(
+                fen, primary_budget, candidate_count=1, deadline=deadline,
+            )
+            details = SearchDetails(
+                primary_budget, alternative_budget, primary_budget + alternative_budget,
+                primary.time_ms,
+            )
+            if primary.best_move is None or (
+                primary.position is not None and primary.position.legal_move_count == 1
+            ):
+                return replace(primary, search=replace(
+                    details, alternative_budget_ms=0, total_budget_ms=primary_budget,
+                ))
+
+            # Reserve protocol/Python scheduling headroom rather than spend the
+            # full deadline on UCI and wait beyond it for bestmove.
+            remaining_ms = int((deadline - time.monotonic()) * 1000)
+            budget = min(alternative_budget, remaining_ms) - 25
+            if budget < 50:
+                return replace(primary, alternative_omitted_reason="budget_exhausted",
+                               search=details)
+            alternate_started = time.monotonic()
+            try:
+                # Reuse the primary's hash, but compare two roots at the SAME
+                # depth in this short verification stage. The first answer is frozen.
+                comparison = self._analyze_once(
+                    fen, budget, candidate_count=2, deadline=deadline,
+                )
+            except (EngineAnalysisError, ValueError):
+                # Optional analysis must never discard a valid primary answer.
+                elapsed = round((time.monotonic() - alternate_started) * 1000)
+                return replace(
+                    primary, time_ms=max(
+                        primary.time_ms + elapsed,
+                        round((time.monotonic() - started) * 1000),
+                    ),
+                    alternative_omitted_reason="alternative_failed",
+                    search=replace(details, alternative_time_ms=elapsed,
+                                   alternative_status="failed"),
+                )
+            details = replace(details, alternative_time_ms=comparison.time_ms,
+                              alternative_status="completed")
+            reference = next((r for r in comparison.recommendations
+                              if r.move.iccs == primary.best_move.iccs), None)
+            other = next((r for r in comparison.recommendations
+                          if r.move.iccs != primary.best_move.iccs), None)
+            omission: str | None = (
+                comparison.alternative_omitted_reason or "insufficient_search"
+            )
+            if reference is None:
+                omission = "insufficient_search"
+            recommendations = primary.recommendations[:1]
+            if reference is not None and other is not None:
+                details = replace(details, comparison_depth=reference.depth,
+                                  comparison_primary_score=reference.score)
+                omission = cross_stage_omission_reason(
+                    primary.score, other.score, primary.fen.split()[1],
+                    self.candidate_max_loss_cp,
+                )
+                if omission is None:
+                    recommendations.append(other)
+            return replace(
+                primary, recommendations=recommendations,
+                alternative_omitted_reason=omission,
+                time_ms=max(primary.time_ms + comparison.time_ms,
+                            round((time.monotonic() - started) * 1000)), search=details,
+            )
+
+    def _analyze_once(
+        self, fen: str, movetime_ms: int, *, candidate_count: int = 1,
+        deadline: float | None = None,
+    ) -> AnalysisResult:
         normalized_fen = normalize_engine_fen(fen)
         active_color = normalized_fen.split()[1]
         position, legal = inspect_position(normalized_fen)
@@ -303,12 +405,14 @@ class PikafishEngine:
         with self._lock:
             started = time.monotonic()
             try:
-                # One shared budget, not two sequential searches. Reset per search
-                # so a forced single evasion cannot leak MultiPV state.
-                self._send(f"setoption name MultiPV value {min(2, len(legal))}")
+                self._send(f"setoption name MultiPV value {min(candidate_count, len(legal))}")
                 self._send(f"position fen {normalized_fen}")
                 self._send(f"go movetime {movetime_ms}")
                 timeout_ms = max(self.command_timeout_ms, movetime_ms + 2_000)
+                if deadline is not None:
+                    timeout_ms = min(timeout_ms, max(
+                        1, int((deadline - time.monotonic()) * 1000),
+                    ))
                 lines = self._read_until("bestmove", timeout_ms)
             except Exception:
                 self._recover_after_failure()
@@ -323,6 +427,7 @@ class PikafishEngine:
                 parsed = parse_uci_info(line)
                 if (
                     parsed is not None
+                    and parsed.multipv <= candidate_count
                     and parsed.score_value is not None
                     and parsed.pv
                 ):

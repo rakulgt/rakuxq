@@ -1,4 +1,4 @@
-"""Serial one-line/two-line wall-time smoke benchmark; never loads user uploads."""
+"""Serial single-primary/staged wall-time smoke benchmark; never loads user uploads."""
 
 import argparse
 import json
@@ -19,10 +19,8 @@ def main():
     from rakuxq_api.engines.rules import inspect_position
 
     class SinglePVBaseline(PikafishEngine):
-        def _send(self, command):
-            if command.startswith("setoption name MultiPV value"):
-                command = "setoption name MultiPV value 1"
-            super()._send(command)
+        def analyze(self, fen, movetime_ms):
+            return self._analyze_once(fen, min(3000, movetime_ms), candidate_count=1)
 
     start = "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR"
     positions = {
@@ -42,13 +40,15 @@ def main():
                 wall_ms = round((time.monotonic() - began) * 1000)
                 _, legal = inspect_position(fen)
                 assert result.best_move.iccs in legal
-                assert wall_ms < args.time_ms + 1500, (name, mode, wall_ms)
+                assert wall_ms < min(3000, args.time_ms) + 1200, (name, mode, wall_ms)
                 assert len(result.recommendations) in {1, 2}
                 assert all(r.move.iccs in legal for r in result.recommendations)
                 results.append({
                     "case": name, "mode": mode, "wall_ms": wall_ms,
                     "engine_ms": result.time_ms, "depth": result.depth,
                     "candidate_count": len(result.recommendations),
+                    "primary_ms": result.search.primary_time_ms if result.search else result.time_ms,
+                    "alternative_ms": result.search.alternative_time_ms if result.search else 0,
                     "omission": result.alternative_omitted_reason,
                     "display_text": analysis_to_dict(result)["display_text"],
                 })

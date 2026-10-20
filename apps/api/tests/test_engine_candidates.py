@@ -12,7 +12,7 @@ def info(rank, score="cp 40", *, depth=12, move=None):
 
 def analyze(lines, fen=START):
     engine = ScriptedEngine(lines + ["bestmove h2e2"])
-    result = engine.analyze(fen, 3000)
+    result = engine._analyze_once(fen, 3000, candidate_count=2)
     assert engine.commands[0] == "setoption name MultiPV value 2"
     assert engine.commands[-1] == "go movetime 3000"
     assert sum(c.startswith("go ") for c in engine.commands) == 1
@@ -26,7 +26,7 @@ def test_two_sibling_moves_share_budget_and_fixed_red_score_perspective(active):
         info(1, "cp 100", move=first), info(2, "cp 20", move=second),
         f"bestmove {first}",
     ])
-    result = engine.analyze(START.replace(" w", f" {active}"), 3000)
+    result = engine._analyze_once(START.replace(" w", f" {active}"), 3000, candidate_count=2)
     assert len(result.recommendations) == 2
     assert result.alternative_omitted_reason is None
     assert [r.score.value for r in result.recommendations] == (
@@ -118,6 +118,6 @@ def test_forced_single_search_does_not_leak_multipv_into_the_next_search():
     engine = ScriptedEngine(["info depth 2 score cp 0 pv e0d0", "bestmove e0d0"])
     engine.analyze(EVASION, 50)
     engine.lines = [info(1), info(2), "bestmove h2e2"]
-    engine.analyze(START, 50)
+    engine._analyze_once(START, 50, candidate_count=2)
     assert engine.commands[0] == "setoption name MultiPV value 1"
     assert engine.commands[3] == "setoption name MultiPV value 2"

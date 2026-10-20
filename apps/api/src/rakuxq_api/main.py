@@ -31,6 +31,7 @@ from .engines import (
     analysis_to_dict,
     normalize_engine_fen,
 )
+from .engines.base import search_budgets
 from .geo import GeoIPCityResolver, GeoLocation
 from .metrics import InvalidEventCursor, PublicMetricsStore
 from .providers import OnnxRecognitionProvider, ProviderNotReady
@@ -345,7 +346,7 @@ def _analysis_time(requested: int | None) -> int:
                 f"{settings.engine_max_movetime_ms} milliseconds"
             ),
         )
-    return value
+    return search_budgets(value)[0]
 
 
 def _solution_payload(result, requested_time_ms: int | None) -> dict[str, object]:
@@ -356,9 +357,20 @@ def _solution_payload(result, requested_time_ms: int | None) -> dict[str, object
     payload["fen"] = " ".join(full_fen.split()[:2])
     payload["full_fen"] = full_fen
     payload["side_to_move"] = "red" if full_fen.split()[1] == "w" else "black"
+    primary_budget, alternative_budget = search_budgets(_analysis_time(requested_time_ms))
+    search = payload.get("search")
+    search_details = search if isinstance(search, dict) else {
+        "primary_budget_ms": primary_budget,
+        "alternative_budget_ms": alternative_budget,
+        "total_budget_ms": primary_budget + alternative_budget,
+    }
     payload["search"] = {
+        **search_details,
         "requested_time_ms": requested_time_ms,
-        "effective_time_ms": _analysis_time(requested_time_ms),
+        "effective_time_ms": search_details["total_budget_ms"],
+        "primary_budget_capped": (
+            requested_time_ms is not None and requested_time_ms > primary_budget
+        ),
         "default_applied": requested_time_ms is None,
         "actual_time_ms": result.time_ms,
     }

@@ -61,6 +61,25 @@ class MoveRecommendation:
     pv_notation: list[str] = field(default_factory=list)
 
 
+def search_budgets(requested_primary_ms: int) -> tuple[int, int]:
+    """Cap the primary at 3s and reserve up to 1s (3:1 for shorter requests)."""
+    primary = max(1, min(3_000, requested_primary_ms))
+    return primary, min(1_000, primary // 3)
+
+
+@dataclass(frozen=True, slots=True)
+class SearchDetails:
+    primary_budget_ms: int
+    alternative_budget_ms: int
+    total_budget_ms: int
+    primary_time_ms: int
+    alternative_time_ms: int = 0
+    alternative_status: str = "skipped"
+    comparison_depth: int | None = None
+    comparison_primary_score: EngineScore | None = None
+    strategy: str = "primary_then_alternative"
+
+
 @dataclass(frozen=True, slots=True)
 class AnalysisResult:
     status: str
@@ -79,6 +98,7 @@ class AnalysisResult:
     position: PositionState | None = None
     recommendations: list[MoveRecommendation] = field(default_factory=list)
     alternative_omitted_reason: str | None = None
+    search: SearchDetails | None = None
 
 
 class AnalysisEngine(Protocol):

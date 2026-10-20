@@ -62,46 +62,67 @@ one-thread/64-MiB defaults protect the vision process on a small host. Supported
   authentication is enabled. An empty value denies every hosted key; it never contains plaintext
   keys.
 
-- `RAKUXQ_ENGINE_DEFAULT_MOVETIME_MS`: default search budget, initially `3000`.
-- `RAKUXQ_ENGINE_MAX_MOVETIME_MS`: public request ceiling, initially `10000`.
+- `RAKUXQ_ENGINE_DEFAULT_MOVETIME_MS`: default primary budget, initially `3000`.
+- `RAKUXQ_ENGINE_MAX_MOVETIME_MS`: legacy input validation ceiling, initially `10000`;
+  the effective primary budget is always capped at `3000` under the four-second policy.
 - `RAKUXQ_ENGINE_COMMAND_TIMEOUT_MS`: protocol/startup timeout, initially `5000`.
 - `RAKUXQ_ENGINE_CANDIDATE_MAX_LOSS_CP`: maximum exact-score loss for an alternative,
   initially `150` engine score points (not a calibrated win-probability threshold).
 
 ## Candidate moves
 
-The default is a single `MultiPV=2` search within the existing shared time budget (3000 ms unless
-overridden), not two sequential searches. One legal evasion uses `MultiPV=1`. `best_move`, `score`,
-and `pv` still describe the first choice; automatic play never executes both suggestions.
+The default is a `MultiPV=1` primary search of up to 3000 ms, followed by an optional verification
+stage of up to 1000 ms. The primary result is frozen before verification and never replaced by it.
+Both stages reuse the same hash and hold one engine lock, with no interleaved requests or additional
+processes. A single monotonic deadline caps their total budget at 4000 ms; 25 ms is reserved for
+protocol/scheduling completion before the optional stage. Short primary requests allocate one-third
+as much optional time (up to 1000 ms); a stage with less than 50 ms usable time is skipped. Unused
+primary time is not converted into a longer alternative search. A unique legal move or terminal
+position skips verification entirely. `best_move`, `score`, `depth`, nodes, nps and PV retain the
+primary snapshot; `time_ms` now covers both stages. Automatic play never executes both suggestions.
 `recommendations` contains one or two sibling moves, each with `move`, fixed-red `score`, `depth`,
 `pv`, and `pv_notation`. A terminal position has an empty list. The Lab displays both when present;
 the anonymous homepage feed continues to publish only the primary notation.
 
-An alternative requires a distinct legal root, a same-depth pair of exact (not bound) scores, and
-at most a 150-point loss in mover perspective. It cannot replace a known winning mate with an
-unproven/mated line, nor introduce a forced loss where the first line has none. Two proven winning
-mates can both be shown, even if the second is longer. With two losing mate lines, an earlier loss
-is suppressed. These are bounded-search heuristics, not guaranteed game-theoretic evaluations.
+Verification uses `MultiPV=2` to compare two legal roots at the same completed depth, including the
+frozen primary root. If that root is absent or the exact pair is unavailable, no alternative is
+invented. The same-depth gap limit remains 150 engine points. A further conservative cross-stage
+check rejects a large deterioration relative to the deeper primary, a huge apparent improvement
+which may reflect unstable shallow search, or a degraded mate outcome. This is not a claim that
+the 3-second and 1-second evaluations have equal precision. Two proven winning mates can both be
+shown if the alternative is not shorter than the primary's known mate distance; a faster forced
+loss is not offered. These are bounded-search heuristics, not game-theoretic guarantees.
 Only one move is returned if a trustworthy pair is unavailable. `alternative_omitted_reason` is
-`only_legal_move`, `score_gap`, `mate_outcome`, or `insufficient_search`; it is null when two moves
-are included (and for terminal results). Incomplete iterations may fall back to a completed pair
-at a reported lower depth matching the actual bestmove (at most one ply below that move's latest
-reported depth); no score from a different root is reused.
+`only_legal_move`, `score_gap`, `mate_outcome`, `insufficient_search`, `budget_exhausted`, or
+`alternative_failed`; it is null when two moves are included (and for terminal results).
+An optional failure still returns the completed primary result, never a full solve failure.
+Incomplete verification iterations can fall back to a completed matching pair at most one ply
+below the latest matching verification depth. No score from a different root is reused.
+
+`search` exposes `strategy=primary_then_alternative`, `primary_budget_ms`, `alternative_budget_ms`,
+`total_budget_ms`, both stage `*_time_ms`, `alternative_status`, `comparison_depth` and
+`comparison_primary_score`. The comparison reference is from the short stage; top-level `score`
+remains the deeper primary's score. Each recommendation reports its own depth and score.
+`/v1/solutions` additionally includes requested/effective/actual time; `effective_time_ms` is the
+total reserved budget, and `primary_budget_capped` discloses when an old larger request was capped.
 
 `display_text` retains its old format for one move; for two it becomes, for example,
 `首选：炮二平五 红优 80；备选：炮八平五 红优 50`. Both are choices for the current mover, not
 consecutive plies. Existing Shortcuts reading this field need no changes.
 
-At fixed wall time, MultiPV trades some depth for breadth and does not guarantee unchanged strength.
-Early mate searches that previously finished immediately may now consume the full budget. Upload,
-queueing and response transport remain outside the engine budget. This API sends only the current
+The primary no longer shares its 3-second budget with another candidate, but wall-clock scheduling
+and hash state can still vary; identical depth or Elo is not promised. Early primary mates may
+still add up to one second of optional work. Upload, vision, queueing and response transport remain
+outside the engine budget; this is not a millisecond-precise end-to-end response-time guarantee.
+The API returns one final JSON response, not a streamed primary at 3 seconds and another message
+at 4 seconds. This API sends only the current
 FEN, not prior moves: two choices do **not** implement perpetual-check/chase adjudication or guarantee
 avoidance of repetition. History-aware rules remain separate work.
 
 ## HTTP flow
 
-The product-level FEN-to-solution endpoint uses `time_ms`, which is optional and defaults to three
-seconds:
+The product-level FEN-to-solution endpoint uses `time_ms`, an optional primary budget defaulting to
+three seconds, with up to one additional second for an alternative:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/v1/solutions \
