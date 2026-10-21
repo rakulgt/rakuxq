@@ -25,7 +25,7 @@
   "limitations": [
     "Basic handcrafted bootstrap and a small experimental NNUE; not Pikafish-equivalent",
     "Repetition handling is a research safeguard, not certified perpetual-check/chase adjudication",
-    "No production activation command exists; all parity evidence remains required",
+    "Default production promotion remains prohibited; an explicitly approved fixed-expiry private B trial is separate",
     "Existing production vision models and engine remain unchanged"
   ],
   "artifacts": {
@@ -37,6 +37,9 @@
     "tools/contracts.py": "rakuxq.native.contracts",
     "tools/metadata.py": "rakuxq.native.metadata",
     "tools/arena.py": "rakuxq.native.arena",
+    "tools/serve_b.py": "rakuxq.native.b-trial",
+    "tools/deploy_b_server.py": "rakuxq.native.b-trial-deploy",
+    "tests/test_b_trial.py": "rakuxq.native.b-trial-tests",
     "tests/test_candidate.py": "rakuxq.native.tests"
   }
 }

@@ -11,6 +11,9 @@ production_approved: false
 这是独立实现的候选核心，不是当前线上引擎的更名版本，也不是已经达到 Pikafish 棋力的替代品。
 当前生产接口、视觉模型、搜索预算和引擎保持原样；终端不需要修改脚本。
 
+维护者另行批准的私人 B 在线集中测试，仅在独立 `/b/` 路径开放固定 48 小时；仍需原维护者 Key，
+只替换实验出招核心，识图暂复用 A。它不是默认生产升级，不证明同等棋力；具体到期和使用入口以最新部署记录为准。
+
 首阶段真实测试、两轮训练与未晋级原因见[实验记录](../../docs/experiments/20261021-independent-core-alpha1.md)。
 
 ## 当前能力与边界
@@ -77,4 +80,4 @@ python packages/rakuxq-engine/tools/arena.py --candidate $env:RAKUXQ_NATIVE_ENGI
 
 This is an independently authored, AI-assisted experimental engine, not a renamed upstream engine and not a proven production replacement. It includes legal move generation, bounded iterative search, a small independently initialized quantized evaluator, offline synthetic selfplay/training, paired evaluation, source metadata checks, and a frozen public-request baseline.
 
-Production vision, engine, authentication and client contracts remain unchanged. Generated parameters are not based on official Pikafish weights. The external BSD rules oracle is verification-only. Bootstrap-label loss is not playing strength; repetition/ply limits are unresolved outcomes, not fabricated draws. No production promotion command exists. Customer-data training remains disabled, and full engine/vision parity still requires independent evidence.
+Default production vision, engine, authentication and client contracts remain unchanged. An explicitly approved private B trial may use an isolated, authenticated `/b/` prefix for exactly 48 hours with automatic closure; it does not promote the candidate into A. Generated parameters are not based on official Pikafish weights. The external BSD rules oracle is verification-only. Bootstrap-label loss is not playing strength; repetition/ply limits are unresolved outcomes, not fabricated draws. No default-production promotion command exists. Customer-data training remains disabled, and full engine/vision parity still requires independent evidence.

@@ -149,3 +149,32 @@ Pikafish 程序与 NNUE 不进入应用发布目录或 Git。升级时先在
 发布失败时脚本会尽量将 `current` 恢复到原版本。手工回滚时，把 `current` 软链接指向上一个
 `releases/<git-revision>`，重启 `rakuxq-api.service`，再验证回环与公网健康检查。Nginx 和 systemd 配置的变更前副本位于
 `/opt/raku/backups/rakuxq/<timestamp>-<revision>/`。
+
+## 明确授权的私人 B 测试（48 小时）
+
+B 不走 A 的 `current` 激活流程。临时运行源码位于 `b-trials/<git-revision>/source`，
+Python/API 运行时固定引用部署时 A 的已安装 release；单独的 `rakuxq-b.service` 只监听
+`127.0.0.1:8041`，一个 worker、一个引擎线程、ORT 单线程、16 MiB Hash、CPUQuota 100%、
+MemoryMax 640 MiB，低优先级；在途请求超过一个时返回 429，不给 A 引擎增加队列。
+
+公网 URL 仅增加 `/b`：两个既有域名均可使用 `/b/v1/solve`、`/b/v1/solutions` 及另三个
+现有 v1 路径；参数、主要 JSON 和认证头不变。健康检查为 `/b/healthz`。
+B 始终要求有效 Key 和既有维护者引擎白名单，包括 B 的纯识图入口；不开放免费 Lab、领取 Key
+或其他管理路径。响应带 `X-RakuXQ-Plan: B-experimental` 和固定 UTC 截止头，禁止缓存。
+识图暂复用 A 的同一组权重，出招只用固定摘要的自有程序及自有启动网络，不回退到 Pikafish。
+
+安装入口是本组件 `tools/deploy_b_server.py`，只在服务器新建的规范 `b-trials/<revision>/source`
+中运行，要求完整 Git revision、自有候选/网络路径及摘要。它备份本项目 Nginx 后，仅增加 B
+路由、独立限流区和独立 systemd 单元，通过语法/健康后平滑 reload；失败回滚 B 配置，不重启 A。
+禁止把已存在的 B 配置当成可覆盖的临时文件；延长窗口需要新的用户授权。
+
+固定 UTC 到期记录在受控试验目录 `trial.json` / `trial.env`：ASGI 每次调用检查，重启不能续期；
+独立的 `rakuxq-b-expire.timer` 以绝对日历时间停止并禁用 B，另有 RuntimeMaxSec 兜底。
+到期且进程仍在时返回 410；停止后入口返回 503 / `B_TEST_OFFLINE`，不会转发给 A。
+
+B 审计独立位于 `/opt/raku/logs/rakuxq/b-interactions`，最多 12 小时、容量最多 256 MiB；
+`rakuxq-b-audit-retention.timer` 每分钟清理，测试关闭后仍继续清理最后上传的图片。
+不写入 A 的匿名统计、不启用训练采集，不创建或修改客户 Key。日志只用现有脱敏格式。
+
+手动提前关闭只需 `systemctl disable --now rakuxq-b.service`；保留审计清理任务。
+需要撤销路由时按对应部署记录恢复本项目 Nginx 备份并 `nginx -t` / reload，不改 A 的 current。
