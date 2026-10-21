@@ -145,15 +145,21 @@ def play(red: Engine, black: Engine, opening: str, max_plies: int) -> dict:
     red.new_game()
     black.new_game()
     fen, moves, seen, delays = opening, [], {}, []
+
+    def finish(reason: str, winner: str | None) -> dict:
+        return {
+            "reason": reason,
+            "winner": winner,
+            "plies": len(moves),
+            "moves": moves.copy(),
+            "final_fen": fen,
+            "response_ms": delays.copy(),
+        }
+
     for _ in range(max_plies + 1):
         state, _ = inspect_position(fen)
         if state.terminal_reason:
-            return {
-                "reason": state.terminal_reason,
-                "winner": state.winner,
-                "plies": len(moves),
-                "response_ms": delays,
-            }
+            return finish(state.terminal_reason, state.winner)
         seen[fen] = seen.get(fen, 0) + 1
         if seen[fen] >= 3:
             break
@@ -164,12 +170,7 @@ def play(red: Engine, black: Engine, opening: str, max_plies: int) -> dict:
         fen = advance(fen, move)
         moves.append(move)
         delays.append(elapsed)
-    return {
-        "reason": "unresolved_repetition" if seen[fen] >= 3 else "ply_limit",
-        "winner": None,
-        "plies": len(moves),
-        "response_ms": delays,
-    }
+    return finish("unresolved_repetition" if seen[fen] >= 3 else "ply_limit", None)
 
 
 def main() -> None:

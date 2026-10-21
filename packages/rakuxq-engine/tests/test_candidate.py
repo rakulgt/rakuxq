@@ -298,6 +298,8 @@ def test_arena_preserves_unfinished_outcomes(executable, tmp_path):
     report = json.loads(evidence.read_text(encoding="utf-8"))
     assert len(report["games"]) == 2
     assert all(game["winner"] is None and game["reason"] == "ply_limit" for game in report["games"])
+    assert all(len(game["moves"]) == game["plies"] == 2 for game in report["games"])
+    assert all(game["final_fen"] != game["opening"] for game in report["games"])
     assert report["completed_pairs"] == 0
     assert report["candidate_pair_score"] is None
     assert report["production_approved"] is False
