@@ -6,6 +6,7 @@ __pycache__/
 .mypy_cache/
 *.onnx
 *.nnue
+*.rknn
 *.7z
 *.exe
 artifacts/

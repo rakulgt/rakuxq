@@ -26,6 +26,8 @@ RakuXQ 是由 **rakulgt / Raku Intelligence（罗酷智能）** 发起的开源�
 
 ### 从 lgtXQ 到 RakuXQ
 
+自主化升级已经进入独立候选研发：[独立核心与训练评测说明](packages/rakuxq-engine/README.md)。候选不依赖 lgtXQ，不导入第三方引擎实现或权重；生产仍为现有已验证版本，客户端接口不变。当前尚未证明自主版达到原有识图和棋力水平，不提前切换。
+
 RakuXQ 的发起人是 **李国泰（rakulgt，<lgt@rakubank.com>）**。这个项目并非始于一次
 短期的模型实验，而是来自三十余年的象棋兴趣和近二十年的象棋程序开发积累：
 
@@ -263,6 +265,8 @@ primary answer. A single FEN has no move history, so this does not guarantee pre
 check or chase. See [engine policy](docs/engine.md#candidate-moves).
 
 ### From lgtXQ to RakuXQ
+
+An [independent experimental core](packages/rakuxq-engine/README.md) is being developed without importing historical lgtXQ code, third-party engine implementations, or upstream weights. Production and client contracts remain unchanged until vision, strength, resource and provenance gates pass. This is not yet a proven equivalent replacement.
 
 RakuXQ was initiated by **Li Guotai (rakulgt, <lgt@rakubank.com>)**. It is not the result of
 a short-lived model experiment; it grows out of more than three decades of Xiangqi practice

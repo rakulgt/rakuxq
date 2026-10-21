@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Li Guotai
+# Artifact-ID: rakuxq.native.tooling-config
+# Role: Consistent checks for offline candidate tools. Inputs: Python files. Outputs: diagnostics.
+# Provenance: Project-authored, AI-assisted. State: experimental; not a runtime service setting.
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

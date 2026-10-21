@@ -10,6 +10,60 @@ permissions:
   contents: read
 
 jobs:
+  native-candidate:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install verification dependencies
+        run: |
+          python -m pip install -e "apps/api[dev]"
+          npm ci
+      - name: Build independent experimental engine
+        run: |
+          cmake -S packages/rakuxq-engine -B tmp/native-build -DCMAKE_BUILD_TYPE=Release
+          cmake --build tmp/native-build --config Release --parallel 1
+      - name: Verify native rules and protocol
+        shell: pwsh
+        run: |
+          $engine = if ($IsWindows) { "$pwd/tmp/native-build/Release/rakuxq-engine.exe" } else { "$pwd/tmp/native-build/rakuxq-engine" }
+          $env:RAKUXQ_NATIVE_ENGINE = $engine
+          python -m pytest packages/rakuxq-engine/tests -q
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python -m ruff check packages/rakuxq-engine
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          node packages/rakuxq-engine/tools/differential.mjs $engine
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Verify independent training and quantized export
+        shell: pwsh
+        run: |
+          $engine = if ($IsWindows) { "$pwd/tmp/native-build/Release/rakuxq-engine.exe" } else { "$pwd/tmp/native-build/rakuxq-engine" }
+          python packages/rakuxq-engine/tools/pipeline.py generate --engine $engine --games 8 --plies 32 --time-ms 10 --output tmp/ci-selfplay.jsonl
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python packages/rakuxq-engine/tools/pipeline.py train --data tmp/ci-selfplay.jsonl --epochs 3 --output tmp/ci-smoke.rknn
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          & $engine --network tmp/ci-smoke.rknn --verify-accumulator "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v6
+        with:
+          name: independent-native-${{ matrix.os }}
+          path: |
+            tmp/native-build/rakuxq-engine
+            tmp/native-build/Release/rakuxq-engine.exe
+          if-no-files-found: error
+
   web:
     runs-on: ubuntu-latest
     steps:

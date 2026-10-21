@@ -1,0 +1,42 @@
+{
+  "_meta": {
+    "artifact_id": "rakuxq.native.component",
+    "role": "Independent experimental engine and offline learning component",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2026 Li Guotai",
+    "provenance": "Project-authored, AI-assisted; engineering declaration, not legal certification",
+    "inputs": "FEN, UCI, independently generated synthetic games",
+    "outputs": "Candidate executable, independently initialized model, test evidence"
+  },
+  "version": "0.1.0-experimental",
+  "status": "experimental",
+  "production_approved": false,
+  "imported_engine_source": false,
+  "imported_engine_weights": false,
+  "third_party_training_data": false,
+  "engine_strength_parity_verified": false,
+  "first_party_vision_model_completed": false,
+  "customer_training_collection_enabled": false,
+  "dependencies": {
+    "runtime": ["C++17 standard library"],
+    "offline_training": ["Python", "NumPy"],
+    "verification_only": ["pytest", "pinned xiangqi.js (BSD-2-Clause)", "existing RakuXQ API"]
+  },
+  "limitations": [
+    "Basic handcrafted bootstrap and a small experimental NNUE; not Pikafish-equivalent",
+    "Repetition handling is a research safeguard, not certified perpetual-check/chase adjudication",
+    "No production activation command exists; all parity evidence remains required",
+    "Existing production vision models and engine remain unchanged"
+  ],
+  "artifacts": {
+    "CMakeLists.txt": "rakuxq.native.build",
+    "pyproject.toml": "rakuxq.native.tooling-config",
+    "src/engine.cpp": "rakuxq.native.engine",
+    "tools/pipeline.py": "rakuxq.native.pipeline",
+    "tools/differential.mjs": "rakuxq.native.differential",
+    "tools/contracts.py": "rakuxq.native.contracts",
+    "tools/metadata.py": "rakuxq.native.metadata",
+    "tools/arena.py": "rakuxq.native.arena",
+    "tests/test_candidate.py": "rakuxq.native.tests"
+  }
+}

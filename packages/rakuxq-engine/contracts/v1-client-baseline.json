@@ -1,0 +1,420 @@
+{
+  "_meta": {
+    "artifact_id": "rakuxq.native.v1-baseline",
+    "version": "1.0",
+    "role": "Frozen existing public request contracts",
+    "baseline_api_version": "0.5.7a1",
+    "source_revision": "6ab7ff9b128c168da07b3d279ed3ac979fb1fcbf",
+    "license": "MIT",
+    "provenance": "Derived from existing RakuXQ OpenAPI; contains no customer data"
+  },
+  "requests": {
+    "/v1/analyses": {
+      "body": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "fen": {
+                  "type": "string"
+                },
+                "max_candidates": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        1,
+                        2
+                      ],
+                      "type": "integer"
+                    },
+                    {
+                      "enum": [
+                        "auto",
+                        "1",
+                        "2",
+                        ""
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": 1
+                },
+                "movetime_ms": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "fen"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "required": true
+      },
+      "headers": [
+        {
+          "in": "header",
+          "name": "authorization",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        {
+          "in": "header",
+          "name": "X-API-Key",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "method": "POST",
+      "success_media_types": [
+        "application/json"
+      ]
+    },
+    "/v1/fen": {
+      "body": {
+        "content": {
+          "multipart/form-data": {
+            "schema": {
+              "properties": {
+                "image": {
+                  "format": "binary",
+                  "type": "string"
+                },
+                "orientation": {
+                  "enum": [
+                    "auto",
+                    "red_bottom",
+                    "black_bottom"
+                  ],
+                  "type": "string"
+                },
+                "side_to_move": {
+                  "default": "auto",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "image"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "required": true
+      },
+      "headers": [
+        {
+          "in": "header",
+          "name": "authorization",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        {
+          "in": "header",
+          "name": "X-API-Key",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "method": "POST",
+      "success_media_types": [
+        "text/plain"
+      ]
+    },
+    "/v1/recognitions": {
+      "body": {
+        "content": {
+          "multipart/form-data": {
+            "schema": {
+              "properties": {
+                "image": {
+                  "format": "binary",
+                  "type": "string"
+                },
+                "orientation": {
+                  "enum": [
+                    "auto",
+                    "red_bottom",
+                    "black_bottom"
+                  ],
+                  "type": "string"
+                },
+                "side_to_move": {
+                  "default": "auto",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "image"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "required": true
+      },
+      "headers": [
+        {
+          "in": "header",
+          "name": "authorization",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        {
+          "in": "header",
+          "name": "X-API-Key",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "method": "POST",
+      "success_media_types": [
+        "application/json"
+      ]
+    },
+    "/v1/solutions": {
+      "body": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "fen": {
+                  "type": "string"
+                },
+                "max_candidates": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        1,
+                        2
+                      ],
+                      "type": "integer"
+                    },
+                    {
+                      "enum": [
+                        "auto",
+                        "1",
+                        "2",
+                        ""
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": 1
+                },
+                "time_ms": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "fen"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "required": true
+      },
+      "headers": [
+        {
+          "in": "header",
+          "name": "authorization",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        {
+          "in": "header",
+          "name": "X-API-Key",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "method": "POST",
+      "success_media_types": [
+        "application/json"
+      ]
+    },
+    "/v1/solve": {
+      "body": {
+        "content": {
+          "multipart/form-data": {
+            "schema": {
+              "properties": {
+                "image": {
+                  "format": "binary",
+                  "type": "string"
+                },
+                "max_candidates": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "movetime_ms": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "orientation": {
+                  "enum": [
+                    "auto",
+                    "red_bottom",
+                    "black_bottom"
+                  ],
+                  "type": "string"
+                },
+                "side_to_move": {
+                  "default": "auto",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "image"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "required": true
+      },
+      "headers": [
+        {
+          "in": "header",
+          "name": "authorization",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        {
+          "in": "header",
+          "name": "X-API-Key",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "method": "POST",
+      "success_media_types": [
+        "application/json"
+      ]
+    }
+  }
+}
