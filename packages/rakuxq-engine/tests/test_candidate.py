@@ -342,6 +342,8 @@ def test_arena_preserves_unfinished_outcomes(executable, tmp_path):
     assert all(game["final_fen"] != game["opening"] for game in report["games"])
     assert report["completed_pairs"] == 0
     assert report["candidate_pair_score"] is None
+    assert report["candidate_outcomes"] == {"wins": 0, "losses": 0, "unresolved": 2}
+    assert report["exploratory_95pct_interval"] == [0, 1]
     assert report["production_approved"] is False
     assert report["_meta"]["not_training_labels"] is True
 

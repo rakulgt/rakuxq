@@ -221,7 +221,17 @@ def main() -> None:
                 if len(scores) == 2:
                     paired_scores.append(sum(scores) / 2)
             mean = sum(paired_scores) / len(paired_scores) if paired_scores else None
-            radius = math.sqrt(math.log(40) / (2 * len(paired_scores))) if paired_scores else None
+            wins = sum(
+                g["winner"] == ("red" if g["candidate_red"] else "black") for g in games
+            )
+            unresolved = sum(g["winner"] is None for g in games)
+            losses = len(games) - wins - unresolved
+            # Keep unresolved pairs in the bounds; dropping them can bias the estimate.
+            radius = math.sqrt(math.log(40) / (2 * args.pairs))
+            interval = [
+                max(0, wins / len(games) - radius),
+                min(1, (wins + unresolved) / len(games) + radius),
+            ]
             evidence = {
                 "_meta": {
                     "artifact_id": "rakuxq.native.arena-evidence",
@@ -244,12 +254,15 @@ def main() -> None:
                 "threads_per_engine": 1,
                 "hash_mb": 16,
                 "games": games,
+                "candidate_outcomes": {"wins": wins, "losses": losses, "unresolved": unresolved},
                 "completed_pairs": len(paired_scores),
                 "candidate_pair_score": mean,
-                "exploratory_95pct_interval": None
-                if mean is None
-                else [max(0, mean - radius), min(1, mean + radius)],
-                "interval_assumptions": "Independent opening pairs; exploratory, not certified Elo",
+                "pair_score_scope": "Completed pairs only; not an unbiased all-game estimate",
+                "exploratory_95pct_interval": interval,
+                "interval_assumptions": (
+                    "Independent opening pairs; unresolved results bounded in [0,1]; "
+                    "exploratory, not certified Elo"
+                ),
                 "history_rules_certified": False,
                 "production_approved": False,
                 "remaining_gates": [
