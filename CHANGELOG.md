@@ -8,6 +8,7 @@ RakuXQ 的重要版本变化记录于此。
 
 - 新增独立 C++17 候选、UCI、合法走子与有界搜索、自定义量化增量评估，以及独立初始化的合成自对弈训练和成对对照工具。
 - 新增逐文件元信息校验、来源清单、现有五个公开请求契约快照，以及 Linux/Windows 候选 CI。
+- 自有模型可凭匹配训练回执继续生成下一轮合成资料；竞技场保留完整棋谱和未裁定不确定性。两代小样本试赛未获晋级资格，不把训练损失降低冒充棋力提升。
 - 这是实验组件，不是生产升级：未替换视觉模型、引擎或参数，不宣称棋力不退步或自主化全部完成。
 - Added an independent experimental core and offline evaluation/training tools. Production and client contracts remain unchanged; parity is not yet established.
 
