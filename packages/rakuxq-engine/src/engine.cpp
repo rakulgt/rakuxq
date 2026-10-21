@@ -73,7 +73,8 @@ struct Network {
         auto net = std::make_shared<Network>();
         auto read = [&in](int& v, int bound) {
             long long x = 0;
-            if (!(in >> x) || std::abs(x) > bound) throw std::runtime_error("invalid network parameter");
+            if (!(in >> x) || x < -static_cast<long long>(bound) || x > bound)
+                throw std::runtime_error("invalid network parameter");
             v = static_cast<int>(x);
         };
         for (auto& v : net->bias) read(v, 1000000);

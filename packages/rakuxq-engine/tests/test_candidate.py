@@ -180,6 +180,23 @@ def test_fen_feature_parser_rejects_overflows():
             pipeline.features(fen)
 
 
+@pytest.mark.parametrize("offset", [0, 32, 32 + 1262 * 32, 32 + 1262 * 32 + 32])
+@pytest.mark.parametrize("value", ["-9223372036854775808", "9223372036854775807"])
+def test_network_extreme_integers_are_rejected(executable, tmp_path, offset, value):
+    tokens = ["0"] * (32 + 1262 * 32 + 32 + 1)
+    tokens[offset] = value
+    model = tmp_path / "out-of-range.rknn"
+    model.write_text("RAKUXQ_NNUE_V1 1262 32 256\n" + " ".join(tokens), encoding="ascii")
+    result = subprocess.run(
+        [str(executable), "--network", str(model), "--evaluate", START],
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    assert result.returncode == 2
+    assert not result.stdout.strip()
+
+
 def test_training_requires_provenance_and_disjoint_groups(tmp_path):
     data = tmp_path / "samples.jsonl"
     records = []
