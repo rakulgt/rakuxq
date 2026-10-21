@@ -65,6 +65,27 @@ def write_json(path: Path, content: dict) -> None:
         stream.write("\n")
 
 
+def validate_own_model(receipt: dict, model_sha256: str) -> None:
+    if (
+        receipt.get("version") != VERSION
+        or receipt.get("origin") != "independently_trained_from_random_initialization"
+        or receipt.get("license") != "MIT"
+        or receipt.get("model_sha256") != model_sha256
+        or receipt.get("features") != FEATURES
+        or receipt.get("hidden") != HIDDEN
+        or receipt.get("scale") != SCALE
+    ):
+        raise ValueError("unsupported or inconsistent independent model provenance")
+    for name in ("model_sha256", "dataset_sha256", "trainer_sha256"):
+        value = receipt.get(name)
+        if (
+            not isinstance(value, str)
+            or len(value) != 64
+            or any(c not in "0123456789abcdef" for c in value)
+        ):
+            raise ValueError("invalid independent model provenance digest")
+
+
 def generate(args: argparse.Namespace) -> None:
     if not 2 <= args.games <= 10000 or not 2 <= args.plies <= 512 or not 1 <= args.time_ms <= 1000:
         raise ValueError("generation budget outside limits")
@@ -73,12 +94,26 @@ def generate(args: argparse.Namespace) -> None:
     checked_output(metadata)
     command = [
         str(args.engine.resolve()),
-        "--selfplay",
-        str(args.games),
-        str(args.plies),
-        str(args.time_ms),
-        str(args.seed),
     ]
+    network_receipt = None
+    network_sha256 = None
+    receipt_sha256 = None
+    if args.network:
+        receipt_path = args.network.with_suffix(args.network.suffix + ".meta.json")
+        network_receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        network_sha256 = digest(args.network)
+        validate_own_model(network_receipt, network_sha256)
+        receipt_sha256 = digest(receipt_path)
+        command.extend(["--network", str(args.network.resolve())])
+    command.extend(
+        [
+            "--selfplay",
+            str(args.games),
+            str(args.plies),
+            str(args.time_ms),
+            str(args.seed),
+        ]
+    )
     # No inherited customer data, network, API key or server database is involved.
     with args.output.open("x", encoding="utf-8", newline="\n") as stream:
         subprocess.run(
@@ -105,7 +140,13 @@ def generate(args: argparse.Namespace) -> None:
             "games": args.games,
             "plies_limit": args.plies,
             "search_ms": args.time_ms,
-            "teacher": "independent_rakuxq_handcrafted_search",
+            "teacher": "independent_rakuxq_nnue_search"
+            if args.network
+            else "independent_rakuxq_handcrafted_search",
+            "network_used": bool(args.network),
+            "source_network_sha256": network_sha256,
+            "source_network_receipt_sha256": receipt_sha256,
+            "source_network_receipt": network_receipt,
             "not_ground_truth": True,
             "production_approved": False,
             "created_at": current.isoformat(),
@@ -134,6 +175,21 @@ def dataset(path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
         or expiry - created > timedelta(days=3 * 365)
     ):
         raise ValueError("dataset retention receipt is invalid or expired")
+    network_used = meta.get("network_used", False)
+    if type(network_used) is not bool:
+        raise ValueError("invalid source network flag")
+    if network_used:
+        if meta.get("teacher") != "independent_rakuxq_nnue_search":
+            raise ValueError("unsupported selfplay teacher")
+        validate_own_model(
+            meta.get("source_network_receipt") or {}, meta.get("source_network_sha256")
+        )
+    elif meta.get("source_network_sha256") or meta.get("source_network_receipt"):
+        raise ValueError("inconsistent baseline selfplay provenance")
+    elif meta.get("teacher", "independent_rakuxq_handcrafted_search") != (
+        "independent_rakuxq_handcrafted_search"
+    ):
+        raise ValueError("unsupported baseline teacher")
     examples = []
     with path.open(encoding="utf-8") as stream:
         for line in stream:
@@ -141,11 +197,11 @@ def dataset(path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
                 record = json.loads(line)
                 if (
                     record.get("source") != "rakuxq_selfplay"
-                    or record.get("network_used") is not False
+                    or record.get("network_used") is not network_used
                     or record.get("engine_version") != VERSION
                     or record.get("depth", 0) < 1
                 ):
-                    raise ValueError("only unmodified independent baseline selfplay is supported")
+                    raise ValueError("only source-traceable independent selfplay is supported")
                 score = record.get("score_cp")
                 if type(score) is not int or not -30000 <= score <= 30000:
                     raise ValueError("invalid search label")
@@ -241,6 +297,9 @@ def train(args: argparse.Namespace) -> None:
             "model_sha256": digest(args.output),
             "dataset_sha256": source["dataset_sha256"],
             "trainer_sha256": digest(Path(__file__)),
+            "parent_model_sha256": source.get("source_network_sha256"),
+            "source_engine_sha256": source.get("engine_sha256"),
+            "created_at": datetime.now(UTC).isoformat(),
             "seed": args.seed,
             "epochs": args.epochs,
             "features": FEATURES,
@@ -271,6 +330,7 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
     gen = sub.add_parser("generate")
     gen.add_argument("--engine", type=Path, required=True)
+    gen.add_argument("--network", type=Path, help="Own model with a matching training receipt only")
     gen.add_argument("--output", type=Path, required=True)
     gen.add_argument("--games", type=int, default=8)
     gen.add_argument("--plies", type=int, default=48)

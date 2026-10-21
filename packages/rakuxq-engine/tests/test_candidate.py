@@ -245,6 +245,46 @@ def test_generated_artifacts_are_not_overwritten(tmp_path):
         pipeline.write_json(path, {})
 
 
+def test_continued_selfplay_requires_a_matching_own_training_receipt(tmp_path):
+    receipt = {
+        "version": pipeline.VERSION,
+        "origin": "independently_trained_from_random_initialization",
+        "license": "MIT",
+        "model_sha256": "a" * 64,
+        "dataset_sha256": "b" * 64,
+        "trainer_sha256": "c" * 64,
+        "features": 1262,
+        "hidden": 32,
+        "scale": 256,
+    }
+    pipeline.validate_own_model(receipt, "a" * 64)
+    for name, value in (
+        ("origin", "upstream_weights"),
+        ("license", "unknown"),
+        ("dataset_sha256", "not-a-digest"),
+        ("hidden", 128),
+    ):
+        with pytest.raises(ValueError, match="provenance"):
+            pipeline.validate_own_model({**receipt, name: value}, "a" * 64)
+    with pytest.raises(ValueError, match="provenance"):
+        pipeline.validate_own_model(receipt, "d" * 64)
+    model = tmp_path / "untraceable.rknn"
+    model.write_text("not an own trained model", encoding="ascii")
+    model.with_suffix(".rknn.meta.json").write_text(json.dumps(receipt), encoding="utf-8")
+    args = pipeline.argparse.Namespace(
+        engine=tmp_path / "never-executed",
+        network=model,
+        games=2,
+        plies=2,
+        time_ms=1,
+        seed=1,
+        output=tmp_path / "never-created.jsonl",
+    )
+    with pytest.raises(ValueError, match="provenance"):
+        pipeline.generate(args)
+    assert not args.output.exists()
+
+
 def test_frozen_requests_and_metadata_are_valid():
     for tool in ("contracts.py", "metadata.py"):
         subprocess.run(

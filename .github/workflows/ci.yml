@@ -57,6 +57,12 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           & $engine --network tmp/ci-smoke.rknn --verify-accumulator "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python packages/rakuxq-engine/tools/pipeline.py generate --engine $engine --network tmp/ci-smoke.rknn --games 8 --plies 24 --time-ms 10 --output tmp/ci-next-selfplay.jsonl
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python packages/rakuxq-engine/tools/pipeline.py train --data tmp/ci-next-selfplay.jsonl --epochs 3 --output tmp/ci-next-smoke.rknn
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          & $engine --network tmp/ci-next-smoke.rknn --verify-accumulator "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v6
         with:
           name: independent-native-${{ matrix.os }}
