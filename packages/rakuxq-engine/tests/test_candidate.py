@@ -239,6 +239,54 @@ def test_frozen_requests_and_metadata_are_valid():
         )
 
 
+def test_bad_network_does_not_silently_fall_back(executable, tmp_path):
+    broken = tmp_path / "broken.rknn"
+    broken.write_text("RAKUXQ_NNUE_V1 1262 32 256\n0", encoding="ascii")
+    uci = UCI(executable)
+    try:
+        uci.send("setoption name EvalFile value " + str(broken))
+        uci.send("position startpos")
+        uci.send("go movetime 10")
+        answer = uci.until("bestmove")
+        assert any("ERROR:" in line for line in answer)
+        assert answer[-1] == "bestmove 0000"
+    finally:
+        uci.close()
+
+
+def test_arena_preserves_unfinished_outcomes(executable, tmp_path):
+    evidence = tmp_path / "arena.json"
+    subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "tools/arena.py"),
+            "--candidate",
+            str(executable),
+            "--reference",
+            str(executable),
+            "--pairs",
+            "1",
+            "--plies",
+            "2",
+            "--time-ms",
+            "1",
+            "--output",
+            str(evidence),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    report = json.loads(evidence.read_text(encoding="utf-8"))
+    assert len(report["games"]) == 2
+    assert all(game["winner"] is None and game["reason"] == "ply_limit" for game in report["games"])
+    assert report["completed_pairs"] == 0
+    assert report["candidate_pair_score"] is None
+    assert report["production_approved"] is False
+    assert report["_meta"]["not_training_labels"] is True
+
+
 def test_existing_api_adapter_can_run_the_candidate_without_client_changes(
     executable,
     tmp_path,
@@ -271,6 +319,8 @@ def test_existing_api_adapter_can_run_the_candidate_without_client_changes(
         assert {"iccs", "from", "to", "notation"} <= body["best_move"].keys()
         assert body["best_move"]["iccs"] in run(executable, "--legal", WINNING).split()
         assert body["score"]["perspective"] == "red"
+        assert body["fen"] == WINNING
+        assert len(body["full_fen"].split()) == 6
         assert "KO" in body["display_text"]
         assert len(body["recommendations"]) == 1
         terminal = client.post(
@@ -283,5 +333,13 @@ def test_existing_api_adapter_can_run_the_candidate_without_client_changes(
         assert terminal["status"] == "accepted" and terminal["analysis_status"] == "terminal"
         assert terminal["best_move"] is None
         assert "红方获胜" in terminal["display_text"]
+        legacy = client.post("/v1/analyses", json={"fen": WINNING, "movetime_ms": 100})
+        assert legacy.status_code == 200 and legacy.json()["status"] == "completed"
+        lab = client.post(
+            "/api/lab/analyses",
+            headers={"Origin": "http://testserver"},
+            json={"fen": WINNING, "movetime_ms": 100},
+        )
+        assert lab.status_code == 200 and lab.json()["status"] == "completed"
     finally:
         engine.close()
