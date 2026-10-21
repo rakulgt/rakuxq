@@ -265,7 +265,8 @@ def test_existing_api_adapter_can_run_the_candidate_without_client_changes(
         response = client.post("/v1/solutions", json={"fen": WINNING, "time_ms": 500})
         assert response.status_code == 200, response.text
         body = response.json()
-        assert body["status"] == "completed"
+        assert body["status"] == "accepted"
+        assert body["analysis_status"] == "completed"
         assert body["engine"]["name"].startswith("RakuXQ")
         assert {"iccs", "from", "to", "notation"} <= body["best_move"].keys()
         assert body["best_move"]["iccs"] in run(executable, "--legal", WINNING).split()
@@ -279,7 +280,8 @@ def test_existing_api_adapter_can_run_the_candidate_without_client_changes(
                 "time_ms": 100,
             },
         ).json()
-        assert terminal["status"] == "terminal" and terminal["best_move"] is None
+        assert terminal["status"] == "accepted" and terminal["analysis_status"] == "terminal"
+        assert terminal["best_move"] is None
         assert "红方获胜" in terminal["display_text"]
     finally:
         engine.close()
