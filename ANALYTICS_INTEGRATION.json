@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "protocolVersion": "1.1.0",
+  "projectId": "rakuxq",
+  "status": "configured",
+  "environment": "production",
+  "level": "business",
+  "owner": "rakulgt",
+  "sites": [
+    {"hostname":"xq.rakubank.com","pathPrefix":"/"},
+    {"hostname":"xq-fast.rakubank.com","pathPrefix":"/"}
+  ],
+  "events": [
+    {"name":"recognition_recorded","version":1,"source":"server","definition":"Read-only existing A-source aggregates for recorded FEN-producing interactions. Excludes no-FEN rejects and network failures; accepted is not accuracy. No new raw event or identity exported.","allowedProperties":[]}
+  ],
+  "sourceContract": "scripts/export-ops-summary.py",
+  "rawEventsExported": false,
+  "sourceRetentionHours": 720,
+  "testTrafficSeparated": false,
+  "remainingGaps": ["web-page PV/UV", "all-request failure denominator", "independent internal/test filtering", "full journey coverage"],
+  "verification": null
+}

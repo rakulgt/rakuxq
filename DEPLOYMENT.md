@@ -178,3 +178,12 @@ B 审计独立位于 `/opt/raku/logs/rakuxq/b-interactions`，最多 12 小时�
 
 手动提前关闭只需 `systemctl disable --now rakuxq-b.service`；保留审计清理任务。
 需要撤销路由时按对应部署记录恢复本项目 Nginx 备份并 `nginx -t` / reload，不改 A 的 current。
+
+
+## 内部只读运营汇总导出
+
+独立 ops-export-releases/<release>/ 与 ops-export-current，不切换 A 或 B 的源码、引擎、模型及服务。rakuxq-ops-summary.timer 每分钟以 rakuxq 用户只读打开既有 public-metrics SQLite，仅导出计数、状态与耗时白名单到 exports/ops-summary/summary.json。目录 setgid 2750、文件 0640，只授予内部读取组；无原图、FEN、Key、用户标识和原始事件。
+
+安装前验证脚本与现有表结构、源库可读及输出目录权限，保存前一链接与自有 unit，再安装独立 timer/service；重发只切换本适配器并重启此 oneshot，不使用主 API 发布入口。输出超过五分钟无更新时消费者标记不可用。故障停用本导出 timer，恢复其前一链接/unit；保留源库和原 API，不恢复覆盖任何业务数据。具体初次安装记录见 docs/deployments/20261101-ops-summary.md。
+
+项目统计 manifest 保持 configured：没有网页 PV/UV、全请求分母、独立测试过滤和完整行为路径，不宣称整体接入 verified。独立仓库的协议及只含本项目域名的策略快照见 docs/governance；`node docs/governance/check-project-analytics.mjs --preflight` 只查配置，严格交付检查目前应失败。

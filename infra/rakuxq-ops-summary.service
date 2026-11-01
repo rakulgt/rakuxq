@@ -1,0 +1,17 @@
+[Unit]
+Description=RakuXQ read-only aggregate export for RakuInsight
+After=rakuxq-api.service
+[Service]
+Type=oneshot
+User=rakuxq
+Group=rakuxq
+WorkingDirectory=/opt/raku/portable/rakuxq/ops-export-current
+ExecStart=/usr/bin/python3 scripts/export-ops-summary.py --database /opt/raku/logs/rakuxq/public-metrics/public-metrics.sqlite3 --output /opt/raku/portable/rakuxq/exports/ops-summary/summary.json
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/raku/portable/rakuxq/exports/ops-summary
+MemoryMax=64M
+TasksMax=16
+UMask=0027

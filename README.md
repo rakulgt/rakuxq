@@ -457,3 +457,5 @@ coordinates are not retained.
 
 Contributions are welcome; see [`CONTRIBUTING.md`](CONTRIBUTING.md). RakuXQ is released under
 the [MIT License](LICENSE).
+
+内部只读汇总适配器及未完成的统一统计范围见 [部署说明](DEPLOYMENT.md#内部只读运营汇总导出)；不会改变公开 API、模型或客户权限。

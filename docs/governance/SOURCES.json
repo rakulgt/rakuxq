@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "source": "protocols/analytics-integration.md",
+      "target": "analytics-integration.md",
+      "sha256": "41174bd5c23225beebfe81074bc42e32d85739e1aa2c3def256be8aeb8a37fbc"
+    },
+    {
+      "source": "registry/analytics-policy.json",
+      "target": "analytics-policy.json",
+      "sha256": "92c0e6af95af2a1ebb724eb8c5b0426a5f2e97d913300d4af409c461df450e60",
+      "projection": "portable-project-scope-v1",
+      "sourceSha256": "49405e6a78e4c52ffac857002a94c62e8268b7610d1d55b344a369b2e72d8846"
+    },
+    {
+      "source": "scripts/check-analytics-governance.mjs",
+      "target": "check-analytics-governance.mjs",
+      "sha256": "a7f71943c117d4fca977f817631a079472d1fcde507d1e4bf93472fa623779a9"
+    },
+    {
+      "source": "scripts/check-project-analytics.mjs",
+      "target": "check-project-analytics.mjs",
+      "sha256": "3d3dc4b54e37591da0bd4b6bc7d8ea43ed892177614aa6e330e6033f67cdb31f"
+    }
+  ],
+  "generatedOn": "2026-11-01",
+  "projectId": "rakuxq"
+}

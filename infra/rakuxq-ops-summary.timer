@@ -1,0 +1,9 @@
+[Unit]
+Description=Refresh RakuXQ aggregate summary every minute
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+AccuracySec=5s
+Persistent=true
+[Install]
+WantedBy=timers.target

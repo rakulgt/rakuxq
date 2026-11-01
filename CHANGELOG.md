@@ -4,6 +4,10 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## 2026-11-01 内部汇总适配器
+
+- 新增独立只读计数/状态/耗时导出，不复制 FEN、图片或身份，不修改 A/B 与现有业务统计；完整路径和测试过滤仍未完成。见 [部署记录](docs/deployments/20261101-ops-summary.md)。
+
 ## Unreleased — independent core 0.1.0-experimental
 
 - 支持维护者明确批准的固定 48 小时私人 B 在线试验：独立 `/b/` URL、原 Key 白名单、固定引擎/网络摘要、到期停止、独立审计及资源限制；A 入口不变，测试不计入公开统计，不回退调用 Pikafish。

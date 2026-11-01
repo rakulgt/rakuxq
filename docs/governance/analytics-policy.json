@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "manifestName": "ANALYTICS_INTEGRATION.json",
+  "retention": {
+    "rawDays": 90,
+    "dailyAggregateDays": 365,
+    "inheritance": "shorter-applicable-limit-wins",
+    "status": "agreed-design-not-enabled"
+  },
+  "respectStricterProductPolicies": true,
+  "commitmentChangeReview": {
+    "mode": "explicit-versioned-human-decision",
+    "choices": [
+      "retain",
+      "approve-specific-change",
+      "defer"
+    ],
+    "silenceIsApproval": false,
+    "activationRequiresSeparateEvidence": true
+  },
+  "reportTimezone": "Asia/Shanghai",
+  "defaultSessionReplay": false,
+  "defaultCrossProductIdentityTracking": false,
+  "maxVerificationAgeDays": 30,
+  "allowedHostnames": [
+    "xq.rakubank.com",
+    "xq-fast.rakubank.com"
+  ]
+}
