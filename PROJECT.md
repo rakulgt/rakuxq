@@ -1,11 +1,11 @@
 ---
 document_type: living-project-cognitive-baseline
 project_id: rakuxq
-baseline_revision: "41"
-parent_revision: "40"
-change_operation: REVISE
+baseline_revision: "42"
+parent_revision: "41"
+change_operation: REFINE
 status: active
-updated_at: "2026-10-22T00:00:00+08:00"
+updated_at: "2026-11-05T00:00:00+08:00"
 ---
 
 # RakuXQ
@@ -46,6 +46,7 @@ RakuXQ 是同时面向普通象棋爱好者、开发者、自动化用户和中�
 - 对画面内未知格补空，响应必须包含 `UNCERTAIN_CELLS_ASSUMED_EMPTY`，并将对应坐标原因标记为 `visually_uncertain`；`prediction` 保留模型原始 `x`，顶层 `grid` 表示应用产品规则后的最终局面。
 - 对同图视觉原型自动纠正，响应必须包含 `SAME_IMAGE_PROTOTYPE_REFINEMENT`；完整响应保留原类别、原置信度、纠正方法和相似度证据。
 - 官方托管 API 为每位客户签发独立密钥并记录独立到期时间；密钥只保存不可逆哈希，过期响应必须披露微信 `lgtqcn`、`39 元人民币/年`和一年续期周期。
+- Key 可另带独立成功调用次数上限；不带次数的既有 Key 行为不变。一次融合识图与出招成功只扣一次，单独成功识图或成功出招各算一次；复核、拒识、参数/权限/引擎失败与无招法终局不扣次。额度需跨并发原子预留、按业务结果结算；进程崩溃遗留预留只能核对后处理，不得盲目释放导致超额。额度与到期日任一先到即不可调用；查询额度不扣次。个人测试次数卡不扩张其他 Key 的引擎权限，也不代表收费出招商用授权。
 - RakuXQ Lab 是面向公众的免费、非商业研究和学习工具，网页内走棋、打谱与引擎分析均不要求 API Key。Lab 使用独立的同源浏览器入口，与远程接口共享最多 9 秒的搜索预算及按需备选规则，并保持 IP 频率/并发保护；面向程序、快捷指令和第三方系统的 `/v1/*` 远程调用继续使用 Key 鉴权，未来可能收费。
 - 官方托管保留 `xq.rakubank.com` 国内直连入口，并以 `xq-fast.rakubank.com` 提供 Cloudflare 免费橙云加速入口；两者必须共享同一接口、鉴权、限流、审计规则和匿名分段计时。
 - 官方托管短期审计不得记录明文 API Key；只记录 Key ID，并设置 12 小时保留上限和磁盘容量上限。无有效 Key 的请求不得触发图片留存，避免形成匿名存储入口。

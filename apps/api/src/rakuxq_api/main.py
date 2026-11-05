@@ -33,6 +33,7 @@ from .engines import (
 )
 from .engines.base import parse_max_candidates, search_budgets
 from .geo import GeoIPCityResolver, GeoLocation
+from .key_quota import APIKeyQuotaMiddleware
 from .legal import COOKIE_NAME, DOCUMENTS, HASHES, RECEIPT_SECONDS, VERSION, ConsentStore
 from .legal import document_html as legal_document_html
 from .legal import metadata as legal_metadata
@@ -299,6 +300,11 @@ app = FastAPI(
     version=__version__,
     description="Turn Xiangqi board images into reviewable, engine-ready FEN.",
     lifespan=lifespan,
+)
+app.add_middleware(
+    APIKeyQuotaMiddleware,
+    store_getter=lambda: api_key_store,
+    enabled=lambda: settings.require_api_key,
 )
 app.add_middleware(
     InteractionAuditMiddleware,
@@ -707,6 +713,19 @@ async def recognize(
             orientation,
             _request_location(request),
         )
+    )
+
+
+@app.get("/v1/key-status")
+def key_status(
+    validation: Annotated[APIKeyValidation, Depends(require_api_key)],
+):
+    quota = api_key_store.quota(validation.key_id) if (
+        settings.require_api_key and api_key_store and validation.key_id
+    ) else None
+    return JSONResponse(
+        {"status": "active", "quota": quota},
+        headers={"Cache-Control": "no-store, max-age=0"},
     )
 
 

@@ -27,6 +27,11 @@ class TrialKeyCapacity(RuntimeError):
     pass
 
 
+class APIKeyQuotaUnavailable(RuntimeError):
+    def __init__(self, quota: dict[str, int]):
+        self.quota = quota
+
+
 class APIKeyStore:
     def __init__(self, database: str | Path):
         self.database = Path(database)
@@ -59,14 +64,34 @@ class APIKeyStore:
                 )
                 """
             )
+            connection.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS api_key_quotas (
+                    key_id TEXT PRIMARY KEY REFERENCES api_keys(id),
+                    total INTEGER NOT NULL CHECK(total > 0),
+                    used INTEGER NOT NULL DEFAULT 0 CHECK(used >= 0 AND used <= total)
+                );
+                CREATE TABLE IF NOT EXISTS api_key_reservations (
+                    id TEXT PRIMARY KEY,
+                    key_id TEXT NOT NULL REFERENCES api_key_quotas(key_id),
+                    created_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS quota_reservation_key
+                    ON api_key_reservations(key_id);
+                """
+            )
         if os.name != "nt":
             self.database.chmod(0o600)
 
-    def create(self, label: str, days: int = 365) -> tuple[str, str, datetime]:
+    def create(
+        self, label: str, days: int = 365, uses: int | None = None,
+    ) -> tuple[str, str, datetime]:
         if not label.strip():
             raise ValueError("label must not be empty")
         if days < 1:
             raise ValueError("days must be positive")
+        if uses is not None and (type(uses) is not int or uses < 1):
+            raise ValueError("uses must be a positive integer")
         self.initialize()
         now = datetime.now(UTC)
         expires_at = now + timedelta(days=days)
@@ -88,7 +113,63 @@ class APIKeyStore:
                     self._format(expires_at),
                 ),
             )
+            if uses is not None:
+                connection.execute(
+                    "INSERT INTO api_key_quotas (key_id, total, used) VALUES (?, ?, 0)",
+                    (key_id, uses),
+                )
         return key_id, plaintext, expires_at
+
+    @staticmethod
+    def _quota(connection: sqlite3.Connection, key_id: str) -> dict[str, int] | None:
+        row = connection.execute(
+            "SELECT total, used FROM api_key_quotas WHERE key_id = ?", (key_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        in_flight = connection.execute(
+            "SELECT COUNT(*) FROM api_key_reservations WHERE key_id = ?", (key_id,),
+        ).fetchone()[0]
+        return {"limit": row[0], "used": row[1], "in_flight": in_flight,
+                "remaining": row[0] - row[1] - in_flight}
+
+    def quota(self, key_id: str) -> dict[str, int] | None:
+        with self._connect() as connection:
+            return self._quota(connection, key_id)
+
+    def reserve_usage(self, key_id: str) -> str | None:
+        """Reserve before work; concurrent requests cannot spend the same credit."""
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            quota = self._quota(connection, key_id)
+            if quota is None:
+                return None  # Existing time-only keys retain their original behavior.
+            if quota["remaining"] < 1:
+                raise APIKeyQuotaUnavailable(quota)
+            reservation = secrets.token_hex(16)
+            connection.execute(
+                "INSERT INTO api_key_reservations (id, key_id, created_at) VALUES (?, ?, ?)",
+                (reservation, key_id, self._format(datetime.now(UTC))),
+            )
+        return reservation
+
+    def finish_usage(self, key_id: str, reservation: str, success: bool) -> dict[str, int]:
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            deleted = connection.execute(
+                "DELETE FROM api_key_reservations WHERE id = ? AND key_id = ?",
+                (reservation, key_id),
+            )
+            if deleted.rowcount != 1:
+                raise ValueError("Unknown or already settled quota reservation")
+            if success:
+                connection.execute(
+                    "UPDATE api_key_quotas SET used = used + 1 WHERE key_id = ?", (key_id,),
+                )
+            quota = self._quota(connection, key_id)
+            if quota is None:
+                raise ValueError("Quota disappeared during settlement")
+            return quota
 
     def issue_trial(
         self,

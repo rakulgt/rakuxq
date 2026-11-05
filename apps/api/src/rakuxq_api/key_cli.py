@@ -22,6 +22,9 @@ def main() -> None:
     create.add_argument("--label", required=True)
     create.add_argument("--days", type=int, default=365)
     create.add_argument(
+        "--uses", type=int, help="Successful-call quota; absent keeps time-only keys",
+    )
+    create.add_argument(
         "--output",
         help="Write the one-time plaintext result to a private file instead of stdout",
     )
@@ -34,23 +37,32 @@ def main() -> None:
     revoke.add_argument("--id", required=True)
 
     subparsers.add_parser("list", help="List key metadata without plaintext keys")
+    status = subparsers.add_parser("status", help="Inspect one quota without exposing its key")
+    status.add_argument("--id", required=True)
     args = parser.parse_args()
     store = APIKeyStore(args.database)
 
     if args.command == "create":
-        key_id, plaintext, expires_at = store.create(args.label, args.days)
+        output = Path(args.output).resolve() if args.output else None
+        if output is not None and output.exists():
+            parser.error("Private output already exists; choose a new filename")
+        key_id, plaintext, expires_at = store.create(args.label, args.days, uses=args.uses)
         result = {
             "id": key_id,
             "api_key": plaintext,
             "expires_at": _iso(expires_at),
+            "quota": store.quota(key_id),
             "warning": "This is the only plaintext display; store it securely.",
         }
-        if args.output:
-            output = Path(args.output).resolve()
+        if output is not None:
             output.parent.mkdir(parents=True, exist_ok=True)
-            output.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-            if os.name != "nt":
-                output.chmod(0o600)
+            try:
+                descriptor = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+                    json.dump(result, stream, ensure_ascii=False, indent=2)
+            except OSError:
+                store.revoke(key_id)
+                raise
             print(
                 json.dumps(
                     {"id": key_id, "expires_at": _iso(expires_at), "output": str(output)},
@@ -65,6 +77,8 @@ def main() -> None:
     elif args.command == "revoke":
         store.revoke(args.id)
         print(json.dumps({"id": args.id, "revoked": True}))
+    elif args.command == "status":
+        print(json.dumps({"quota": store.quota(args.id)}))
     else:
         print(json.dumps(store.list_keys(), ensure_ascii=False, indent=2))
 

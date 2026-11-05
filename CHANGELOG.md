@@ -4,6 +4,14 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.5.8-alpha.1] - 2026-11-05
+
+- Optional per-key successful-call quotas, atomic reservations and failure refunds;
+  existing time-only keys, engine permissions and client request contracts remain unchanged.
+- 新增 `create --uses`、私密独占输出和免扣次的 `/v1/key-status`；额度用尽明确返回 429。
+- 融合识图出招成功仅算一次，复核/失败/无招法终局不扣次；崩溃遗留预留保守待核对。
+- 个人测试卡不扩张普通客户出招权限，也不授予受限 NNUE 商用许可。详见 [次数契约](docs/api-keys.md)。
+
 ## 2026-11-01 内部汇总适配器
 
 - 新增独立只读计数/状态/耗时导出，不复制 FEN、图片或身份，不修改 A/B 与现有业务统计；完整路径和测试过滤仍未完成。见 [部署记录](docs/deployments/20261101-ops-summary.md)。
