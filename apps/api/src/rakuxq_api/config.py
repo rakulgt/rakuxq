@@ -93,6 +93,7 @@ class Settings:
         "RAKUXQ_ENGINE_ALLOWED_KEY_IDS"
     )
     engine_threads: int = int(os.getenv("RAKUXQ_ENGINE_THREADS", "1"))
+    engine_workers: int = int(os.getenv("RAKUXQ_ENGINE_WORKERS", "1"))
     engine_hash_mb: int = int(os.getenv("RAKUXQ_ENGINE_HASH_MB", "64"))
     engine_candidate_max_loss_cp: int = int(
         os.getenv("RAKUXQ_ENGINE_CANDIDATE_MAX_LOSS_CP", "150")

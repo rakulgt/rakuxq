@@ -15,11 +15,35 @@ from .base import ProviderNotReady, RecognitionFailed, RecognitionProvider
 LABELS = [".", "x", "K", "A", "B", "N", "R", "C", "P", "k", "a", "b", "n", "r", "c", "p"]
 
 
+class _GlyphFeatures:
+    """Lazy, per-candidate features shared by the two conservative glyph checks."""
+
+    def __init__(self, warped):
+        self.warped = warped
+        self.gray = None
+        self.features: dict[int, Any] = {}
+
+    def __getitem__(self, index: int):
+        import cv2
+        import numpy as np
+
+        if index not in self.features:
+            if self.gray is None:
+                self.gray = cv2.cvtColor(self.warped, cv2.COLOR_RGB2GRAY)
+            rank, file = divmod(index, 9)
+            center = (50.0 + file * 43.75, 50.0 + rank * (400.0 / 9.0))
+            patch = cv2.getRectSubPix(self.gray, (37, 37), center)
+            patch = cv2.resize(patch, (32, 32), interpolation=cv2.INTER_AREA).astype(np.float32)
+            patch -= patch.mean()
+            patch /= patch.std() + 1e-6
+            self.features[index] = patch.reshape(-1)
+        return self.features[index]
+
+
 @dataclass(slots=True)
 class _LayoutCandidate:
     name: str
     corners: Any
-    warped: Any
     raw_symbols: list[str]
     refined_symbols: list[str]
     confidences: Any
@@ -267,27 +291,6 @@ class OnnxRecognitionProvider(RecognitionProvider):
             )
         return details
 
-    @classmethod
-    def _king_anchor_color_diagnostics(
-        cls,
-        warped,
-        symbols: list[str],
-        confidences,
-        visible: list[bool],
-    ):
-        """Retain the historical audit surface: only camp disagreements."""
-
-        return [
-            detail
-            for detail in cls._king_anchor_color_evidence(
-                warped,
-                symbols,
-                confidences,
-                visible,
-            )
-            if not detail["agrees_with_model"]
-        ]
-
     @staticmethod
     def _same_image_prototype_refinement(
         warped,
@@ -298,6 +301,8 @@ class OnnxRecognitionProvider(RecognitionProvider):
         target_confidence: float = 0.75,
         minimum_similarity: float = 0.72,
         minimum_margin: float = 0.04,
+        *,
+        features: _GlyphFeatures | None = None,
     ):
         """Correct weak piece labels from strong same-set examples in one image.
 
@@ -307,21 +312,10 @@ class OnnxRecognitionProvider(RecognitionProvider):
         a known, low-confidence piece when a high-confidence piece of the same colour is
         a substantially better visual match.  Empty and unknown cells are never promoted.
         """
-        import cv2
         import numpy as np
 
-        gray = cv2.cvtColor(warped, cv2.COLOR_RGB2GRAY)
-        features = []
-        for index in range(90):
-            rank, file = divmod(index, 9)
-            center = (50.0 + file * 43.75, 50.0 + rank * (400.0 / 9.0))
-            patch = cv2.getRectSubPix(gray, (37, 37), center)
-            patch = cv2.resize(patch, (32, 32), interpolation=cv2.INTER_AREA).astype(
-                np.float32
-            )
-            patch -= patch.mean()
-            patch /= patch.std() + 1e-6
-            features.append(patch.reshape(-1))
+        if features is None:
+            features = _GlyphFeatures(warped)
 
         prototypes = [
             index
@@ -395,6 +389,8 @@ class OnnxRecognitionProvider(RecognitionProvider):
         visible: list[bool],
         prototype_confidence: float = 0.85,
         target_confidence: float = 0.75,
+        *,
+        features: _GlyphFeatures | None = None,
     ) -> list[dict[str, Any]]:
         """Compare weak pieces with strong same-image piece-type examples.
 
@@ -402,21 +398,10 @@ class OnnxRecognitionProvider(RecognitionProvider):
         confirm the shared cannon glyph/type while camp is assessed separately.
         """
 
-        import cv2
         import numpy as np
 
-        gray = cv2.cvtColor(warped, cv2.COLOR_RGB2GRAY)
-        features = []
-        for index in range(90):
-            rank, file = divmod(index, 9)
-            center = (50.0 + file * 43.75, 50.0 + rank * (400.0 / 9.0))
-            patch = cv2.getRectSubPix(gray, (37, 37), center)
-            patch = cv2.resize(patch, (32, 32), interpolation=cv2.INTER_AREA).astype(
-                np.float32
-            )
-            patch -= patch.mean()
-            patch /= patch.std() + 1e-6
-            features.append(patch.reshape(-1))
+        if features is None:
+            features = _GlyphFeatures(warped)
 
         prototypes = [
             index
@@ -806,11 +791,13 @@ class OnnxRecognitionProvider(RecognitionProvider):
         model_margins = sorted_probabilities[:, -1] - sorted_probabilities[:, -2]
         raw_symbols = [LABELS[int(index)] for index in indexes]
         projected_points, visible = self._visible_grid_mask(corners, width, height)
+        features = _GlyphFeatures(warped)
         refined_symbols, effective_confidences, refinements = self._same_image_prototype_refinement(
             warped,
             raw_symbols,
             confidences,
             visible,
+            features=features,
         )
         color_evidence = self._king_anchor_color_evidence(
             warped,
@@ -826,6 +813,7 @@ class OnnxRecognitionProvider(RecognitionProvider):
             refined_symbols,
             effective_confidences,
             visible,
+            features=features,
         )
         refined_symbols, effective_confidences, visual_fusions = (
             self._apply_low_confidence_visual_fusion(
@@ -866,7 +854,6 @@ class OnnxRecognitionProvider(RecognitionProvider):
         return _LayoutCandidate(
             name=name,
             corners=np.asarray(corners, dtype=np.float32),
-            warped=warped,
             raw_symbols=raw_symbols,
             refined_symbols=refined_symbols,
             confidences=confidences,

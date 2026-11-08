@@ -4,6 +4,17 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.5.8-alpha.2] - 2026-11-08
+
+- Bounded one/two-process UCI leases reduce concurrent queueing while preserving
+  each request's engine, network, search budget and complete two-stage lease.
+  Serial requests reuse the warm process; no previous-answer/image cache.
+- 识图移入单通道后台计算，避免阻塞健康与其他请求；合并按需字形特征提取、删除未使用的旧诊断包装和候选图像保留字段。
+- 同局面首选/备选复用安全检查，合法着法只枚举几何候选；保留全部规则校验，扩大到 3000 余局面独立规则对照。
+- 修正同层 UCI 评分更新误取较早值，以及旧读取线程可能污染重启后队列的问题；公开参数、响应结构、计次和权限不变。
+- Added a local-summary-only benchmark; fixed an expired-date test fixture and
+  preserved the separately managed B route during normal A deployments.
+
 ## [0.5.8-alpha.1] - 2026-11-05
 
 - Optional per-key successful-call quotas, atomic reservations and failure refunds;

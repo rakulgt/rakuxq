@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "rakuxq-api"
-version = "0.5.8a1"
+version = "0.5.8a2"
 description = "RakuXQ image-to-FEN and Xiangqi engine analysis HTTP API"
 readme = "README.md"
 authors = [
@@ -14,6 +14,7 @@ license = "MIT"
 keywords = ["xiangqi", "computer-vision", "fen", "onnx", "nnue"]
 requires-python = ">=3.11,<3.15"
 dependencies = [
+  "anyio>=4,<5",
   "fastapi>=0.116,<1",
   "maxminddb>=3.1,<4",
   "numpy>=2.1,<3",

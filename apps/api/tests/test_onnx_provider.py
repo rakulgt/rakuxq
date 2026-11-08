@@ -160,9 +160,9 @@ def test_king_anchor_colours_are_diagnostic_only_and_never_change_raw_symbols():
     mark(54, "r", (220, 25, 25))
 
     original = symbols.copy()
-    details = OnnxRecognitionProvider._king_anchor_color_diagnostics(
+    details = [d for d in OnnxRecognitionProvider._king_anchor_color_evidence(
         warped, symbols, confidences, visible
-    )
+    ) if not d["agrees_with_model"]]
 
     assert symbols == original
     assert {(detail["from"], detail["suggested"]) for detail in details} == {
@@ -194,9 +194,9 @@ def test_king_anchor_diagnostics_do_not_override_real_failure_pattern():
     mark(66, "A", 0.9115211, (25, 25, 25))
 
     original = symbols.copy()
-    details = OnnxRecognitionProvider._king_anchor_color_diagnostics(
+    details = [d for d in OnnxRecognitionProvider._king_anchor_color_evidence(
         warped, symbols, confidences, visible
-    )
+    ) if not d["agrees_with_model"]]
 
     assert symbols == original
     assert symbols[57] == "N"
@@ -223,9 +223,9 @@ def test_king_anchor_colours_do_nothing_when_anchor_colours_are_indistinguishabl
         cv2.circle(warped, center, 17, (80, 80, 80), -1)
         symbols[index] = symbol
 
-    details = OnnxRecognitionProvider._king_anchor_color_diagnostics(
+    details = [d for d in OnnxRecognitionProvider._king_anchor_color_evidence(
         warped, symbols, confidences, visible
-    )
+    ) if not d["agrees_with_model"]]
 
     assert details == []
 

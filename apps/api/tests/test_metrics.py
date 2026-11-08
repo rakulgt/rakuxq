@@ -196,6 +196,8 @@ def test_public_metrics_migrate_existing_database_with_location_columns(tmp_path
 
 
 def test_public_metrics_redact_legacy_city_detail_to_country_only(tmp_path):
+    # Keep the fixture inside retention; its literal old date expired in November.
+    now = datetime.now(UTC)
     database = tmp_path / "public.sqlite3"
     store = PublicMetricsStore(database)
     store.initialize()
@@ -209,7 +211,7 @@ def test_public_metrics_redact_legacy_city_detail_to_country_only(tmp_path):
             """,
             (
                 "legacy-city",
-                "2026-10-06T10:00:00.000Z",
+                PublicMetricsStore._timestamp(now - timedelta(hours=1)),
                 "accepted",
                 "9/9/9/9/9/9/9/9/9/9 w",
                 0.9,
@@ -225,7 +227,7 @@ def test_public_metrics_redact_legacy_city_detail_to_country_only(tmp_path):
         connection.commit()
 
     store.initialize()
-    page = store.event_page(now=datetime(2026, 10, 6, 11, tzinfo=UTC))
+    page = store.event_page(now=now)
 
     assert page["events"][0]["location"] == {
         "country_code": "CN",

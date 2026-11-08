@@ -84,6 +84,23 @@ def in_check(grid: Grid, red: bool) -> bool:
     )
 
 
+def _targets(row: int, file: int, kind: str, red: bool) -> list[Square]:
+    """Candidate geometry only; _attacks still checks screens/legs/palaces."""
+    if kind in {"r", "c"}:
+        return sorted([(r, file) for r in range(10) if r != row]
+                      + [(row, f) for f in range(9) if f != file])
+    offsets = {
+        "k": ((-1, 0), (0, -1), (0, 1), (1, 0)),
+        "a": ((-1, -1), (-1, 1), (1, -1), (1, 1)),
+        "b": ((-2, -2), (-2, 2), (2, -2), (2, 2)),
+        "n": ((-2, -1), (-2, 1), (-1, -2), (-1, 2),
+              (1, -2), (1, 2), (2, -1), (2, 1)),
+        "p": ((-1 if red else 1, 0), (0, -1), (0, 1)),
+    }
+    return sorted((row + dr, file + df) for dr, df in offsets[kind]
+                  if 0 <= row + dr < 10 and 0 <= file + df < 9)
+
+
 def legal_moves(grid: Grid, red: bool) -> list[str]:
     """Enumerate moves, including check evasions; never include a king capture."""
     moves: list[str] = []
@@ -91,17 +108,20 @@ def legal_moves(grid: Grid, red: bool) -> list[str]:
         for f, symbol in enumerate(row):
             if symbol == "." or symbol.isupper() != red:
                 continue
-            for tr in range(10):
-                for tf in range(9):
-                    target = grid[tr][tf]
-                    if target != "." and (target.isupper() == red or target.lower() == "k"):
-                        continue
-                    if not _attacks(grid, (r, f), (tr, tf)):
-                        continue
-                    candidate = [list(rank) for rank in grid]
-                    candidate[tr][tf], candidate[r][f] = symbol, "."
-                    if not in_check(candidate, red):
-                        moves.append(f"{'abcdefghi'[f]}{9-r}{'abcdefghi'[tf]}{9-tr}")
+            for tr, tf in _targets(r, f, symbol.lower(), red):
+                target = grid[tr][tf]
+                if target != "." and (target.isupper() == red or target.lower() == "k"):
+                    continue
+                if not _attacks(grid, (r, f), (tr, tf)):
+                    continue
+                # Copy only the rows we change, never mutate the caller's grid.
+                candidate = [rank if isinstance(rank, list) else list(rank) for rank in grid]
+                candidate[r] = list(grid[r])
+                if tr != r:
+                    candidate[tr] = list(grid[tr])
+                candidate[tr][tf], candidate[r][f] = symbol, "."
+                if not in_check(candidate, red):
+                    moves.append(f"{'abcdefghi'[f]}{9-r}{'abcdefghi'[tf]}{9-tr}")
     return moves
 
 

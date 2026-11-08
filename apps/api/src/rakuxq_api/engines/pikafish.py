@@ -24,7 +24,7 @@ from .base import (
     search_budgets,
 )
 from .notation import chinese_move_notation, chinese_principal_variation
-from .rules import inspect_position
+from .rules import PositionState, inspect_position
 
 
 @dataclass(slots=True)
@@ -172,15 +172,19 @@ class PikafishEngine:
     def identity(self) -> EngineIdentity | None:
         return self._identity
 
-    def _read_stdout(self) -> None:
-        process = self._process
-        if process is None or process.stdout is None:
+    @staticmethod
+    def _read_stdout(
+        process: subprocess.Popen[str], lines: queue.Queue[str | None],
+    ) -> None:
+        # Bind both objects to this generation. A retiring reader must not feed
+        # its EOF/old output into a replacement process's queue after recovery.
+        if process.stdout is None:
             return
         try:
             for line in process.stdout:
-                self._lines.put(line.rstrip("\r\n"))
+                lines.put(line.rstrip("\r\n"))
         finally:
-            self._lines.put(None)
+            lines.put(None)
 
     def _send(self, command: str) -> None:
         process = self._process
@@ -242,6 +246,7 @@ class PikafishEngine:
                 raise EngineAnalysisError("failed to start Pikafish executable") from exc
             self._reader = threading.Thread(
                 target=self._read_stdout,
+                args=(self._process, self._lines),
                 name="rakuxq-pikafish-output",
                 daemon=True,
             )
@@ -309,6 +314,9 @@ class PikafishEngine:
 
     def analyze(self, fen: str, movetime_ms: int, max_candidates: int = 1) -> AnalysisResult:
         primary_budget, alternative_budget = search_budgets(movetime_ms, max_candidates)
+        normalized = normalize_engine_fen(fen)
+        position, legal = inspect_position(normalized)
+        prepared = (normalized, position, legal)
         # Hold the same lock across both stages: never interleave another user's
         # position, and never start a second concurrent engine.
         with self._lock:
@@ -319,6 +327,7 @@ class PikafishEngine:
                 # A single-stage UCI bestmove needs small protocol headroom;
                 # search budget is not a hard network/OS response deadline.
                 deadline=deadline + (0.25 if alternative_budget == 0 else 0),
+                prepared=prepared,
             )
             details = SearchDetails(
                 primary_budget, alternative_budget, primary_budget + alternative_budget,
@@ -347,7 +356,7 @@ class PikafishEngine:
                 # Reuse the primary's hash, but compare two roots at the SAME
                 # depth in this short verification stage. The first answer is frozen.
                 comparison = self._analyze_once(
-                    fen, budget, candidate_count=2, deadline=deadline,
+                    fen, budget, candidate_count=2, deadline=deadline, prepared=prepared,
                 )
             except (EngineAnalysisError, ValueError):
                 # Optional analysis must never discard a valid primary answer.
@@ -392,10 +401,14 @@ class PikafishEngine:
     def _analyze_once(
         self, fen: str, movetime_ms: int, *, candidate_count: int = 1,
         deadline: float | None = None,
+        prepared: tuple[str, PositionState, list[str]] | None = None,
     ) -> AnalysisResult:
-        normalized_fen = normalize_engine_fen(fen)
+        if prepared is None:
+            normalized_fen = normalize_engine_fen(fen)
+            position, legal = inspect_position(normalized_fen)
+        else:
+            normalized_fen, position, legal = prepared
         active_color = normalized_fen.split()[1]
-        position, legal = inspect_position(normalized_fen)
         if position.terminal_reason:
             return AnalysisResult(
                 status="terminal", fen=normalized_fen, best_move=None, ponder=None,
@@ -404,12 +417,7 @@ class PikafishEngine:
             )
         with self._lock:
             if not self.ready:
-                # start() owns the same lock, so perform startup before entering analysis.
-                pass
-        if not self.ready:
-            self.start()
-
-        with self._lock:
+                self.start()
             started = time.monotonic()
             try:
                 self._send(f"setoption name MultiPV value {min(candidate_count, len(legal))}")
@@ -459,7 +467,9 @@ class PikafishEngine:
             # Never attach a stale score/PV to a different bestmove when the last
             # search iteration is incomplete. Candidate scores must be comparable.
             matching = [p for p in primary_lines if p.pv and p.pv[0] == best_move_value]
-            latest = max(matching, key=lambda p: p.depth, default=_InfoLine())
+            # UCI may emit a bound then an exact score at the same depth. max()
+            # on the original order picked the stale first value on a tie.
+            latest = max(reversed(matching), key=lambda p: p.depth, default=_InfoLine())
             paired: tuple[_InfoLine, _InfoLine] | None = None
             for depth in sorted(iterations, reverse=True):
                 iteration = iterations[depth]
@@ -494,11 +504,12 @@ class PikafishEngine:
                     notation=chinese_move_notation(normalized_fen, best_move_value),
                 )
             pv = latest.pv or []
+            pv_notation = chinese_principal_variation(normalized_fen, pv)
             recommendations: list[MoveRecommendation] = []
             if best_move is not None:
                 recommendations.append(MoveRecommendation(
                     move=best_move, score=score, depth=latest.depth, pv=pv,
-                    pv_notation=chinese_principal_variation(normalized_fen, pv),
+                    pv_notation=pv_notation,
                 ))
             omission: str | None = (
                 "only_legal_move" if len(legal) == 1 else "insufficient_search"
@@ -531,7 +542,7 @@ class PikafishEngine:
                 time_ms=elapsed_ms,
                 nps=latest.nps,
                 pv=pv,
-                pv_notation=chinese_principal_variation(normalized_fen, pv),
+                pv_notation=pv_notation,
                 engine=self._identity,
                 position=position,
                 recommendations=recommendations,

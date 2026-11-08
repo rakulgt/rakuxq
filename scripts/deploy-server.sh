@@ -261,6 +261,13 @@ else
   install -o root -g root -m 0644 "${RELEASE_DIR}/infra/xq-rakubank-nginx.conf" "${NGINX_CONF}"
 fi
 
+if [[ -f "${BACKUP_DIR}/xq-rakubank.conf" ]] && \
+    grep -Fq 'include /etc/nginx/snippets/rakuxq-b-routes.conf;' "${BACKUP_DIR}/xq-rakubank.conf"; then
+  # Preserve the separately managed, expiry-guarded B ingress. Do not reopen,
+  # extend or start the trial; replacing the A template must not remove it.
+  sed -i '/include \/etc\/nginx\/snippets\/rakuxq-api-routes.conf;/i\    include /etc/nginx/snippets/rakuxq-b-routes.conf;' "${NGINX_CONF}"
+fi
+
 systemd-analyze verify \
   "${SERVICE_CONF}" \
   "${AUDIT_RETENTION_SERVICE}" \

@@ -28,9 +28,9 @@ for (const fen of [
   "4k4/3R1R3/9/9/9/9/9/9/9/3K5 b - - 0 1",
   "3aka3/9/9/4C4/4n4/9/9/4C4/9/4K4 r - - 0 1",
 ]) record(new Xiangqi(fen));
-for (let gameIndex = 0; gameIndex < 12; gameIndex++) {
+for (let gameIndex = 0; gameIndex < 40; gameIndex++) {
   const game = new Xiangqi();
-  for (let ply = 0; ply < 60; ply++) {
+  for (let ply = 0; ply < 80; ply++) {
     record(game);
     const moves = game.moves();
     if (!moves.length) break;

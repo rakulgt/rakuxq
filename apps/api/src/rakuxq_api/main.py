@@ -7,10 +7,12 @@ import sqlite3
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 from typing import Annotated
 from urllib.parse import urlsplit
 
+from anyio import CapacityLimiter, to_thread
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
@@ -27,7 +29,7 @@ from .engines import (
     EngineNotConfigured,
     EngineTimeout,
     InvalidEnginePosition,
-    PikafishEngine,
+    PikafishPool,
     analysis_to_dict,
     normalize_engine_fen,
 )
@@ -95,9 +97,10 @@ public_metrics_store = (
 )
 geoip_resolver = GeoIPCityResolver(settings.geoip_city_db)
 legal_store = ConsentStore(settings.legal_consents_db) if settings.legal_consents_db else None
-analysis_engine = PikafishEngine(
+analysis_engine = PikafishPool(
     settings.engine_path,
     settings.engine_network,
+    workers=settings.engine_workers,
     threads=settings.engine_threads,
     hash_mb=settings.engine_hash_mb,
     command_timeout_ms=settings.engine_command_timeout_ms,
@@ -272,6 +275,9 @@ def _lab_analysis_time(requested: int | None) -> int:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    # Keep the existing single vision lane without blocking the event loop.
+    # The limiter belongs to this lifespan, not a previous test/server loop.
+    _app.state.recognition_limiter = CapacityLimiter(1)
     if settings.require_api_key and api_key_store is not None:
         api_key_store.initialize()
     if provider.ready():
@@ -343,6 +349,16 @@ def _run(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except RecognitionFailed as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+async def _recognize(
+    data: bytes, side_to_move: SideToMove, orientation: Orientation,
+    location: GeoLocation | None,
+):
+    return await to_thread.run_sync(
+        partial(_run, data, side_to_move, orientation, location),
+        limiter=getattr(app.state, "recognition_limiter", None),
+    )
 
 
 def _request_location(request: Request) -> GeoLocation | None:
@@ -707,7 +723,7 @@ async def recognize(
 ):
     data = await _read_image(image)
     return asdict(
-        _run(
+        await _recognize(
             data,
             _normalize_side_to_move(side_to_move),
             orientation,
@@ -776,7 +792,7 @@ async def solve(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     _analysis_time(movetime_ms, count)
     data = await _read_image(image)
-    recognition = _run(
+    recognition = await _recognize(
         data,
         _normalize_side_to_move(side_to_move),
         orientation,
@@ -847,7 +863,7 @@ async def fen(
     orientation: Annotated[Orientation, Form()] = Orientation.AUTO,
 ):
     data = await _read_image(image)
-    result = _run(
+    result = await _recognize(
         data,
         _normalize_side_to_move(side_to_move),
         orientation,

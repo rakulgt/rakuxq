@@ -14,6 +14,7 @@ from .base import (
     normalize_engine_fen,
 )
 from .pikafish import PikafishEngine
+from .pool import PikafishPool
 
 __all__ = [
     "AnalysisEngine",
@@ -26,6 +27,7 @@ __all__ = [
     "EngineTimeout",
     "InvalidEnginePosition",
     "PikafishEngine",
+    "PikafishPool",
     "analysis_to_dict",
     "normalize_engine_fen",
 ]

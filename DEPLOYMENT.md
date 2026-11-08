@@ -136,6 +136,11 @@ Pikafish 程序与 NNUE 不进入应用发布目录或 Git。升级时先在
 ## 容量与安全边界
 
 - 单 Uvicorn worker，ONNX Runtime 两线程，避免在 4 核 3.6 GiB 主机上与其他产品抢占资源。
+- 视觉在单容量后台线程通道内执行，不阻塞 ASGI 事件循环。`RAKUXQ_ENGINE_WORKERS`
+  为仅服务端配置，默认 1、上限 2；每进程继续使用 `RAKUXQ_ENGINE_THREADS` 和
+  `RAKUXQ_ENGINE_HASH_MB`，所以加通道也会增加 CPU/内存消耗。启用 2 前应验证同预算
+  并发、常驻内存和当前主机余量，备份 api.env；无资源余量时恢复为 1 并仅重启本 API。
+  两阶段搜索始终租用同一进程，空闲时优先复用最近进程的 Hash，不缓存旧图或旧答案。
 - systemd `MemoryMax=1200M`；Nginx 限制单请求约 13 MiB、每 Key 每分钟 30 次、突发 10 次、并发 2 次。
 - `/healthz` 不要求 API Key；`/v1/recognitions` 和 `/v1/fen` 必须鉴权。
 - `/v1/solutions`、`/v1/analyses` 和 `/v1/solve` 除有效 Key 外还必须命中
@@ -148,6 +153,10 @@ Pikafish 程序与 NNUE 不进入应用发布目录或 Git。升级时先在
 - 短期审计只保存有效 Key 的调用；匿名、无效、过期或吊销 Key 的请求不保存请求体。
 - `rakuxq-audit-retention.timer` 每分钟清理一次过期审计，并触发项目访问日志的小时级轮转；
   原图和交互目录保留上限为 12 小时。
+
+常规 A 发布会保留备份主配置中已经存在的 B 路由 include，但不启动或续期 B；不得把
+保留入口误认为重新授权试验。`scripts/benchmark-runtime.py` 可用安装好的同一引擎和权重
+对比一次或两次并发，原图只能在服务器内按已有诊断授权使用，输出仅保留耗时和语义摘要。
 
 ## 回滚
 

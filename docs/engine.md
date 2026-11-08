@@ -175,7 +175,7 @@ the original FEN and full `recognition`. A position conflict uses `status=review
 `message`, and the original analysis `http_status`. Callers must inspect the business status.
 FEN-only endpoints retain their non-2xx error contract. No path silently changes the supplied mover.
 See [`api.md`](api.md) for the full response matrix. Run `npm run test:engine-rules` to compare the
-server checks against the pinned browser rules on a deterministic 724-position corpus.
+server checks against the pinned browser rules on a deterministic corpus of over 3,000 positions.
 
 ## Browser lab
 
@@ -212,3 +212,27 @@ can display `score.display`. `best_move.notation` and `pv_notation` use standard
 Engine output is a bounded-compute recommendation, not a proof of an absolute best move unless the
 reported line is a forced mate or independently solved position. Responses include the engine
 version, network SHA-256, depth, nodes, elapsed time, and PV for reproducibility.
+
+## Adapter efficiency / 响应耗时
+
+Search budgets are unchanged: a requested nine-second search is not made faster by
+silently reducing computation. Upload, vision, safety checks and queueing are separate
+from that budget. The same position is prepared once across the two search stages;
+only geometrically possible move targets are tested, retaining all safety checks.
+Vision runs in a single limited worker lane rather than blocking the ASGI event loop.
+Glyph features are lazy and shared within one image/candidate only, never an old-image
+or answer cache. Equal-depth UCI updates use the latest score/PV for the chosen move;
+retired process readers cannot contaminate a new process's output queue.
+
+`RAKUXQ_ENGINE_WORKERS` is a server-only capacity control (1 by default, maximum 2).
+Each slot has an independent persistent UCI process; a lease covers primary and
+alternative stages together. Normal serial play reuses the most recently idle slot
+to keep its transposition table warm. This reduces queueing under concurrent use,
+not the requested thinking time. There is no fallback to a different engine.
+Memory/CPU and same-budget execution must be checked before enabling two slots.
+
+`scripts/benchmark-runtime.py --help` describes a same-hardware benchmark for adapter,
+vision and installed-engine execution. Owner-approved images remain local; output is
+limited to timings and semantic checksums. A small timing/legality suite does not prove
+playing-strength equivalence statistically; the engine, network and search policy must
+be held constant. 本轮不更换引擎、权重或置信门槛，不以缩短搜索冒充性能优化。
