@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from rakuxq_api.providers.onnx import OnnxRecognitionProvider
 
@@ -575,4 +576,71 @@ def test_decisive_empty_confirmation_rejects_unknown_or_multiple_weak_cells():
     )
     assert effective[41] == confidences[41]
     assert effective[42] == confidences[42]
+    assert details == []
+
+
+@pytest.mark.parametrize("confidence,runner_up", [
+    (0.608414, 0.107802), (0.518085, 0.128945), (0.542005, 0.130081),
+    (0.582066, 0.132105), (0.605670, 0.116866), (0.588352, 0.119238),
+])
+def test_dominant_empty_regression_from_six_failed_upload_scores(confidence, runner_up):
+    symbols = ["."] * 90
+    symbols[4], symbols[84] = "k", "K"
+    confidences = np.full(90, 0.99, dtype=np.float32)
+    confidences[4] = 0.902
+    confidences[88] = confidence
+    margins = np.zeros(90, dtype=np.float32)
+    margins[88] = confidence - runner_up
+    before = confidences.copy()
+    effective, details = OnnxRecognitionProvider._apply_decisive_empty_confirmation(
+        symbols, confidences, margins, confidences, [True] * 90,
+    )
+    assert effective[88] == 0.75
+    assert np.array_equal(confidences, before)
+    assert symbols[88] == "."
+    assert details[0]["confirmation_policy"] == "dominant_empty_strong_pieces"
+    assert details[0]["model_confidence"] == pytest.approx(confidence)
+    assert details[0]["runner_up_confidence"] == pytest.approx(runner_up)
+
+
+@pytest.mark.parametrize("case", [
+    "ambiguous_rook", "diffuse_but_too_weak", "runner_too_high", "weak_king",
+    "weak_piece", "weak_effective_piece", "multiple_weak", "unknown", "partial",
+    "illegal", "piece_candidate",
+])
+def test_dominant_empty_does_not_bypass_ambiguous_or_unsafe_cases(case):
+    symbols = ["."] * 90
+    symbols[4], symbols[84], symbols[63] = "k", "K", "R"
+    confidences = np.full(90, 0.99, dtype=np.float32)
+    confidences[88] = 0.52
+    margins = np.zeros(90, dtype=np.float32)
+    margins[88] = 0.39
+    visible = [True] * 90
+    if case == "ambiguous_rook":
+        margins[88] = 0.06
+    elif case == "diffuse_but_too_weak":
+        confidences[88], margins[88] = 0.49, 0.38
+    elif case == "runner_too_high":
+        confidences[88], margins[88] = 0.62, 0.40
+    elif case == "weak_king":
+        confidences[4] = 0.89
+    elif case == "weak_piece":
+        confidences[63] = 0.89
+    elif case == "multiple_weak":
+        confidences[87] = 0.60
+    elif case == "unknown":
+        symbols[87] = "x"
+    elif case == "partial":
+        visible[0] = False
+    elif case == "illegal":
+        symbols[84], symbols[85] = ".", "K"
+    elif case == "piece_candidate":
+        symbols[88] = "r"
+    effective_input = confidences.copy()
+    if case == "weak_effective_piece":
+        effective_input[63] = 0.89
+    effective, details = OnnxRecognitionProvider._apply_decisive_empty_confirmation(
+        symbols, confidences, margins, effective_input, visible,
+    )
+    assert np.array_equal(effective, effective_input)
     assert details == []

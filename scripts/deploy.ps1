@@ -3,7 +3,8 @@ param(
     [string]$SshAlias = 'raku-cn',
     [string]$Domain = 'xq.rakubank.com',
     [int]$Port = 8040,
-    [string]$KeyDatabase = '.secrets/api-keys.sqlite3'
+    [string]$KeyDatabase = '.secrets/api-keys.sqlite3',
+    [switch]$KeepExistingGeoIP
 )
 
 $ErrorActionPreference = 'Stop'
@@ -40,7 +41,8 @@ try {
     & scp @uploads "${SshAlias}:/tmp/"
     if ($LASTEXITCODE -ne 0) { throw 'Uploading deployment inputs failed.' }
 
-    & ssh $SshAlias "bash /tmp/deploy-rakuxq-server.sh '$revision' '$Domain' '$Port'"
+    $geoipMode = if ($KeepExistingGeoIP) { 'keep-existing' } else { 'refresh-if-stale' }
+    & ssh $SshAlias "bash /tmp/deploy-rakuxq-server.sh '$revision' '$Domain' '$Port' '$geoipMode'"
     if ($LASTEXITCODE -ne 0) { throw 'Remote deployment failed.' }
 }
 finally {

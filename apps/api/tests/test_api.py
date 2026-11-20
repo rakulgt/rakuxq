@@ -1,3 +1,4 @@
+from dataclasses import replace
 from unittest.mock import patch
 
 import pytest
@@ -595,7 +596,35 @@ def test_solve_endpoint_always_returns_display_text_when_review_is_required():
     payload = response.json()
     assert payload["status"] == "review_required"
     assert payload["analysis"] is None
-    assert payload["display_text"] == "局面需要复核，请重新拍照。"
+    assert "棋盘定位尚不可靠" in payload["display_text"]
+
+
+@pytest.mark.parametrize("weak_symbol,expected", [(".", "个别空位"), ("P", "个别棋子")])
+def test_solve_review_explains_empty_or_piece_gate_without_starting_engine(weak_symbol, expected):
+    class WeakCellProvider(FixedProvider):
+        def recognize(self, image, orientation):
+            result = super().recognize(image, orientation)
+            index = next(i for i, cell in enumerate(result.cells) if cell.symbol == weak_symbol)
+            result.cells[index] = replace(result.cells[index], confidence=0.52)
+            return result
+
+    with (
+        patch("rakuxq_api.main.service", RecognitionService(WeakCellProvider())),
+        patch.object(FixedAnalysisEngine, "analyze") as analyze,
+        patch("rakuxq_api.main.analysis_engine", FixedAnalysisEngine()),
+    ):
+        response = client.post(
+            "/v1/solve", files={"image": ("board.png", b"image", "image/png")},
+            data={"side_to_move": "red"},
+        )
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["status"] == "review_required"
+    assert payload["fen"] == START_FEN
+    assert expected in payload["display_text"]
+    assert "重新拍照" not in payload["display_text"]
+    assert payload["analysis_status"] == "not_started"
+    analyze.assert_not_called()
 
 
 @pytest.mark.parametrize("side", ["black", "auto", "", None])

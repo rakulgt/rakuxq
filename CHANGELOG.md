@@ -4,6 +4,18 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.5.8-alpha.3] - 2026-11-20
+
+- Fix false whole-board review caused by one dominant empty-cell candidate:
+  require a complete board, strong piece evidence, a distant runner-up and
+  no blocking position warnings. Keep raw scores and explicit confirmation evidence.
+- 修复单个空位 51.8–60.8% 分数导致整盘误拦的门控缺口；不删除弱棋子、不改帅将阵营、
+  不降低全局阈值，也不增加 ONNX 推理次数。六次失败原图回放均自动通过且原 FEN 不变。
+- 融合接口复核提示区分空位、棋子、定位、行棋方和局面异常，不再一律要求重拍；
+  请求参数、响应字段、引擎、权重、鉴权与计次规则保持不变。
+- Maintenance deployments may explicitly keep a validated existing GeoIP database,
+  avoiding unrelated monthly downloads delaying an urgent fix; default refresh is unchanged.
+
 ## [0.5.8-alpha.2] - 2026-11-08
 
 - Bounded one/two-process UCI leases reduce concurrent queueing while preserving

@@ -17,6 +17,32 @@ from .semantic import infer_orientation_from_kings
 from .validation import validate_position
 
 
+def recognition_review_message(result: RecognitionResult) -> str:
+    """Explain the actual failed gate without discarding the recognized FEN."""
+    if result.prediction is None:
+        return "暂未识别到可靠棋盘，请检查图片是否包含清晰棋盘。"
+    if any(warning.blocking for warning in validate_position(result.grid)):
+        return "识别结果中的棋子位置或数量需要核对，请检查返回局面。"
+    if any(code in result.warnings for code in (
+        "SIDE_TO_MOVE_AUTO_UNRESOLVED", "SIDE_TO_MOVE_UNKNOWN",
+    )):
+        return "局面已识别，但无法确定轮到哪方。请指定红方或黑方，或让帅将上下位置清晰可见。"
+    if "LOW_BOARD_CONFIDENCE" in result.warnings:
+        return "棋盘定位尚不可靠，请调整取景，让棋盘网格和边界更清晰。"
+    if "LOW_CELL_CONFIDENCE" in result.warnings:
+        gate = result.prediction.metadata.get("acceptance_gate")
+        if isinstance(gate, dict):
+            observed, required = gate.get("observed", {}), gate.get("required", {})
+            if isinstance(observed, dict) and isinstance(required, dict):
+                occupied = observed.get("minimum_occupied_confidence")
+                threshold = required.get("occupied_confidence")
+                if isinstance(occupied, (int, float)) and isinstance(threshold, (int, float)):
+                    if occupied >= threshold:
+                        return "局面已识别，但个别空位仍需确认，请核对返回局面中的空格或遮挡。"
+        return "局面已识别，但个别棋子的字形或颜色仍需确认，请核对返回局面。"
+    return "局面暂未自动通过，请核对返回局面与识别警告。"
+
+
 class RecognitionService:
     def __init__(
         self,

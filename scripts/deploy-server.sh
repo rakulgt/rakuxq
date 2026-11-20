@@ -9,6 +9,11 @@ fi
 REVISION="${1:?revision is required}"
 DOMAIN="${2:-xq.rakubank.com}"
 PORT="${3:-8040}"
+GEOIP_MODE="${4:-refresh-if-stale}"
+if [[ "${GEOIP_MODE}" != "refresh-if-stale" && "${GEOIP_MODE}" != "keep-existing" ]]; then
+  echo "invalid GeoIP refresh mode" >&2
+  exit 1
+fi
 if [[ ! "${REVISION}" =~ ^[0-9a-f]{7,40}$ ]]; then
   echo "invalid revision" >&2
   exit 1
@@ -123,7 +128,12 @@ refresh_geoip_city() {
   return 1
 }
 
-if [[ ! -r "${GEOIP_CITY_DB}" ]] || find "${GEOIP_CITY_DB}" -mtime +32 -print -quit | grep -q .; then
+if [[ "${GEOIP_MODE}" == "keep-existing" ]]; then
+  "${RELEASE_DIR}/.venv/bin/python" -c \
+    'import maxminddb,sys; reader=maxminddb.open_database(sys.argv[1]); reader.metadata(); reader.close()' \
+    "${GEOIP_CITY_DB}"
+  echo "keeping the validated existing GeoIP database (explicit maintenance option)"
+elif [[ ! -r "${GEOIP_CITY_DB}" ]] || find "${GEOIP_CITY_DB}" -mtime +32 -print -quit | grep -q .; then
   if ! refresh_geoip_city; then
     if [[ ! -r "${GEOIP_CITY_DB}" ]]; then
       echo "unable to install the DB-IP City Lite database" >&2

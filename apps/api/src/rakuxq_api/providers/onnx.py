@@ -635,11 +635,11 @@ class OnnxRecognitionProvider(RecognitionProvider):
         minimum_margin: float = 0.50,
         target_confidence: float = 0.75,
     ):
-        """Confirm one borderline empty cell when the model lead is decisive.
+        """Confirm one dominant empty candidate; never erase a piece candidate.
 
-        This addresses transient board UI overlays without weakening the global
-        empty-cell gate.  The pass is disabled for unknown cells, multiple weak
-        cells, or an already impossible position.
+        The lower-score path requires a complete board, strong raw piece scores
+        and a diffuse, distant runner-up. These are decision scores, not newly
+        calibrated probabilities; retain the original score and all evidence.
         """
 
         import numpy as np
@@ -661,7 +661,27 @@ class OnnxRecognitionProvider(RecognitionProvider):
             return effective, []
         confidence = float(model_confidences[index])
         margin = float(model_margins[index])
+        policy = "high_margin"
+        runner_up = max(0.0, confidence - margin)
+        occupied = [i for i, symbol in enumerate(symbols) if symbol not in {".", "x"}]
+        minimum_raw_piece = min((float(model_confidences[i]) for i in occupied), default=0.0)
         if confidence < minimum_confidence or margin < minimum_margin:
+            # A 52% empty candidate vs many scattered piece classes is not the
+            # same uncertainty as a 52% empty vs 46% rook ambiguity. The global
+            # board/side/position gates still run after this targeted decision.
+            if not (
+                all(visible)
+                and confidence >= 0.50
+                and margin >= 0.35
+                and runner_up <= 0.15
+                and confidence >= 3.0 * runner_up
+                and minimum_raw_piece >= 0.90
+                and all(float(effective[i]) >= 0.90 for i in occupied)
+            ):
+                return effective, []
+            policy = "dominant_empty_strong_pieces"
+
+        if any(float(effective[i]) < target_confidence for i in occupied):
             return effective, []
 
         grid = [symbols[offset : offset + 9] for offset in range(0, 90, 9)]
@@ -674,7 +694,10 @@ class OnnxRecognitionProvider(RecognitionProvider):
         if blocking:
             return effective, []
 
-        fused_confidence = max(target_confidence, min(confidence + margin, 1.0))
+        fused_confidence = (
+            target_confidence if policy == "dominant_empty_strong_pieces"
+            else max(target_confidence, min(confidence + margin, 1.0))
+        )
         effective[index] = fused_confidence
         return effective, [
             {
@@ -685,6 +708,9 @@ class OnnxRecognitionProvider(RecognitionProvider):
                 "to": ".",
                 "model_confidence": confidence,
                 "model_margin": margin,
+                "confirmation_policy": policy,
+                "runner_up_confidence": runner_up,
+                "minimum_raw_piece_confidence": minimum_raw_piece,
                 "effective_confidence": fused_confidence,
                 "blocking_warnings_before": blocking,
                 "blocking_warnings_after": blocking,

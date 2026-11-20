@@ -42,7 +42,7 @@ from .legal import metadata as legal_metadata
 from .metrics import InvalidEventCursor, PublicMetricsStore
 from .providers import OnnxRecognitionProvider, ProviderNotReady
 from .providers.base import RecognitionFailed
-from .service import RecognitionService
+from .service import RecognitionService, recognition_review_message
 
 settings = Settings()
 logger = logging.getLogger(__name__)
@@ -803,7 +803,7 @@ async def solve(
         return {
             "status": recognition.status,
             "fen": recognition.fen,
-            "display_text": "局面需要复核，请重新拍照。",
+            "display_text": recognition_review_message(recognition),
             "recognition": recognition_payload,
             "analysis": None,
             "analysis_status": "not_started",
