@@ -4,6 +4,16 @@ All notable changes to RakuXQ are documented here.
 
 RakuXQ 的重要版本变化记录于此。
 
+## [0.5.8-alpha.4] - 2026-11-20
+
+- Add an on-demand image-local occupancy verifier for dominant low-score empty
+  candidates. Compare annular appearance with multiple same-image references;
+  exclude small centre cursors and check known pieces with leave-one-out controls.
+- 原低分空位放行分支现在必须同时取得像素外观支持；真实棋子外观、参考不足、同图棋盘/棋子难以区分
+  或证据冲突时不提升决策分。保留原始候选、分数、参考数量、距离、拒绝原因及耗时，不删除明确棋子。
+- 正常识别路径不计算新特征，不调用大模型或新增 ONNX 推理。公共参数、主要响应字段、FEN、
+  搜索预算、Key 鉴权/计次和数据保留不变；没有增加权重、训练服务或新依赖。
+
 ## [0.5.8-alpha.3] - 2026-11-20
 
 - Fix false whole-board review caused by one dominant empty-cell candidate:

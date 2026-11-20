@@ -1,6 +1,9 @@
+from unittest.mock import Mock
+
 import numpy as np
 import pytest
 
+from rakuxq_api.providers.occupancy import LocalOccupancyProbe
 from rakuxq_api.providers.onnx import OnnxRecognitionProvider
 
 
@@ -592,8 +595,11 @@ def test_dominant_empty_regression_from_six_failed_upload_scores(confidence, run
     margins = np.zeros(90, dtype=np.float32)
     margins[88] = confidence - runner_up
     before = confidences.copy()
+    probe = Mock(spec=LocalOccupancyProbe)
+    probe.check_empty.return_value = {"confirmed_empty": True, "vote": "empty"}
     effective, details = OnnxRecognitionProvider._apply_decisive_empty_confirmation(
         symbols, confidences, margins, confidences, [True] * 90,
+        occupancy_probe=probe,
     )
     assert effective[88] == 0.75
     assert np.array_equal(confidences, before)
@@ -601,6 +607,8 @@ def test_dominant_empty_regression_from_six_failed_upload_scores(confidence, run
     assert details[0]["confirmation_policy"] == "dominant_empty_strong_pieces"
     assert details[0]["model_confidence"] == pytest.approx(confidence)
     assert details[0]["runner_up_confidence"] == pytest.approx(runner_up)
+    assert details[0]["occupancy"]["confirmed_empty"] is True
+    probe.check_empty.assert_called_once_with(88)
 
 
 @pytest.mark.parametrize("case", [

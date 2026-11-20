@@ -11,6 +11,7 @@ from ..fen import normalize_orientation
 from ..semantic import infer_orientation_from_kings
 from ..validation import validate_position
 from .base import ProviderNotReady, RecognitionFailed, RecognitionProvider
+from .occupancy import LocalOccupancyProbe
 
 LABELS = [".", "x", "K", "A", "B", "N", "R", "C", "P", "k", "a", "b", "n", "r", "c", "p"]
 
@@ -634,12 +635,14 @@ class OnnxRecognitionProvider(RecognitionProvider):
         minimum_confidence: float = 0.65,
         minimum_margin: float = 0.50,
         target_confidence: float = 0.75,
+        *,
+        occupancy_probe: LocalOccupancyProbe | None = None,
     ):
         """Confirm one dominant empty candidate; never erase a piece candidate.
 
-        The lower-score path requires a complete board, strong raw piece scores
-        and a diffuse, distant runner-up. These are decision scores, not newly
-        calibrated probabilities; retain the original score and all evidence.
+        The lower-score path requires a complete board, strong raw piece scores,
+        a distant runner-up and independent image-local occupancy support.
+        These are decision scores, not calibrated probabilities; retain evidence.
         """
 
         import numpy as np
@@ -694,6 +697,18 @@ class OnnxRecognitionProvider(RecognitionProvider):
         if blocking:
             return effective, []
 
+        occupancy: dict[str, object] | None = None
+        if policy == "dominant_empty_strong_pieces":
+            if occupancy_probe is None:
+                return effective, []
+            occupancy = occupancy_probe.check_empty(index)
+            if occupancy.get("confirmed_empty") is not True:
+                return effective, [{
+                    "method": "same_image_occupancy_check", "rank": index // 9,
+                    "file": index % 9, "from": ".", "to": ".", "applied": False,
+                    "occupancy": occupancy,
+                }]
+
         fused_confidence = (
             target_confidence if policy == "dominant_empty_strong_pieces"
             else max(target_confidence, min(confidence + margin, 1.0))
@@ -714,6 +729,7 @@ class OnnxRecognitionProvider(RecognitionProvider):
                 "effective_confidence": fused_confidence,
                 "blocking_warnings_before": blocking,
                 "blocking_warnings_after": blocking,
+                "occupancy": occupancy,
             }
         ]
 
@@ -859,6 +875,7 @@ class OnnxRecognitionProvider(RecognitionProvider):
                 model_margins,
                 effective_confidences,
                 visible,
+                occupancy_probe=LocalOccupancyProbe(warped, raw_symbols, confidences, visible),
             )
         )
         visual_fusions.extend(empty_confirmations)
