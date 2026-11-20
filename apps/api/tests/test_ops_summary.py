@@ -14,6 +14,17 @@ module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 
 
+def test_summary_sandbox_allows_auxiliary_wal_files_but_keeps_main_database_read_only():
+    root = pathlib.Path(__file__).resolve().parents[3]
+    unit = (root / "infra/rakuxq-ops-summary.service").read_text(encoding="utf-8")
+    assert "ProtectSystem=strict" in unit
+    assert "ReadWritePaths=/opt/raku/logs/rakuxq/public-metrics\n" in unit
+    assert (
+        "ReadOnlyPaths=/opt/raku/logs/rakuxq/public-metrics/public-metrics.sqlite3" in unit
+    )
+    assert "?mode=ro" in (root / "scripts/export-ops-summary.py").read_text(encoding="utf-8")
+
+
 def test_summary_omits_every_raw_and_customer_field_and_counts_window(tmp_path):
     db = tmp_path / "metrics.sqlite3"
     now = datetime.datetime(2026, 11, 1, 10, tzinfo=datetime.UTC)

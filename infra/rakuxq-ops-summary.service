@@ -12,6 +12,10 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths=/opt/raku/portable/rakuxq/exports/ops-summary
+# SQLite read-only WAL readers may need auxiliary -wal/-shm files after restart.
+# Keep the main database OS-read-only in addition to the exporter's mode=ro URI.
+ReadWritePaths=/opt/raku/logs/rakuxq/public-metrics
+ReadOnlyPaths=/opt/raku/logs/rakuxq/public-metrics/public-metrics.sqlite3
 MemoryMax=64M
 TasksMax=16
 UMask=0027
